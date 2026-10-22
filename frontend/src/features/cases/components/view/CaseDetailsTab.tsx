@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { CaseRow } from '../casesTable.utils';
 import CaseActionsPanel from './CaseActionsPanel';
 import { getCaseStatusBadge } from '@/shared/constants/case.constant';
@@ -223,13 +223,20 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
     fetchTransactionData();
   }, [row?.alertId]);
 
+  // Identifies the newest loadReport call. A response from an older call (started before the case's status or
+  // the viewer's access level changed) is ignored, so it can't repopulate reports a restricted view must not show.
+  const reportRequestId = useRef(0);
+
   const loadReport = React.useCallback(async () => {
+    reportRequestId.current += 1;
+    const requestId = reportRequestId.current;
     setLatestReports({});
     setViewingId(null);
     if (!row.id) return;
 
     const isClosed = row.status.toLowerCase().includes('closed');
-    if (!isClosed) {
+    // Evidence (the investigation reports) is withheld from an investigator who was revoked from the case.
+    if (!isClosed || row.accessLevel === 'RESTRICTED') {
       setLatestReports({});
       setLoading(false);
       return;
@@ -239,6 +246,7 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
 
     try {
       const evidenceResponse = await evidenceService.getCaseEvidence(row.id);
+      if (requestId !== reportRequestId.current) return;
       const latestByType: Record<string, LatestReport | null> = {};
 
       evidenceResponse.evidence.forEach((evidence) => {
@@ -277,11 +285,15 @@ const CaseDetailsTab: React.FC<CaseDetailsTabProps> = ({
 
       setLatestReports(latestByType);
     } catch (err) {
-      console.error('Failed to load reports:', err);
+      if (requestId === reportRequestId.current) {
+        console.error('Failed to load reports:', err);
+      }
     } finally {
-      setLoading(false);
+      if (requestId === reportRequestId.current) {
+        setLoading(false);
+      }
     }
-  }, [row.id]);
+  }, [row.id, row.status, row.accessLevel]);
 
   useEffect(() => {
     loadReport();

@@ -88,7 +88,18 @@ export class AuthController {
   @ApiOkResponse({ description: 'Authenticated user information returned successfully.', type: AuthMeResponseDto })
   @ApiUnauthorizedResponse({ description: 'Unauthorized - missing or invalid token.' })
   @RequireAuthenticated()
-  getMe(@User() user: AuthenticatedUser): AuthMeResponseDto {
+  getMe(@User() user: AuthenticatedUser, @Req() req?: Request): AuthMeResponseDto {
+    // The app calls this on every page load. Use it to repair the user directory (roles, names) if this
+    // user is missing from it - after a restart or a Redis outage nothing else would refill it until the
+    // next login. Fire-and-forget: it must never slow down or fail the response.
+    const token = req ? this.extractAccessToken(req) : undefined;
+    if (token) {
+      this.cacheService.refreshDirectoryIfUnknown(user.userId, token).catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : String(error);
+        this.logger.warn(`User directory refresh failed (non-blocking): ${message}`, AuthController.name);
+      });
+    }
+
     const firstName = user.actorName ? user.actorName.split(' ')[0] : '';
     const lastName = user.actorName ? user.actorName.split(' ').slice(1).join(' ') : '';
 
@@ -102,6 +113,17 @@ export class AuthController {
       tenantName: user.tenantName,
       validatedClaims: user.validated,
     };
+  }
+
+  /** The caller's JWT: the Authorization bearer if present, otherwise the session cookie. */
+  private extractAccessToken(req: Request): string | undefined {
+    const header = req.headers.authorization;
+    if (typeof header === 'string' && header.startsWith('Bearer ')) {
+      return header.substring(7);
+    }
+    const cookies = req.cookies as Record<string, unknown> | undefined;
+    const cookieToken = cookies?.[ACCESS_TOKEN_COOKIE];
+    return typeof cookieToken === 'string' && cookieToken !== '' ? cookieToken : undefined;
   }
 
   @Post('logout')

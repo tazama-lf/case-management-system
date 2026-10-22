@@ -124,7 +124,15 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
     return undefined;
   }, [row]);
 
+  // Revoked from this case: evidence, visualizations and the investigation summary are withheld
+  // (the backend refuses them too), so their tabs are hidden and their panels never mount.
+  const isRestricted = row?.accessLevel === 'RESTRICTED';
+
   const shouldShowVisualizations = React.useMemo(() => {
+    if (isRestricted) {
+      return false;
+    }
+
     let transactionData = row?.transaction;
 
     if (!transactionData) {
@@ -141,13 +149,19 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
 
     const transaction = transactionData as Record<string, unknown>;
     return transaction?.FIToFIPmtSts !== undefined;
-  }, [row]);
+  }, [row, isRestricted]);
 
   React.useEffect(() => {
     if (!shouldShowVisualizations && tab === 'visualizations') {
       setTab('details');
     }
   }, [shouldShowVisualizations, tab]);
+
+  React.useEffect(() => {
+    if (isRestricted && (tab === 'evidence' || tab === 'summary')) {
+      setTab('details');
+    }
+  }, [isRestricted, tab]);
 
   if (!open || !row) return null;
 
@@ -176,7 +190,9 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
             {(
               [
                 { key: 'details', label: 'Task Details' },
-                { key: 'evidence', label: 'Evidence' },
+                ...(isRestricted
+                  ? []
+                  : ([{ key: 'evidence', label: 'Evidence' }] as const)),
                 ...(shouldShowVisualizations
                   ? ([
                     {
@@ -186,7 +202,11 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                   ] as const)
                   : []),
                 { key: 'notes', label: 'Investigation Notes' },
-                { key: 'summary', label: 'Investigation Summary' },
+                ...(isRestricted
+                  ? []
+                  : ([
+                      { key: 'summary', label: 'Investigation Summary' },
+                    ] as const)),
               ] satisfies Array<{ key: ViewTabKey; label: string }>
             ).map((t) => (
               <button
@@ -219,18 +239,22 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                   loadingTasks={loadingTasks}
                 />
               </div>
-              <div style={{ display: tab === 'evidence' ? 'block' : 'none' }}>
-                <TaskEvidenceTab
-                  task={tasks.filter((t) => t.task_id === selectedTask?.id)[0]}
-                  caseId={row.id}
-                  // onSaveRequest={(uploadFn) => {
-                  //   uploadEvidenceRef.current = uploadFn;
-                  // }}
-                  onUploadComplete={() => {
-                    setSummaryRefreshKey((prev) => prev + 1);
-                  }}
-                />
-              </div>
+              {!isRestricted && (
+                <div style={{ display: tab === 'evidence' ? 'block' : 'none' }}>
+                  <TaskEvidenceTab
+                    task={
+                      tasks.filter((t) => t.task_id === selectedTask?.id)[0]
+                    }
+                    caseId={row.id}
+                    // onSaveRequest={(uploadFn) => {
+                    //   uploadEvidenceRef.current = uploadFn;
+                    // }}
+                    onUploadComplete={() => {
+                      setSummaryRefreshKey((prev) => prev + 1);
+                    }}
+                  />
+                </div>
+              )}
               {shouldShowVisualizations && (
                 <div
                   style={{
@@ -253,7 +277,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                 />
               </div>
               <div style={{ display: tab === 'summary' ? 'block' : 'none' }}>
-                {row?.id && (
+                {row?.id && !isRestricted && (
                   <InvestigationSummaryTab
                     task={
                       tasks.filter((t) => t.task_id === selectedTask?.id)[0]

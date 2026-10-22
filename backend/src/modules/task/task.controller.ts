@@ -31,6 +31,8 @@ import { TaskLifecycleService } from './services/task-lifecycle.service';
 import { Task } from '@prisma/client-cms';
 import { Audit } from '../audit/decorators/audit-log.decorator';
 import type { AuthenticatedUser } from '../../utils/types/auth.types';
+import { CaseInvestigatorService } from '../case-investigator/case-investigator.service';
+import { redactTasksForRestrictedView } from '../case-investigator/restricted-view.util';
 
 interface AuthenticatedRequest extends Request {
   user: {
@@ -52,6 +54,7 @@ export class TaskController {
   constructor(
     private readonly taskService: TaskService,
     private readonly taskLifecycleService: TaskLifecycleService,
+    private readonly caseInvestigatorService: CaseInvestigatorService,
   ) {}
 
   @Post()
@@ -201,6 +204,7 @@ export class TaskController {
   ): Promise<Task> {
     const userId = req.user.token.clientId;
     const { tenantId } = req.user.token;
+    await this.taskService.assertCanMutateTask(taskId, tenantId, userId, req.user.actorRole, reassignTaskDto.assignedUserId);
 
     return await this.taskLifecycleService.reassignTask(
       taskId,
@@ -309,6 +313,8 @@ export class TaskController {
     if (!unassignDto.reason || unassignDto.reason.trim().length === 0) {
       throw new BadRequestException('Reason for unassigning task is required');
     }
+
+    await this.taskService.assertCanMutateTask(taskId, tenantId, userId, req.user.actorRole);
 
     return await this.taskLifecycleService.unassignTask(
       taskId,
@@ -492,6 +498,9 @@ export class TaskController {
   async updateTask(@Param('taskId') taskId: number, @Body() dto: UpdateTaskDto, @Req() req: AuthenticatedRequest): Promise<Task> {
     const userId = req.user.token.clientId;
     const { tenantId } = req.user.token;
+    // Gated here, not inside updateTask: it also has internal callers (draft abandon/complete,
+    // triage, closure) that run on cases with no whitelist rows.
+    await this.taskService.assertCanMutateTask(taskId, tenantId, userId, req.user.actorRole, dto.assignedUserId);
     return await this.taskService.updateTask(taskId, dto, userId, tenantId);
   }
 
@@ -543,8 +552,8 @@ export class TaskController {
     description: 'Unauthorized - Invalid or missing authentication',
   })
   async getTasks(@Req() req: AuthenticatedRequest, @Query('status') status?: string): Promise<Task[]> {
-    const { tenantId } = req.user.token;
-    return await this.taskService.getTasks(tenantId, status);
+    const { userId, tenantId, actorRole } = req.user;
+    return await this.taskService.getTasks(tenantId, userId, actorRole, status);
   }
 
   @Get('case/:caseId')
@@ -599,7 +608,9 @@ export class TaskController {
     const userId = req.user.token.clientId;
     const { tenantId } = req.user.token;
     const userClaims = req.user.token.claims ?? [];
-    return await this.taskService.getTasksByCaseId(caseId, tenantId, userId, userClaims);
+    const level = await this.caseInvestigatorService.assertViewAccess(caseId, userId, tenantId, req.user.actorRole);
+    const tasks = await this.taskService.getTasksByCaseId(caseId, tenantId, userId, userClaims);
+    return level === 'RESTRICTED' ? redactTasksForRestrictedView(tasks) : tasks;
   }
 
   @Get(':taskId')
@@ -655,7 +666,8 @@ export class TaskController {
   })
   async getTaskById(@Param('taskId') taskId: number, @Req() req: AuthenticatedRequest): Promise<Task | null> {
     const { tenantId } = req.user.token;
-    return await this.taskService.getTaskById(taskId, tenantId);
+    const userId = req.user.token.clientId;
+    return await this.taskService.getTaskById(taskId, tenantId, userId, req.user.actorRole);
   }
 
   @Post(':taskId/complete')
@@ -704,6 +716,7 @@ export class TaskController {
   async completeTask(@Param('taskId') taskId: number, @Req() req: AuthenticatedRequest): Promise<Task> {
     const userId = req.user.token.clientId;
     const { tenantId } = req.user.token;
+    await this.taskService.assertCanMutateTask(taskId, tenantId, userId, req.user.actorRole);
     return await this.taskLifecycleService.completeTask(
       taskId,
       userId,

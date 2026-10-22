@@ -2,11 +2,15 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { v4 as uuidv4, validate as isUuid } from 'uuid';
 import { TaskHistory } from '@prisma/client-cms';
-import { replaceUserIdsWithNames } from '../../utils/user-name.util';
+import { CaseInvestigatorService } from '../case-investigator/case-investigator.service';
+import { replaceUserIdsWithNames } from 'src/utils/user-name.util';
 
 @Injectable()
 export class TaskHistoryService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly caseInvestigatorService: CaseInvestigatorService,
+  ) {}
 
   async logTaskHistoryAction(data: {
     userId?: string;
@@ -33,15 +37,19 @@ export class TaskHistoryService {
     });
   }
 
-  async getLogs(tenantId: string, limit = 50, offset = 0): Promise<TaskHistory[]> {
+  async getLogs(tenantId: string, userId: string, role: string, limit = 50, offset = 0): Promise<TaskHistory[]> {
+    // Tenant-wide list: without this, an investigator could read history for cases
+    // that GET /task-history/:caseId would 404 for them.
+    const caseIds = await this.caseInvestigatorService.getCaseIdScope(userId, tenantId, role, true);
     return await this.prisma.taskHistory.findMany({
-      where: { tenant_id: tenantId },
+      where: { tenant_id: tenantId, ...(caseIds ? { case_id: { in: caseIds } } : {}) },
       orderBy: { performed_at: 'desc' },
       take: limit,
       skip: offset,
     });
   }
-  async getTaskHistory(caseId: number, tenantId: string): Promise<TaskHistory[]> {
+  async getTaskHistory(caseId: number, tenantId: string, userId: string, role: string): Promise<TaskHistory[]> {
+    await this.caseInvestigatorService.assertViewAccess(caseId, userId, tenantId, role);
     const rows = await this.prisma.taskHistory.findMany({
       where: {
         case_id: caseId,

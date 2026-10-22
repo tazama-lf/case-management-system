@@ -185,8 +185,9 @@ export class ReportsController {
     description: 'Retrieve all fraud investigation reports for a given case.',
   })
   @ApiResponse({ status: 200, description: 'Fraud reports retrieved successfully.' })
-  async getFraudReports(@Param('caseId') caseId: string): Promise<FraudReport[]> {
-    return await this.reportsService.getFraudReports(caseId);
+  async getFraudReports(@Param('caseId') caseId: string, @Req() req: AuthenticatedRequest): Promise<FraudReport[]> {
+    const { userId, tenantId, actorRole } = req.user;
+    return await this.reportsService.getFraudReports(caseId, tenantId, userId, actorRole);
   }
 
   @Get('case-status')

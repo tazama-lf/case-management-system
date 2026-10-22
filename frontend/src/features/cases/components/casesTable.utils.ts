@@ -34,6 +34,8 @@ export interface CaseRow {
   tasks?: TaskDTO[];
   groupId?: number;
   sarStrStatus?: string;
+  /** RESTRICTED = the viewer was revoked from this case; Visualizations, Comments, Evidence and the Investigate Case task are withheld. */
+  accessLevel?: 'FULL' | 'RESTRICTED';
 }
 
 export const getStatusColor = (status: string): string => {
@@ -145,5 +147,6 @@ export const transformBackendCaseToUI = (
     tasks: backendCase.tasks,
     groupId: backendCase.group_id,
     sarStrStatus,
+    accessLevel: backendCase.access_level,
   };
 };

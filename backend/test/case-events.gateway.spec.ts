@@ -67,7 +67,8 @@ describe('CaseEventsGateway', () => {
 
     const mockRedisClient = {
         eval: jest.fn(),
-        srem: jest.fn(),
+        zrem: jest.fn(),
+        zadd: jest.fn(),
         expire: jest.fn(),
     };
 
@@ -76,7 +77,8 @@ describe('CaseEventsGateway', () => {
 
         // Default: Redis is connected, and the atomic register script reports success (1).
         mockRedisClient.eval.mockResolvedValue(1);
-        mockRedisClient.srem.mockResolvedValue(1);
+        mockRedisClient.zrem.mockResolvedValue(1);
+        mockRedisClient.zadd.mockResolvedValue(1);
         mockRedisClient.expire.mockResolvedValue(1);
 
         mockFindUnique = jest.fn();
@@ -156,6 +158,37 @@ describe('CaseEventsGateway', () => {
             expect(socket.data.userId).toBe('user-1');
             expect(socket.data.trackedViaRedis).toBe(true);
             expect(socket.emit).toHaveBeenCalledWith('ready');
+        });
+
+        it('should register with a stale cutoff so slots leaked by dead sockets are swept first', async () => {
+            const socket = createMockSocket('valid-token');
+            validateTazamaToken.mockReturnValue({ userId: 'user-1', tenantId: 'tenant-a', actorRole: 'CMS_INVESTIGATOR' });
+            const before = Date.now();
+
+            await gateway.handleConnection(socket);
+
+            const args = mockRedisClient.eval.mock.calls[0];
+            const [, , key, member, limit, ttl, now, staleBefore] = args;
+            expect(key).toBe('case-events:user-sockets:v2:user-1');
+            expect(member).toBe(socket.id);
+            expect(limit).toBe(5);
+            expect(ttl).toBe(60 * 60);
+            expect(now).toBeGreaterThanOrEqual(before);
+            expect(now - staleBefore).toBe(15 * 60 * 1000);
+        });
+
+        it('should release the slot and not join or signal ready when the client disconnected during registration', async () => {
+            const socket = createMockSocket('valid-token');
+            validateTazamaToken.mockReturnValue({ userId: 'user-1', tenantId: 'tenant-a', actorRole: 'CMS_INVESTIGATOR' });
+            // socket.io already marked the client disconnected (React StrictMode / quick reload) while the Redis call was in flight
+            (socket as unknown as { disconnected: boolean }).disconnected = true;
+
+            await gateway.handleConnection(socket);
+
+            expect(mockRedisClient.zrem).toHaveBeenCalledWith('case-events:user-sockets:v2:user-1', socket.id);
+            expect(socket.join).not.toHaveBeenCalled();
+            expect(socket.emit).not.toHaveBeenCalledWith('ready');
+            expect(socket.data.userId).toBeUndefined();
         });
 
         it('should emit auth_failed and disconnect when no token is provided', async () => {
@@ -261,7 +294,7 @@ describe('CaseEventsGateway', () => {
 
             await gateway.handleDisconnect(socket);
 
-            expect(mockRedisClient.srem).toHaveBeenCalledWith('case-events:user-sockets:user-1', socket.id);
+            expect(mockRedisClient.zrem).toHaveBeenCalledWith('case-events:user-sockets:v2:user-1', socket.id);
         });
 
         it('should remove the socket from local Map when tracked locally', async () => {
@@ -290,14 +323,14 @@ describe('CaseEventsGateway', () => {
 
             await gateway.handleDisconnect(socket);
 
-            expect(mockRedisClient.srem).not.toHaveBeenCalled();
+            expect(mockRedisClient.zrem).not.toHaveBeenCalled();
         });
     });
 
     // ─── TTL refresh interval ─────────────────────────────────────────────
 
-    describe('TTL refresh interval', () => {
-        const REFRESH_INTERVAL_MS = 15 * 60 * 1000;
+    describe('slot heartbeat interval', () => {
+        const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 
         beforeEach(() => {
             jest.useFakeTimers();
@@ -321,14 +354,31 @@ describe('CaseEventsGateway', () => {
             expect(clearIntervalSpy).toHaveBeenCalled();
         });
 
-        it("should refresh a user's TTL while they still have an open Redis-tracked socket", async () => {
+        it("should re-stamp each open socket's slot and refresh the user's key while they still have a Redis-tracked socket", async () => {
             validateTazamaToken.mockReturnValue({ userId: 'user-1', tenantId: 'tenant-a', actorRole: 'CMS_INVESTIGATOR' });
-            await gateway.handleConnection(createMockSocket('valid-token'));
+            const socket = createMockSocket('valid-token');
+            await gateway.handleConnection(socket);
 
             gateway.onModuleInit();
             await jest.advanceTimersByTimeAsync(REFRESH_INTERVAL_MS);
 
-            expect(mockRedisClient.expire).toHaveBeenCalledWith('case-events:user-sockets:user-1', 60 * 60);
+            expect(mockRedisClient.zadd).toHaveBeenCalledWith('case-events:user-sockets:v2:user-1', expect.any(Number), socket.id);
+            expect(mockRedisClient.expire).toHaveBeenCalledWith('case-events:user-sockets:v2:user-1', 60 * 60);
+        });
+
+        it('should only heartbeat sockets this process still has open, so a dead socket is never re-stamped', async () => {
+            validateTazamaToken.mockReturnValue({ userId: 'user-1', tenantId: 'tenant-a', actorRole: 'CMS_INVESTIGATOR' });
+            const live = createMockSocket('valid-token');
+            const gone = createMockSocket('valid-token');
+            await gateway.handleConnection(live);
+            await gateway.handleConnection(gone);
+            await gateway.handleDisconnect(gone);
+
+            gateway.onModuleInit();
+            await jest.advanceTimersByTimeAsync(REFRESH_INTERVAL_MS);
+
+            expect(mockRedisClient.zadd).toHaveBeenCalledWith(expect.any(String), expect.any(Number), live.id);
+            expect(mockRedisClient.zadd).not.toHaveBeenCalledWith(expect.any(String), expect.any(Number), gone.id);
         });
 
         it('should stop refreshing once the user has no sockets left tracked via Redis', async () => {
@@ -341,6 +391,7 @@ describe('CaseEventsGateway', () => {
             await jest.advanceTimersByTimeAsync(REFRESH_INTERVAL_MS);
 
             expect(mockRedisClient.expire).not.toHaveBeenCalled();
+            expect(mockRedisClient.zadd).not.toHaveBeenCalled();
         });
 
         it('should skip the refresh entirely when Redis is unavailable', async () => {
@@ -354,10 +405,10 @@ describe('CaseEventsGateway', () => {
             expect(mockRedisClient.expire).not.toHaveBeenCalled();
         });
 
-        it('should log and continue when an EXPIRE call rejects', async () => {
+        it('should log and continue when a heartbeat call rejects', async () => {
             validateTazamaToken.mockReturnValue({ userId: 'user-1', tenantId: 'tenant-a', actorRole: 'CMS_INVESTIGATOR' });
             await gateway.handleConnection(createMockSocket('valid-token'));
-            mockRedisClient.expire.mockRejectedValue(new Error('Redis down'));
+            mockRedisClient.zadd.mockRejectedValue(new Error('Redis down'));
 
             gateway.onModuleInit();
 
@@ -384,6 +435,28 @@ describe('CaseEventsGateway', () => {
             });
 
             expect(() => gateway.handleCaseCreatedEvent({ caseId: 42, tenantId: 'tenant-a' })).not.toThrow();
+        });
+    });
+
+    // ─── handleCaseAccessChangedEvent ─────────────────────────────────────
+
+    describe('handleCaseAccessChangedEvent', () => {
+        it('should broadcast case:changed with type "access-changed" to the tenant room', () => {
+            gateway.handleCaseAccessChangedEvent({ caseId: 42, tenantId: 'tenant-a' });
+
+            expect(mockServer.to).toHaveBeenCalledWith('tenant:tenant-a');
+            expect(mockServer.emit).toHaveBeenCalledWith('case:changed', {
+                caseId: 42,
+                type: 'access-changed',
+            });
+        });
+
+        it('should not throw when broadcast fails (caught internally)', () => {
+            (mockServer.to as jest.Mock).mockImplementation(() => {
+                throw new Error('server closed');
+            });
+
+            expect(() => gateway.handleCaseAccessChangedEvent({ caseId: 42, tenantId: 'tenant-a' })).not.toThrow();
         });
     });
 

@@ -5,8 +5,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import AssignTaskModal from '../AssignTaskModal';
 import type { UnifiedWorkQueueTask } from '../../../../workqueue/types/flowable.types';
 import authService from '../../../../auth/services/authService';
+import { investigatorService } from '@/features/cases/services/investigatorService';
 
 vi.mock('../../../../auth/services/authService');
+vi.mock('@/features/cases/services/investigatorService');
 
 const mockFetchInvestigatorsList = vi.fn();
 vi.mock('../../../../cases/hooks/useInvestigatorSupervisorList', () => ({
@@ -75,6 +77,7 @@ describe('AssignTaskModal', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    (investigatorService.getBlockedUserIds as vi.Mock).mockResolvedValue([]);
     (authService.getUser as vi.Mock).mockReturnValue({
       userId: 'user-1',
       fullName: 'Current User',
@@ -207,5 +210,68 @@ describe('AssignTaskModal', () => {
     await user.click(cancelButton);
 
     expect(mockOnClose).toHaveBeenCalled();
+  });
+
+  describe('people blocked on the case are not offered', () => {
+    const optionTexts = (): string[] =>
+      screen.getAllByRole('option').map((o) => o.textContent ?? '');
+
+    it('lists every investigator when nobody is blocked', async () => {
+      render(
+        <AssignTaskModal open={true} onClose={mockOnClose} onAssign={mockOnAssign} task={mockTask} />,
+      );
+
+      await waitFor(() => {
+        expect(optionTexts().some((t) => t.includes('John Doe'))).toBe(true);
+      });
+      expect(optionTexts().some((t) => t.includes('Jane Smith'))).toBe(true);
+    });
+
+    it('leaves a blocked investigator out of the Assign To list', async () => {
+      (investigatorService.getBlockedUserIds as vi.Mock).mockResolvedValue(['inv-2']);
+      render(
+        <AssignTaskModal open={true} onClose={mockOnClose} onAssign={mockOnAssign} task={mockTask} />,
+      );
+
+      await waitFor(() => {
+        expect(investigatorService.getBlockedUserIds).toHaveBeenCalledWith(mockTask.caseId);
+      });
+      await waitFor(() => {
+        expect(optionTexts().some((t) => t.includes('Jane Smith'))).toBe(false);
+      });
+      expect(optionTexts().some((t) => t.includes('John Doe'))).toBe(true);
+    });
+
+    it('does not offer "(Me)" to a user who is blocked on the case', async () => {
+      (investigatorService.getBlockedUserIds as vi.Mock).mockResolvedValue(['user-1']);
+      render(
+        <AssignTaskModal open={true} onClose={mockOnClose} onAssign={mockOnAssign} task={mockTask} />,
+      );
+
+      await waitFor(() => {
+        expect(optionTexts().some((t) => t.includes('(Me)'))).toBe(false);
+      });
+    });
+
+    it('offers "(Me)" when the user is not blocked', async () => {
+      render(
+        <AssignTaskModal open={true} onClose={mockOnClose} onAssign={mockOnAssign} task={mockTask} />,
+      );
+
+      await waitFor(() => {
+        expect(optionTexts().some((t) => t.includes('(Me)'))).toBe(true);
+      });
+    });
+
+    it('still lists everyone if the blocked ids cannot be fetched (the backend refuses them anyway)', async () => {
+      (investigatorService.getBlockedUserIds as vi.Mock).mockResolvedValue([]);
+      render(
+        <AssignTaskModal open={true} onClose={mockOnClose} onAssign={mockOnAssign} task={mockTask} />,
+      );
+
+      await waitFor(() => {
+        expect(optionTexts().some((t) => t.includes('Jane Smith'))).toBe(true);
+      });
+    });
   });
 });

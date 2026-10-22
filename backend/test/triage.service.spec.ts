@@ -9,6 +9,7 @@ import { FlowableService } from '../src/modules/flowable/flowable.service';
 import { AlertService } from '../src/modules/alert/alert.service';
 import { CaseCreationApprovalService } from '../src/modules/case/services/case-creation-approval.service';
 import { TaskService } from '../src/modules/task/task.service';
+import { CaseInvestigatorService } from '../src/modules/case-investigator/case-investigator.service';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { CasePriorityUtil } from '../src/modules/shared/utils/case-priority.util';
@@ -48,6 +49,7 @@ describe('TriageService', () => {
   let alertService: jest.Mocked<AlertService>;
   let caseCreationService: jest.Mocked<CaseCreationApprovalService>;
   let taskService: jest.Mocked<TaskService>;
+  let caseInvestigatorService: jest.Mocked<CaseInvestigatorService>;
   let configService: jest.Mocked<ConfigService>;
   let eventEmitter: jest.Mocked<EventEmitter2>;
   let casePriorityUtil: jest.Mocked<CasePriorityUtil>;
@@ -190,6 +192,10 @@ describe('TriageService', () => {
       updateTask: jest.fn(),
     };
 
+    const mockCaseInvestigatorService = {
+      grant: jest.fn().mockResolvedValue(undefined),
+    };
+
     const mockConfigService = {
       get: jest.fn(),
     };
@@ -249,6 +255,7 @@ describe('TriageService', () => {
         { provide: AlertService, useValue: mockAlertService },
         { provide: CaseCreationApprovalService, useValue: mockCaseCreationService },
         { provide: TaskService, useValue: mockTaskService },
+        { provide: CaseInvestigatorService, useValue: mockCaseInvestigatorService },
         { provide: ConfigService, useValue: mockConfigService },
         { provide: EventEmitter2, useValue: mockEventEmitter },
         { provide: CasePriorityUtil, useValue: mockCasePriorityUtil },
@@ -270,6 +277,7 @@ describe('TriageService', () => {
     alertService = module.get(AlertService);
     caseCreationService = module.get(CaseCreationApprovalService);
     taskService = module.get(TaskService);
+    caseInvestigatorService = module.get(CaseInvestigatorService);
     configService = module.get(ConfigService);
     eventEmitter = module.get(EventEmitter2);
     casePriorityUtil = module.get(CasePriorityUtil);
@@ -420,6 +428,26 @@ describe('TriageService', () => {
 
       expect(result).toEqual(mockAlert);
       expect(flowableService.handleTaskCompleted).toHaveBeenCalledTimes(1);
+    });
+
+    it('grants the triaging user OBSERVER access on the triaged case, since the triage task is completed outside the task service', async () => {
+      setupManualTriageMocks();
+      setupTransactionMock();
+
+      await service.handleManualTriage(1, updateAlertDto, 'user-123', 'tenant-123');
+
+      expect(caseInvestigatorService.grant).toHaveBeenCalledWith(mockCase.case_id, 'user-123', 'tenant-123', 'user-123', 'OBSERVER');
+    });
+
+    it('does not fail the triage when the ACL grant fails', async () => {
+      setupManualTriageMocks();
+      setupTransactionMock();
+      caseInvestigatorService.grant.mockRejectedValueOnce(new Error('acl down'));
+
+      const result = await service.handleManualTriage(1, updateAlertDto, 'user-123', 'tenant-123');
+
+      expect(result).toEqual(mockAlert);
+      expect(loggerService.warn).toHaveBeenCalledWith(expect.stringContaining('ACL grant failed'), expect.anything(), 'TriageService');
     });
 
     it('should handle FRAUD_AND_AML type by creating child cases', async () => {
@@ -1100,6 +1128,41 @@ describe('TriageService', () => {
         expect(taskRepository.updateTask).toHaveBeenCalledWith(1, { status: TaskStatus.STATUS_30_COMPLETED });
         expect(caseRepository.updateCase).toHaveBeenCalledWith(1, { status: CaseStatus.STATUS_72_AUTOCLOSED_REFUTED });
         expect(caseCreationService.updateCaseStatus).not.toHaveBeenCalled();
+      });
+
+      it('grants the task assignee OBSERVER access, since auto-close completes the task outside the task service', async () => {
+        caseRepository.findCaseById.mockResolvedValue({ ...mockCase, tenant_id: 'tenant-123' } as any);
+        taskRepository.updateTask.mockResolvedValue({ ...mockTask, assigned_user_id: 'investigator-9' } as any);
+        caseRepository.updateCase.mockResolvedValue(mockCase as any);
+        loggingOrchestrationService.logActionsWithHistory.mockResolvedValue(undefined);
+
+        await (service as any).autoCloseCase(1, CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED, 'user-123', 1, 'tenant-123');
+
+        expect(caseInvestigatorService.grant).toHaveBeenCalledWith(1, 'investigator-9', 'tenant-123', 'user-123', 'OBSERVER');
+      });
+
+      it('does not grant anything when the completed task has no assignee', async () => {
+        caseRepository.findCaseById.mockResolvedValue(mockCase as any);
+        taskRepository.updateTask.mockResolvedValue({ ...mockTask, assigned_user_id: null } as any);
+        caseRepository.updateCase.mockResolvedValue(mockCase as any);
+        loggingOrchestrationService.logActionsWithHistory.mockResolvedValue(undefined);
+
+        await (service as any).autoCloseCase(1, CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED, 'user-123', 1, 'tenant-123');
+
+        expect(caseInvestigatorService.grant).not.toHaveBeenCalled();
+      });
+
+      it('still auto-closes, and only warns, when the ACL grant fails (e.g. the user is blacklisted)', async () => {
+        caseRepository.findCaseById.mockResolvedValue(mockCase as any);
+        taskRepository.updateTask.mockResolvedValue({ ...mockTask, assigned_user_id: 'investigator-9' } as any);
+        caseRepository.updateCase.mockResolvedValue(mockCase as any);
+        loggingOrchestrationService.logActionsWithHistory.mockResolvedValue(undefined);
+        caseInvestigatorService.grant.mockRejectedValueOnce(new Error('blacklisted'));
+
+        const result = await (service as any).autoCloseCase(1, CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED, 'user-123', 1, 'tenant-123');
+
+        expect(result).toHaveProperty('updatedCase');
+        expect(loggerService.warn).toHaveBeenCalledWith(expect.stringContaining('ACL grant failed'), expect.anything(), 'TriageService');
       });
 
       it('should throw NotFoundException when case not found', async () => {

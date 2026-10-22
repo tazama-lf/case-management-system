@@ -37,6 +37,7 @@ import { GoldLakehouseModule } from './modules/gold-lakehouse/gold-lakehouse.mod
 import { JupyterModule } from './modules/jupyter/jupyter.module';
 import { VoilaProxyModule } from './modules/voila-proxy/voila-proxy.module';
 import { AlertPriorityModule } from './modules/alert-priority/alert-priority.module';
+import { CaseInvestigatorModule } from './modules/case-investigator/case-investigator.module';
 
 @Module({
   controllers: [AppController],
@@ -60,6 +61,7 @@ import { AlertPriorityModule } from './modules/alert-priority/alert-priority.mod
     CommentModule,
     CaseModule,
     TaskModule,
+    CaseInvestigatorModule,
     AuthModule,
     SystemConfigModule,
     AsyncTaskModule,

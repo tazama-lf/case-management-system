@@ -17,44 +17,53 @@ const SUBSCRIBER_CLAIMS = [TazamaClaims.CMS_INVESTIGATOR, TazamaClaims.CMS_SUPER
 // not to bother a real user with several tabs open.
 const MAX_CONNECTIONS_PER_USER = 5;
 
-// Redis-tracked connection sets are refreshed with this TTL on every join, so a socket that
-// never gets a matching disconnect (e.g. the server process is killed) doesn't permanently
-// occupy one of that user's connection slots - it just ages out.
+// A Redis-tracked slot is only trusted while its socket keeps heart-beating. Every live socket
+// re-stamps its slot on this interval; a slot that has not been re-stamped for
+// USER_SOCKETS_STALE_AFTER_MS belongs to a socket that is gone (server restart, crash, or a
+// disconnect that raced its own registration) and is swept the next time that user connects.
+// Without this a leaked slot lived as long as the user had any other socket open, and a handful
+// of them locked the user out of live updates entirely.
+const USER_SOCKETS_HEARTBEAT_INTERVAL_MS = 5 * 60 * 1000;
+const USER_SOCKETS_STALE_AFTER_MS = USER_SOCKETS_HEARTBEAT_INTERVAL_MS * 3;
+
+// Whole-key expiry, refreshed on every register and heartbeat, so the key of a user with no live
+// sockets at all disappears on its own.
 const USER_SOCKETS_TTL_SECONDS = 60 * 60;
 
-// How often to re-EXPIRE the Redis-tracked set for every user with an open socket, so a socket
-// that outlives the TTL without reconnecting doesn't have its slot expire while still live.
-// Must stay comfortably under USER_SOCKETS_TTL_SECONDS.
-const USER_SOCKETS_REFRESH_INTERVAL_MS = (USER_SOCKETS_TTL_SECONDS / 4) * 1000;
+// v2: a sorted set of socketId -> last heartbeat (ms). The old key was a plain set that could not
+// age members out; bumping the name also leaves any leaked old sets behind to expire on their own.
+const userSocketsKey = (userId: string): string => `case-events:user-sockets:v2:${userId}`;
 
-const userSocketsKey = (userId: string): string => `case-events:user-sockets:${userId}`;
-
-// Registers a socket under the per-user set as one atomic step on the Redis server, so two
-// concurrent connections for the same user can't both read a count under the limit via SCARD
-// and both add themselves via SADD before either write lands (a plain scard-then-sadd from the
-// client can't be made atomic that way - EVAL can, since Redis runs the whole script as a single
-// command with no other client's commands interleaved). Returns 1 if the socket is now
-// registered (added, or already present), 0 if the limit was reached.
+// Registers a socket under the per-user sorted set as one atomic step on the Redis server, so two
+// concurrent connections for the same user can't both read a count under the limit and both add
+// themselves before either write lands (EVAL runs the whole script as a single command with no
+// other client's commands interleaved). First sweeps members whose heartbeat is older than the
+// stale cutoff, so slots leaked by dead sockets don't count against the limit. Returns 1 if the
+// socket is now registered (added, or already present), 0 if the limit was reached.
 const REGISTER_CONNECTION_SCRIPT = `
 local key = KEYS[1]
 local member = ARGV[1]
 local limit = tonumber(ARGV[2])
 local ttl = tonumber(ARGV[3])
-if redis.call('SISMEMBER', key, member) == 1 then
+local now = tonumber(ARGV[4])
+local staleBefore = tonumber(ARGV[5])
+redis.call('ZREMRANGEBYSCORE', key, '-inf', staleBefore)
+if redis.call('ZSCORE', key, member) then
+  redis.call('ZADD', key, now, member)
   redis.call('EXPIRE', key, ttl)
   return 1
 end
-if redis.call('SCARD', key) >= limit then
+if redis.call('ZCARD', key) >= limit then
   return 0
 end
-redis.call('SADD', key, member)
+redis.call('ZADD', key, now, member)
 redis.call('EXPIRE', key, ttl)
 return 1
 `;
 
 interface CaseChangedPayload {
   caseId: number;
-  type: 'created' | 'status-changed';
+  type: 'created' | 'status-changed' | 'access-changed';
 }
 
 /**
@@ -88,8 +97,8 @@ export class CaseEventsGateway implements OnGatewayConnection, OnGatewayDisconne
 
   onModuleInit(): void {
     this.refreshIntervalHandle = setInterval(() => {
-      void this.refreshTrackedUserTtls();
-    }, USER_SOCKETS_REFRESH_INTERVAL_MS);
+      void this.heartbeatTrackedSockets();
+    }, USER_SOCKETS_HEARTBEAT_INTERVAL_MS);
     // Don't let this timer alone keep the Node process alive.
     this.refreshIntervalHandle.unref();
   }
@@ -100,23 +109,26 @@ export class CaseEventsGateway implements OnGatewayConnection, OnGatewayDisconne
     }
   }
 
-  // Re-EXPIREs the Redis set for every user with at least one still-open socket, so a connection
-  // that outlives USER_SOCKETS_TTL_SECONDS without reconnecting doesn't have its slot silently
-  // age out from under it.
-  private async refreshTrackedUserTtls(): Promise<void> {
+  // Re-stamps the heartbeat of every socket this process still has open, so a live socket's slot
+  // never goes stale, and keeps each user's key alive. Slots of sockets that are gone are simply not
+  // re-stamped and age out (see USER_SOCKETS_STALE_AFTER_MS).
+  private async heartbeatTrackedSockets(): Promise<void> {
     const redisClient = this.redisService.getClient();
     if (!redisClient) return;
 
+    const now = Date.now();
     // Fired off together rather than awaited one at a time in the loop - these are independent
     // per-user refreshes, so there's no reason to let one wait on the previous one's round trip.
     await Promise.all(
       Array.from(this.redisTrackedSockets.entries())
         .filter(([, socketIds]) => socketIds.size > 0)
-        .map(async ([userId]) => {
+        .map(async ([userId, socketIds]) => {
           try {
-            await redisClient.expire(userSocketsKey(userId), USER_SOCKETS_TTL_SECONDS);
+            const key = userSocketsKey(userId);
+            await Promise.all(Array.from(socketIds).map(async (socketId) => await redisClient.zadd(key, now, socketId)));
+            await redisClient.expire(key, USER_SOCKETS_TTL_SECONDS);
           } catch (error) {
-            this.logger.warn(`Failed to refresh TTL for user ${userId}'s socket set: ${(error as Error).message}`);
+            this.logger.warn(`Failed to heartbeat socket slots for user ${userId}: ${(error as Error).message}`);
           }
         }),
     );
@@ -141,11 +153,19 @@ export class CaseEventsGateway implements OnGatewayConnection, OnGatewayDisconne
         return;
       }
 
+      // The client may have gone away while the registration above was awaiting Redis. Its
+      // disconnect event already fired with no userId recorded on the socket yet, so
+      // handleDisconnect found nothing to clean up - release the slot here or it leaks until it goes stale.
+      if (client.disconnected) {
+        await this.unregisterConnection(user.userId, client.id, viaRedis);
+        return;
+      }
+
       // client.data is socket.io's own per-connection storage bag, designed to be mutated exactly
       // like this - not a shared/external object.
-      // eslint-disable-next-line require-atomic-updates, no-param-reassign -- see comment above
+      // eslint-disable-next-line no-param-reassign -- see comment above
       client.data.userId = user.userId;
-      // eslint-disable-next-line require-atomic-updates, no-param-reassign -- see comment above
+      // eslint-disable-next-line no-param-reassign -- see comment above
       client.data.trackedViaRedis = viaRedis;
       // Awaited (rather than fire-and-forget) so 'ready' below is a trustworthy signal that the
       // room join has actually completed - the client's own 'connect' event fires as soon as the
@@ -179,6 +199,7 @@ export class CaseEventsGateway implements OnGatewayConnection, OnGatewayDisconne
     if (redisClient) {
       try {
         const key = userSocketsKey(userId);
+        const now = Date.now();
         const registered = await redisClient.eval(
           REGISTER_CONNECTION_SCRIPT,
           1,
@@ -186,6 +207,8 @@ export class CaseEventsGateway implements OnGatewayConnection, OnGatewayDisconne
           socketId,
           MAX_CONNECTIONS_PER_USER,
           USER_SOCKETS_TTL_SECONDS,
+          now,
+          now - USER_SOCKETS_STALE_AFTER_MS,
         );
         if (registered === 1) {
           const tracked = this.redisTrackedSockets.get(userId) ?? new Set<string>();
@@ -216,7 +239,7 @@ export class CaseEventsGateway implements OnGatewayConnection, OnGatewayDisconne
       }
       const redisClient = this.redisService.getClient();
       if (redisClient) {
-        await redisClient.srem(userSocketsKey(userId), socketId);
+        await redisClient.zrem(userSocketsKey(userId), socketId);
       }
       return;
     }
@@ -239,6 +262,18 @@ export class CaseEventsGateway implements OnGatewayConnection, OnGatewayDisconne
       this.broadcast(payload.tenantId, { caseId: payload.caseId, type: 'created' });
     } catch (error) {
       this.logger.error(`Failed to broadcast case.created: ${(error as Error).message}`);
+    }
+  }
+
+  // Who may see a case changed (blacklist / revoke / unblock) without its status changing. Clients
+  // react exactly as for any other change: re-fetch GET /cases/all, whose visibility rules already
+  // drop a blacklisted investigator's case from their queue.
+  @OnEvent('case.access-changed')
+  handleCaseAccessChangedEvent(payload: { caseId: number; tenantId: string }): void {
+    try {
+      this.broadcast(payload.tenantId, { caseId: payload.caseId, type: 'access-changed' });
+    } catch (error) {
+      this.logger.error(`Failed to broadcast case.access-changed: ${(error as Error).message}`);
     }
   }
 

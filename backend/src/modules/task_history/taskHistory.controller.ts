@@ -43,12 +43,8 @@ export class TaskHistoryController {
     @Query('offset', ParseIntPipe) offset = 0,
     @Req() req: AuthenticatedRequest,
   ): Promise<TaskHistory[]> {
-    const {
-      user: {
-        token: { tenantId },
-      },
-    } = req;
-    return await this.taskHistoryService.getLogs(tenantId, limit, offset);
+    const { userId, tenantId, actorRole } = req.user;
+    return await this.taskHistoryService.getLogs(tenantId, userId, actorRole, limit, offset);
   }
 
   @Get(':caseId')
@@ -82,11 +78,7 @@ export class TaskHistoryController {
   })
   @ApiResponse({ status: 404, description: 'Task History not found' })
   async getCaseHistory(@Param('caseId', ParseIntPipe) caseId: number, @Req() req: AuthenticatedRequest): Promise<TaskHistory[]> {
-    const {
-      user: {
-        token: { tenantId },
-      },
-    } = req;
-    return await this.taskHistoryService.getTaskHistory(caseId, tenantId);
+    const { userId, tenantId, actorRole } = req.user;
+    return await this.taskHistoryService.getTaskHistory(caseId, tenantId, userId, actorRole);
   }
 }

@@ -355,6 +355,15 @@ describe('tazama-token-validator', () => {
             expect(user.actorRole).toBe('CMS_COMPLIANCE_OFFICER');
         });
 
+        it('resolves a multi-role user by precedence, not by the order Keycloak lists the roles', () => {
+            validateTokenAndClaims.mockReturnValue({ CMS_SUPERVISOR: true, CMS_INVESTIGATOR: true });
+
+            for (const realmRoles of [['CMS_INVESTIGATOR', 'CMS_SUPERVISOR'], ['CMS_SUPERVISOR', 'CMS_INVESTIGATOR']]) {
+                const user = validateTazamaToken(buildToken({ realmRoles }), [], ['CMS_SUPERVISOR']);
+                expect(user.actorRole).toBe('CMS_SUPERVISOR');
+            }
+        });
+
         it('should throw when extractTokenPayload receives an invalid token', () => {
             expect(() => validateTazamaToken('invalid-token', [], [])).toThrow(UnauthorizedException);
         });

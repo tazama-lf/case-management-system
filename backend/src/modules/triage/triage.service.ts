@@ -3,7 +3,17 @@ import { ConfigService } from '@nestjs/config';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { TaskService } from '../task/task.service';
 import { CasePriorityUtil } from '../shared/utils/case-priority.util';
-import { Priority, CaseStatus, CaseType, TaskStatus, Alert, Case, Task, CaseCreationType } from '@prisma/client-cms';
+import {
+  Priority,
+  CaseStatus,
+  CaseType,
+  TaskStatus,
+  Alert,
+  Case,
+  Task,
+  CaseCreationType,
+  CaseInvestigatorMembership,
+} from '@prisma/client-cms';
 import { AIPrediction, Prediction } from '../../utils/interfaces/Prediction';
 import { FeatureExtractionService } from 'src/modules/feature-extraction/feature-extraction.service';
 import axios from 'axios';
@@ -23,6 +33,7 @@ import { LinkDto, TransactionDetailDto, ChargeDto, CreditorDto, DebtorDto } from
 import { setTimeout } from 'node:timers/promises';
 import { TaskRepository } from '../repository/task.repository';
 import { InvestigationGroupService } from '../investigation-group/investigation-group.service';
+import { CaseInvestigatorService } from '../case-investigator/case-investigator.service';
 
 @Injectable()
 export class TriageService {
@@ -50,6 +61,7 @@ export class TriageService {
     private readonly caseCreateService: CaseCreationService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
     private readonly prisma: PrismaService,
+    private readonly caseInvestigatorService: CaseInvestigatorService,
   ) {}
 
   async getAlertNavigator(alertId: number, tenantId: string, userId: string): Promise<AlertNavigatorDto> {
@@ -423,6 +435,10 @@ export class TriageService {
         }
         return { alert, completeNewCaseTask, existingCase, amlCase: null };
       });
+
+      // The triage task was assigned to and completed by the triaging user through a direct repository
+      // write (no syncTaskAssignment), so give them the whitelist row a completed task normally leaves.
+      await this.grantObserverAccess(transactionResult.existingCase.case_id, userId, userId, tenantId);
 
       if (transactionResult.amlCase) {
         await this.flowableService.handleCaseCreated({
@@ -853,6 +869,28 @@ export class TriageService {
     }
   }
 
+  /**
+   * Auto-close and manual triage complete the triage task with a direct repository write, bypassing
+   * the task service (and so syncTaskAssignment). The person who held it would otherwise never reach
+   * the case-investigator whitelist and lose access to a case they worked, so grant the permanent
+   * OBSERVER tier that completing a task normally leaves them with. Best-effort, like the other
+   * ACL syncs: the triage/auto-close itself has already succeeded.
+   */
+  private async grantObserverAccess(caseId: number, assigneeId: string | null, actingUserId: string, tenantId: string): Promise<void> {
+    if (!assigneeId) return;
+    try {
+      await this.caseInvestigatorService.grant(caseId, assigneeId, tenantId, actingUserId, CaseInvestigatorMembership.OBSERVER);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.warn(
+        `Case-investigator ACL grant failed for case ${caseId}, user ${assigneeId} (auto-close itself already succeeded): ${errorMessage}`,
+        errorStack,
+        TriageService.name,
+      );
+    }
+  }
+
   private async autoCloseCase(
     caseId: number,
     status: CaseStatus,
@@ -866,6 +904,8 @@ export class TriageService {
       const existingCase = await this.caseRepository.findCaseById(caseId, tenantId);
       const updatedTask = await this.taskRepository.updateTask(taskId, { status: TaskStatus.STATUS_30_COMPLETED });
       const updatedCase = await this.caseRepository.updateCase(caseId, { status });
+
+      await this.grantObserverAccess(caseId, updatedTask.assigned_user_id, userId, existingCase.tenant_id);
 
       await this.loggingOrchestrationService.logActionsWithHistory(
         {

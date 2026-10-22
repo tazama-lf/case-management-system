@@ -598,4 +598,136 @@ describe('CaseDetailTaskLogTable', () => {
     // Non-investigation tasks are not clickable
     expect(onTaskClick).not.toHaveBeenCalled();
   });
+
+  describe('revoked (restricted) view', () => {
+    it('hides the view action on the Investigate Case task', () => {
+      const tasks = [{ ...baseTasks[0], name: 'Investigate Case', status: 'COMPLETED', assignee: 'user-1' }];
+      render(
+        <CaseDetailTaskLogTable
+          tasks={tasks}
+          onAssign={vi.fn()}
+          onTaskClick={vi.fn()}
+          caseData={{ ...caseData, accessLevel: 'RESTRICTED' }}
+        />,
+      );
+
+      expect(screen.getByText('Investigate Case')).toBeInTheDocument();
+      expect(screen.queryByTitle('View task')).not.toBeInTheDocument();
+    });
+
+    it.each(['Investigate Fraud', 'Investigate AML', 'Investigate Alert'])('also hides it on "%s"', (name) => {
+      const tasks = [{ ...baseTasks[0], name, status: 'COMPLETED', assignee: 'user-1' }];
+      render(
+        <CaseDetailTaskLogTable
+          tasks={tasks}
+          onAssign={vi.fn()}
+          onTaskClick={vi.fn()}
+          caseData={{ ...caseData, accessLevel: 'RESTRICTED' }}
+        />,
+      );
+
+      expect(screen.queryByTitle('View task')).not.toBeInTheDocument();
+    });
+
+    it('keeps the whole task log and the view action on other tasks (only the Investigate task loses it)', () => {
+      mockHasSupervisorRole.mockReturnValue(true);
+      const tasks = [
+        { ...baseTasks[0], id: 1, taskId: 101, name: 'Investigate Case', status: 'COMPLETED', assignee: 'user-1' },
+        { ...baseTasks[0], id: 2, taskId: 102, name: 'SAR/STR Filing', status: 'ASSIGNED', assignee: 'user-2' },
+      ];
+      render(
+        <CaseDetailTaskLogTable
+          tasks={tasks}
+          onAssign={vi.fn()}
+          onTaskClick={vi.fn()}
+          caseData={{ ...caseData, accessLevel: 'RESTRICTED' }}
+        />,
+      );
+
+      expect(screen.getByText('Investigate Case')).toBeInTheDocument();
+      expect(screen.getByText('SAR/STR Filing')).toBeInTheDocument();
+      expect(screen.getAllByTitle('View task')).toHaveLength(1);
+    });
+
+    it('still shows the view action on the Investigate Case task when access is full', () => {
+      const tasks = [{ ...baseTasks[0], name: 'Investigate Case', status: 'IN_PROGRESS', assignee: 'user-1' }];
+      render(
+        <CaseDetailTaskLogTable
+          tasks={tasks}
+          onAssign={vi.fn()}
+          onTaskClick={vi.fn()}
+          caseData={{ ...caseData, accessLevel: 'FULL' }}
+        />,
+      );
+
+      expect(screen.getByTitle('View task')).toBeInTheDocument();
+    });
+  });
+
+  describe('who is offered Reassign / Unassign', () => {
+    // the mocked current user is 'user-1'
+    const heldByOther = [{ ...baseTasks[0], status: 'IN_PROGRESS', assignee: 'user-2' }];
+    const heldByMe = [{ ...baseTasks[0], status: 'IN_PROGRESS', assignee: 'user-1' }];
+    const renderTable = (tasks: any[], extra: Record<string, unknown> = {}) =>
+      render(
+        <CaseDetailTaskLogTable
+          tasks={tasks}
+          onAssign={vi.fn()}
+          onReassign={vi.fn()}
+          onUnassign={vi.fn()}
+          caseData={caseData}
+          {...extra}
+        />,
+      );
+
+    it('offers them to the investigator who holds the task', () => {
+      renderTable(heldByMe);
+
+      expect(screen.getByTitle('Reassign task')).toBeInTheDocument();
+      expect(screen.getByTitle('Unassign task')).toBeInTheDocument();
+    });
+
+    it('does not offer them to an investigator for a task held by someone else (the backend would refuse)', () => {
+      renderTable(heldByOther);
+
+      expect(screen.queryByTitle('Reassign task')).not.toBeInTheDocument();
+      expect(screen.queryByTitle('Unassign task')).not.toBeInTheDocument();
+    });
+
+    it('offers them to a supervisor for any held task', () => {
+      mockHasSupervisorRole.mockReturnValue(true);
+      renderTable(heldByOther);
+
+      expect(screen.getByTitle('Reassign task')).toBeInTheDocument();
+      expect(screen.getByTitle('Unassign task')).toBeInTheDocument();
+    });
+
+    it('offers them to a compliance officer for any held task', () => {
+      mockHasComplianceOfficerRole.mockReturnValue(true);
+      renderTable(heldByOther);
+
+      expect(screen.getByTitle('Reassign task')).toBeInTheDocument();
+    });
+
+    it('offers them when the supervisor-actions flag is set', () => {
+      renderTable(heldByOther, { canManageSupervisorActions: true });
+
+      expect(screen.getByTitle('Reassign task')).toBeInTheDocument();
+    });
+
+    it('never offers them to someone viewing a case they were revoked from', () => {
+      renderTable(heldByOther, { caseData: { ...caseData, accessLevel: 'RESTRICTED' } });
+
+      expect(screen.queryByTitle('Reassign task')).not.toBeInTheDocument();
+      expect(screen.queryByTitle('Unassign task')).not.toBeInTheDocument();
+    });
+
+    it('still offers Assign on an unassigned task, so a revoked investigator can be assigned again', () => {
+      renderTable([{ ...baseTasks[0], status: 'UNASSIGNED', assignee: null }], {
+        caseData: { ...caseData, accessLevel: 'RESTRICTED' },
+      });
+
+      expect(screen.getByTitle('Assign task')).toBeInTheDocument();
+    });
+  });
 });

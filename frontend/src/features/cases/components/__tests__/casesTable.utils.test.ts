@@ -85,4 +85,27 @@ describe('casesTable.utils', () => {
       expect(result.assignee).toBeUndefined();
     });
   });
+
+  describe('transformBackendCaseToUI - access level', () => {
+    const base = {
+      case_id: 843,
+      case_type: 'FRAUD',
+      status: 'STATUS_22_PENDING_FINAL_APPROVAL',
+      priority: 'HIGH',
+      created_at: '2023-01-01T00:00:00Z',
+      updated_at: '2023-01-02T00:00:00Z',
+      alert: { alert_id: 1, confidence_per: 80, message: 'm' },
+    } as any;
+
+    it('carries RESTRICTED through to the row', () => {
+      expect(
+        transformBackendCaseToUI({ ...base, access_level: 'RESTRICTED' })
+          .accessLevel,
+      ).toBe('RESTRICTED');
+    });
+
+    it('leaves accessLevel unset when the backend sends none (full access)', () => {
+      expect(transformBackendCaseToUI(base).accessLevel).toBeUndefined();
+    });
+  });
 });

@@ -4,6 +4,7 @@ import authService from '../../../auth/services/authService';
 import type { Investigator } from '../../../auth/types/auth.types';
 import { useInvestigatorSupervisorList } from '../../../cases/hooks/useInvestigatorSupervisorList';
 import { useAuth } from '@/features/auth';
+import { useBlockedUserIds } from '../../hooks/useBlockedUserIds';
 
 interface AssignTaskModalProps {
   open: boolean;
@@ -38,6 +39,9 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
     fetchComplianceOfficersList,
     complianceOfficers,
   } = useInvestigatorSupervisorList();
+
+  // People blocked on this case are not offered - the backend would refuse them anyway.
+  const blockedUserIds = useBlockedUserIds(task?.caseId, open);
 
   useEffect(() => {
     setAssignee('');
@@ -171,7 +175,8 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
                 className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               >
                 <option value="">Select</option>
-                {currentUserInvestigator && (
+                {currentUserInvestigator &&
+                  !blockedUserIds.has(currentUserInvestigator.id) && (
                   <option
                     key={`me-${currentUserInvestigator.id}`}
                     value={currentUserInvestigator.id}
@@ -181,7 +186,9 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
                   </option>
                 )}
                 {isSupervisor &&
-                  investigators.map((investigator) => (
+                  investigators
+                    .filter((investigator) => !blockedUserIds.has(investigator.id))
+                    .map((investigator) => (
                     <option key={investigator.id} value={investigator.id}>
                       {investigator.firstName} {investigator.lastName} (
                       {investigator.name})

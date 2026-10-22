@@ -10,6 +10,7 @@ import { BadRequestException, NotFoundException, ForbiddenException } from '@nes
 import { CaseStatus, TaskStatus, CaseType, Priority, SlaState } from '@prisma/client-cms';
 import { GetUserCasesQueryDto } from '../src/modules/case/dto/get-user-cases.dto';
 import { GetAllCasesQueryDto } from '../src/modules/case/dto/get-all-cases.dto';
+import { CaseInvestigatorService } from '../src/modules/case-investigator/case-investigator.service';
 
 describe('CaseQueryService', () => {
   let service: CaseQueryService;
@@ -19,6 +20,7 @@ describe('CaseQueryService', () => {
   let loggingOrchestrationService: any;
   let taskValidationUtil: any;
   let slaPolicyUtil: any;
+  let caseInvestigatorService: any;
 
   const mockCase = {
     case_id: 1,
@@ -93,6 +95,7 @@ describe('CaseQueryService', () => {
         count: jest.fn() as any,
         findMany: jest.fn() as any,
         findFirst: jest.fn() as any,
+        findUnique: jest.fn() as any,
         groupBy: jest.fn() as any,
       },
       task: {
@@ -131,6 +134,13 @@ describe('CaseQueryService', () => {
       getEscalationRatios: jest.fn().mockResolvedValue({ dueSoonRatio: 0.2, atRiskRatio: 0.5 }),
     } as any;
 
+    const mockCaseInvestigatorService = {
+      getAccessibleCaseIds: jest.fn().mockResolvedValue([]),
+      getBlacklistedCaseIds: jest.fn().mockResolvedValue([]),
+      getRestrictedCaseIds: jest.fn().mockResolvedValue([]),
+      isBlacklisted: jest.fn().mockResolvedValue(null),
+    } as any;
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CaseQueryService,
@@ -140,6 +150,7 @@ describe('CaseQueryService', () => {
         { provide: LoggingOrchestrationService, useValue: mockLoggingOrchestrationService },
         { provide: TaskValidationUtil, useValue: mockTaskValidationUtil },
         { provide: SlaPolicyUtil, useValue: mockSlaPolicyUtil },
+        { provide: CaseInvestigatorService, useValue: mockCaseInvestigatorService },
       ],
     }).compile();
 
@@ -150,6 +161,7 @@ describe('CaseQueryService', () => {
     loggingOrchestrationService = module.get(LoggingOrchestrationService);
     taskValidationUtil = module.get(TaskValidationUtil);
     slaPolicyUtil = module.get(SlaPolicyUtil);
+    caseInvestigatorService = module.get(CaseInvestigatorService);
   });
 
   afterEach(() => {
@@ -590,6 +602,102 @@ describe('CaseQueryService', () => {
       });
     });
 
+    it('additively includes case_investigator-accessible case_ids in the investigator OR-branch, without dropping the existing branches', async () => {
+      const investigatorId = 'investigator-123';
+      caseInvestigatorService.getAccessibleCaseIds.mockResolvedValueOnce([42, 43]);
+      setupGetAllCasesMocks();
+
+      await service.getAllCases(query, tenantId, investigatorId);
+
+      expect(caseInvestigatorService.getAccessibleCaseIds).toHaveBeenCalledWith(investigatorId, tenantId);
+      const findManyArgs = prismaService.case.findMany.mock.calls[0][0];
+      const visibilityOr = findManyArgs.where.AND.find((c: any) => Array.isArray(c.OR))?.OR;
+      expect(visibilityOr).toContainEqual({ case_owner_user_id: investigatorId });
+      expect(visibilityOr).toContainEqual({ case_id: { in: [42, 43] } });
+    });
+
+    it('keeps cases the investigator was revoked from in their queue, and excludes only the blacklisted ones', async () => {
+      caseInvestigatorService.getAccessibleCaseIds.mockResolvedValueOnce([]);
+      caseInvestigatorService.getBlacklistedCaseIds.mockResolvedValueOnce([7]);
+      caseInvestigatorService.getRestrictedCaseIds.mockResolvedValueOnce([843]);
+      setupGetAllCasesMocks();
+
+      await service.getAllCases(query, tenantId, 'investigator-123');
+
+      const findManyArgs = prismaService.case.findMany.mock.calls[0][0];
+      const visibilityOr = findManyArgs.where.AND.find((c: any) => Array.isArray(c.OR))?.OR;
+      expect(visibilityOr).toContainEqual({ case_id: { in: [843] } });
+      expect(findManyArgs.where.AND).toContainEqual({ NOT: { case_id: { in: [7] } } });
+    });
+
+    it('marks a revoked case RESTRICTED and withholds its transaction and Investigate notes, but not other rows', async () => {
+      caseInvestigatorService.getAccessibleCaseIds.mockResolvedValueOnce([]);
+      caseInvestigatorService.getRestrictedCaseIds.mockResolvedValueOnce([843]);
+      setupGetAllCasesMocks();
+      prismaService.case.findMany.mockReset().mockResolvedValueOnce([
+        {
+          ...mockCase,
+          case_id: 843,
+          status: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL,
+          tasks: [{ task_id: 1, name: 'Investigate Case', status: 'STATUS_30_COMPLETED', assigned_user_id: 'x', investigationNotes: 'secret' }],
+          alert: { alert_id: 1, message: 'm', confidence_per: 80, alert_type: 'FRAUD', transaction: { big: 'payload' } },
+        },
+        { ...mockCase, case_id: 900, tasks: [], alert: { alert_id: 2, transaction: { keep: true } } },
+      ] as any);
+
+      const result = await service.getAllCases(query, tenantId, 'investigator-123');
+
+      const restricted = result.cases.find((c: any) => c.case_id === 843) as any;
+      const normal = result.cases.find((c: any) => c.case_id === 900) as any;
+      expect(restricted.access_level).toBe('RESTRICTED');
+      expect(restricted.alert.transaction).toBeNull();
+      expect(restricted.alert.alert_id).toBe(1);
+      expect(restricted.tasks[0].investigationNotes).toBeNull();
+      expect(normal.access_level).toBeUndefined();
+      expect(normal.alert.transaction).toEqual({ keep: true });
+    });
+
+    it('does not mark a revoked case restricted while it is open for claiming - anyone not blacklisted may claim it', async () => {
+      caseInvestigatorService.getAccessibleCaseIds.mockResolvedValueOnce([]);
+      caseInvestigatorService.getRestrictedCaseIds.mockResolvedValueOnce([843]);
+      setupGetAllCasesMocks();
+      prismaService.case.findMany.mockReset().mockResolvedValueOnce([
+        { ...mockCase, case_id: 843, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT, tasks: [], alert: { alert_id: 1, transaction: { keep: true } } },
+      ] as any);
+
+      const result = await service.getAllCases(query, tenantId, 'investigator-123');
+
+      expect((result.cases[0] as any).access_level).toBeUndefined();
+      expect((result.cases[0] as any).alert.transaction).toEqual({ keep: true });
+    });
+
+    it('does not show a bare unowned case: unclaimed cases are visible only while open for claiming, matching hasAccess', async () => {
+      caseInvestigatorService.getAccessibleCaseIds.mockResolvedValueOnce([]);
+      setupGetAllCasesMocks();
+
+      await service.getAllCases(query, tenantId, 'investigator-123');
+
+      const findManyArgs = prismaService.case.findMany.mock.calls[0][0];
+      const visibilityOr = findManyArgs.where.AND.find((c: any) => Array.isArray(c.OR))?.OR;
+      expect(visibilityOr).not.toContainEqual({ case_owner_user_id: null });
+      expect(visibilityOr).toContainEqual({
+        status: { in: [CaseStatus.STATUS_00_DRAFT, CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT] },
+      });
+    });
+
+    it('additively includes accessible case_ids alongside a search filter too', async () => {
+      const investigatorId = 'investigator-123';
+      caseInvestigatorService.getAccessibleCaseIds.mockResolvedValueOnce([42]);
+      setupGetAllCasesMocks();
+
+      await service.getAllCases({ ...query, search: 'fraud' }, tenantId, investigatorId);
+
+      const findManyArgs = prismaService.case.findMany.mock.calls[0][0];
+      const combinedCondition = findManyArgs.where.AND.find((c: any) => Array.isArray(c.AND));
+      const visibilityOr = combinedCondition?.AND.at(-1)?.OR;
+      expect(visibilityOr).toContainEqual({ case_id: { in: [42] } });
+    });
+
     it('should calculate average tasks per case', async () => {
       prismaService.case.count.mockResolvedValueOnce(2);
       prismaService.case.findMany.mockResolvedValueOnce([
@@ -632,6 +740,97 @@ describe('CaseQueryService', () => {
       expect(slaPolicyUtil.getEscalationRatios).toHaveBeenCalledWith(tenantId);
       expect(result.cases[0].sla_state).toBe('DUE_SOON');
       jest.useRealTimers();
+    });
+  });
+
+  describe('checkUserCaseAccess', () => {
+    const caseId = 1;
+    const tenantId = 'tenant-123';
+    const investigatorUserId = '550e8400-e29b-41d4-a716-446655440000';
+
+    it('supervisor (no investigatorUserId): true when the case exists in the tenant', async () => {
+      prismaService.case.findFirst.mockResolvedValueOnce({ case_id: caseId });
+
+      const result = await service.checkUserCaseAccess(caseId, undefined, tenantId);
+
+      expect(result).toBe(true);
+      expect(prismaService.case.findFirst).toHaveBeenCalledWith({
+        where: { case_id: caseId, tenant_id: tenantId },
+        select: { case_id: true },
+      });
+    });
+
+    it('supervisor: false when the case does not exist in the tenant', async () => {
+      prismaService.case.findFirst.mockResolvedValueOnce(null);
+
+      const result = await service.checkUserCaseAccess(caseId, undefined, tenantId);
+
+      expect(result).toBe(false);
+    });
+
+    it('investigator: false for a malformed userId, without querying the DB', async () => {
+      const result = await service.checkUserCaseAccess(caseId, 'not-a-uuid', tenantId);
+
+      expect(result).toBe(false);
+      expect(prismaService.case.findFirst).not.toHaveBeenCalled();
+    });
+
+    it('investigator: true when they own the case, have a task, or it is open for claiming; a bare unowned case no longer matches', async () => {
+      caseInvestigatorService.getAccessibleCaseIds.mockResolvedValueOnce([]);
+      prismaService.case.findFirst.mockResolvedValueOnce({ case_id: caseId });
+
+      const result = await service.checkUserCaseAccess(caseId, investigatorUserId, tenantId);
+
+      expect(result).toBe(true);
+      const whereArg = prismaService.case.findFirst.mock.calls[0][0].where;
+      expect(whereArg.OR).toEqual(
+        expect.arrayContaining([
+          { case_owner_user_id: investigatorUserId },
+          { tasks: { some: { assigned_user_id: investigatorUserId } } },
+          { status: { in: [CaseStatus.STATUS_00_DRAFT, CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT] } },
+        ]),
+      );
+      expect(whereArg.OR).not.toContainEqual({ case_owner_user_id: null });
+    });
+
+    it('additively includes case_investigator membership as one more OR-branch, consistent with getAllCases', async () => {
+      caseInvestigatorService.getAccessibleCaseIds.mockResolvedValueOnce([caseId]);
+      prismaService.case.findFirst.mockResolvedValueOnce({ case_id: caseId });
+
+      await service.checkUserCaseAccess(caseId, investigatorUserId, tenantId);
+
+      expect(caseInvestigatorService.getAccessibleCaseIds).toHaveBeenCalledWith(investigatorUserId, tenantId);
+      const whereArg = prismaService.case.findFirst.mock.calls[0][0].where;
+      expect(whereArg.OR).toContainEqual({ case_id: { in: [caseId] } });
+    });
+
+    it('investigator: a case they were revoked from still counts as visible (restricted view)', async () => {
+      caseInvestigatorService.getAccessibleCaseIds.mockResolvedValueOnce([]);
+      caseInvestigatorService.getRestrictedCaseIds.mockResolvedValueOnce([caseId]);
+      prismaService.case.findFirst.mockResolvedValueOnce({ case_id: caseId });
+
+      const result = await service.checkUserCaseAccess(caseId, investigatorUserId, tenantId);
+
+      expect(result).toBe(true);
+      expect(prismaService.case.findFirst.mock.calls[0][0].where.OR).toContainEqual({ case_id: { in: [caseId] } });
+    });
+
+    it('investigator: false when none of the OR branches match', async () => {
+      caseInvestigatorService.getAccessibleCaseIds.mockResolvedValueOnce([]);
+      prismaService.case.findFirst.mockResolvedValueOnce(null);
+
+      const result = await service.checkUserCaseAccess(caseId, investigatorUserId, tenantId);
+
+      expect(result).toBe(false);
+    });
+
+    it('returns false (not a throw) on an unexpected error', async () => {
+      prismaService.case.findFirst.mockRejectedValueOnce(new Error('DB down'));
+
+      const result = await service.checkUserCaseAccess(caseId, undefined, tenantId);
+
+      expect(result).toBe(false);
+      expect(logger.error).toHaveBeenCalled();
     });
   });
 
@@ -815,6 +1014,52 @@ describe('CaseQueryService', () => {
         case_owner_user_id: updateData.caseOwnerUserId,
       });
       expect(loggingOrchestrationService.logActionsWithHistory).toHaveBeenCalled();
+    });
+
+    describe('in-progress owner guard', () => {
+      const inProgressNoOwner = { status: CaseStatus.STATUS_20_IN_PROGRESS };
+
+      it('rejects In Progress when the case has no owner and the request supplies none, without writing', async () => {
+        prismaService.case.findUnique.mockResolvedValueOnce({ case_owner_user_id: null });
+
+        await expect(service.updateCase(caseId, inProgressNoOwner, userId)).rejects.toThrow(BadRequestException);
+        expect(caseRepository.updateCase).not.toHaveBeenCalled();
+      });
+
+      it('rejects In Progress when the request explicitly clears the owner', async () => {
+        prismaService.case.findUnique.mockResolvedValueOnce({ case_owner_user_id: 'user-456' });
+
+        await expect(
+          service.updateCase(caseId, { ...inProgressNoOwner, caseOwnerUserId: null as unknown as string }, userId),
+        ).rejects.toThrow(BadRequestException);
+        expect(caseRepository.updateCase).not.toHaveBeenCalled();
+      });
+
+      it('allows In Progress when the case already has an owner', async () => {
+        prismaService.case.findUnique.mockResolvedValueOnce({ case_owner_user_id: 'user-456' });
+        caseRepository.updateCase.mockResolvedValueOnce(mockCase as any);
+
+        await service.updateCase(caseId, inProgressNoOwner, userId);
+
+        expect(caseRepository.updateCase).toHaveBeenCalled();
+      });
+
+      it('allows In Progress when the request supplies an owner, without looking the case up', async () => {
+        caseRepository.updateCase.mockResolvedValueOnce(mockCase as any);
+
+        await service.updateCase(caseId, { ...inProgressNoOwner, caseOwnerUserId: 'user-456' }, userId);
+
+        expect(prismaService.case.findUnique).not.toHaveBeenCalled();
+        expect(caseRepository.updateCase).toHaveBeenCalled();
+      });
+
+      it('does not check the owner for other statuses', async () => {
+        caseRepository.updateCase.mockResolvedValueOnce(mockCase as any);
+
+        await service.updateCase(caseId, { status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT }, userId);
+
+        expect(prismaService.case.findUnique).not.toHaveBeenCalled();
+      });
     });
 
     it('should update case with partial data', async () => {

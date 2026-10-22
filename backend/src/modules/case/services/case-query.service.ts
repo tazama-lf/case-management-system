@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
+import { redactAlertForRestrictedView, redactTasksForRestrictedView } from '../../case-investigator/restricted-view.util';
 import { PrismaService } from '../../../../prisma/prisma.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { GetUserCasesQueryDto } from '../dto/get-user-cases.dto';
@@ -13,6 +14,7 @@ import { UpdateCaseDto } from '../dto';
 import { LoggingOrchestrationService } from 'src/modules/logging-orchestration/logging-orchestration.service';
 import { JsonValue } from '@prisma/client-cms/runtime/library';
 import { TASK_NAMES } from 'src/constants/case.constants';
+import { CaseInvestigatorService } from 'src/modules/case-investigator/case-investigator.service';
 
 @Injectable()
 export class CaseQueryService {
@@ -23,6 +25,7 @@ export class CaseQueryService {
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
     private readonly taskValidationUtil: TaskValidationUtil,
     private readonly slaPolicyUtil: SlaPolicyUtil,
+    private readonly caseInvestigatorService: CaseInvestigatorService,
   ) {}
 
   /**
@@ -324,6 +327,9 @@ export class CaseQueryService {
       } = query;
       const whereClause: any = {};
       const baseFilters: any = {};
+      // Cases in this investigator's queue only because they were once part of them (revoked): shown,
+      // but with the investigation material withheld. Filled in the investigator branch below.
+      let restrictedRowIds = new Set<number>();
 
       // Handle status filtering with new exclusion/inclusion options
       if (closedOnly) {
@@ -604,6 +610,27 @@ export class CaseQueryService {
         if (sarStrFilterCondition) {
           andConditions.push(sarStrFilterCondition);
         }
+        const accessibleCaseIds = await this.caseInvestigatorService.getAccessibleCaseIds(investigatorUserId, tenantId);
+        const blacklistedCaseIds = await this.caseInvestigatorService.getBlacklistedCaseIds(investigatorUserId, tenantId);
+        const restrictedCaseIds = await this.caseInvestigatorService.getRestrictedCaseIds(investigatorUserId, tenantId);
+        const fullAccessCaseIds = new Set(accessibleCaseIds);
+        restrictedRowIds = new Set(restrictedCaseIds.filter((id) => !fullAccessCaseIds.has(id)));
+        const visibilityOr = [
+          { case_owner_user_id: investigatorUserId },
+          {
+            tasks: {
+              some: {
+                assigned_user_id: investigatorUserId,
+              },
+            },
+          },
+          // Unclaimed cases are only browsable while still open for claiming (same set hasAccess allows);
+          // a bare `case_owner_user_id: null` also matched in-progress cases hasAccess then 404s on.
+          { status: { in: [CaseStatus.STATUS_00_DRAFT, CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT] } },
+          { case_id: { in: accessibleCaseIds } },
+          // Revoked from the case: it stays in their queue (restricted view). A blacklist is different - it is excluded below.
+          { case_id: { in: restrictedCaseIds } },
+        ];
 
         // For investigators with search: apply search filter within their accessible cases
         if (searchFilterCondition) {
@@ -611,38 +638,21 @@ export class CaseQueryService {
           andConditions.push({
             AND: [
               searchFilterCondition, // Must match search
-              {
-                OR: [
-                  { case_owner_user_id: investigatorUserId },
-                  {
-                    tasks: {
-                      some: {
-                        assigned_user_id: investigatorUserId,
-                      },
-                    },
-                  },
-                  { case_owner_user_id: null },
-                  { status: { in: [CaseStatus.STATUS_00_DRAFT, CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT] } },
-                ],
-              },
+              { OR: visibilityOr },
             ],
           });
         } else {
           // No search - just apply standard investigator filters
-          andConditions.push({
-            OR: [
-              { case_owner_user_id: investigatorUserId },
-              {
-                tasks: {
-                  some: {
-                    assigned_user_id: investigatorUserId,
-                  },
-                },
-              },
-              { case_owner_user_id: null },
-              { status: { in: [CaseStatus.STATUS_00_DRAFT, CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT] } },
-            ],
-          });
+          andConditions.push({ OR: visibilityOr });
+        }
+
+        // Exclude any case this investigator is currently blacklisted on, regardless of which
+        // visibility branch above would otherwise match (stale case_owner_user_id, a past
+        // completed task assignment, or the unclaimed-case browsing branches) — keeps this list
+        // consistent with hasAccess/assertViewAccess, which deny a blacklisted user. A revoked
+        // investigator is NOT excluded: they keep the case in their queue with a restricted view.
+        if (blacklistedCaseIds.length > 0) {
+          andConditions.push({ NOT: { case_id: { in: blacklistedCaseIds } } });
         }
 
         whereClause.AND = andConditions;
@@ -706,9 +716,12 @@ export class CaseQueryService {
 
       const escalationRatios = await this.slaPolicyUtil.getEscalationRatios(tenantId);
 
+      const openForClaim: string[] = [CaseStatus.STATUS_00_DRAFT, CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT];
       const processedCases = cases.map((caseItem) => {
         const taskCounts = this.taskValidationUtil.getTaskStatusCounts(caseItem.tasks);
         const assignedUsers = [...new Set(caseItem.tasks.map((t) => t.assigned_user_id).filter(Boolean))];
+        // Open-for-claim cases are full access for everyone not blacklisted, revoked or not.
+        const isRestricted = restrictedRowIds.has(caseItem.case_id) && !openForClaim.includes(caseItem.status);
         return {
           case_id: caseItem.case_id,
           tenant_id: caseItem.tenant_id,
@@ -722,10 +735,13 @@ export class CaseQueryService {
           sla_due_at: caseItem.sla_due_at,
           sla_state: computeCaseSlaState(caseItem, escalationRatios),
           total_tasks: caseItem.tasks.length,
-          tasks: caseItem.tasks,
+          tasks: isRestricted ? redactTasksForRestrictedView(caseItem.tasks) : caseItem.tasks,
           completed_tasks: taskCounts.completed,
           pending_tasks: taskCounts.pending,
-          alert: caseItem.alert ?? caseItem.investigationGroup?.alert ?? null,
+          alert: isRestricted
+            ? redactAlertForRestrictedView(caseItem.alert ?? caseItem.investigationGroup?.alert ?? null)
+            : (caseItem.alert ?? caseItem.investigationGroup?.alert ?? null),
+          ...(isRestricted ? { access_level: 'RESTRICTED' as const } : {}),
           group_id: caseItem.group_id,
           assigned_to:
             assignedUsers.length > 0
@@ -933,14 +949,28 @@ export class CaseQueryService {
         return false;
       }
 
+      // A blacklisted investigator must be denied regardless of which OR branch below would
+      // otherwise match (stale case_owner_user_id, a past completed task, or the unclaimed-case
+      // browsing branches) — mirrors hasAccess/assertReadAccess, which already deny this case.
+      const blocked = await this.caseInvestigatorService.isBlacklisted(caseId, investigatorUserId, tenantId);
+      if (blocked) {
+        return false;
+      }
+
+      // A revoked investigator keeps seeing the case (restricted view), so it counts as visible here.
+      const restrictedCaseIds = await this.caseInvestigatorService.getRestrictedCaseIds(investigatorUserId, tenantId);
+
+      const accessibleCaseIds = await this.caseInvestigatorService.getAccessibleCaseIds(investigatorUserId, tenantId);
+
       const whereCondition = {
         case_id: caseId,
         tenant_id: tenantId,
         OR: [
           { case_owner_user_id: investigatorUserId }, // 1. User owns the case
           { tasks: { some: { assigned_user_id: investigatorUserId } } }, // 2. User has ANY task assigned
-          { case_owner_user_id: null }, // 3. Unassigned cases
-          { status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT }, // 4. Ready for assignment
+          { status: { in: [CaseStatus.STATUS_00_DRAFT, CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT] } }, // 3. Open for claiming
+          { case_id: { in: accessibleCaseIds } }, // 4. Live case-investigator membership
+          { case_id: { in: restrictedCaseIds } }, // 5. Revoked from the case: still visible, restricted
         ],
       };
 
@@ -973,6 +1003,16 @@ export class CaseQueryService {
 
   async updateCase(caseId: number, updateData: Partial<UpdateCaseDto>, userId: string): Promise<Case & { sla_state: SlaState | null }> {
     try {
+      // An in-progress case must have an owner: reject a request that would leave it with none,
+      // whether by omitting the owner on a case that has none or by sending null explicitly.
+      if (updateData.status === CaseStatus.STATUS_20_IN_PROGRESS && !updateData.caseOwnerUserId) {
+        const existing = await this.prismaService.case.findUnique({ where: { case_id: caseId }, select: { case_owner_user_id: true } });
+        const isClearingOwner = updateData.caseOwnerUserId !== undefined;
+        if (existing && (isClearingOwner || !existing.case_owner_user_id)) {
+          throw new BadRequestException('A case must have an owner before it can be set to In Progress');
+        }
+      }
+
       const updatedCase = await this.caseRepository.updateCase(caseId, {
         case_type: updateData.caseType,
         priority: updateData.priority,

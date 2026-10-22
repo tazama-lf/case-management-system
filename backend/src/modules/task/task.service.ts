@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { CreateTaskDto } from './dto/create-task.dto';
@@ -9,6 +9,9 @@ import { TaskAssignedEvent } from '../events/domain-events';
 import { TaskRepository } from '../repository/task.repository';
 import { FlowableService } from '../flowable/flowable.service';
 import { LoggingOrchestrationService } from '../logging-orchestration/logging-orchestration.service';
+import { CaseInvestigatorService, SyncTaskAssignmentParams } from '../case-investigator/case-investigator.service';
+import { syncCaseAcl } from './utils/sync-case-acl';
+import { isInvestigateTask } from '../case-investigator/restricted-view.util';
 import { setTimeout } from 'node:timers/promises';
 
 @Injectable()
@@ -19,7 +22,11 @@ export class TaskService {
     private readonly eventEmitter: EventEmitter2,
     private readonly flowableService: FlowableService,
     private readonly loggingOrchestrationService: LoggingOrchestrationService,
+    private readonly caseInvestigatorService: CaseInvestigatorService,
   ) {}
+  private async syncCaseAcl(caseId: number, tenantId: string, actingUserId: string, params: SyncTaskAssignmentParams): Promise<void> {
+    await syncCaseAcl(this.caseInvestigatorService, this.logger, TaskService.name, caseId, tenantId, actingUserId, params);
+  }
 
   async createTask(taskDTO: CreateTaskDto, userId: string, tenantId: string, tx?: Prisma.TransactionClient): Promise<Task> {
     this.logger.log('Start - createTask', TaskService.name);
@@ -102,9 +109,33 @@ export class TaskService {
           investigationNote = updateData.investigationNotes;
         }
 
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- see comment above: ?? would misbehave on an explicit null
+        const nextAssignedUserId = updateData.assignedUserId === undefined ? existingTask.assigned_user_id : updateData.assignedUserId;
+
+        // this is the one place a task mutation
+        // must actually be BLOCKED by the ACL, not just synced after the
+        // fact — a blacklisted user must not be able to get back onto a
+        // case merely by being (re)assigned a task on it. Checked here,
+        // before any write, so it aborts the transaction with nothing to
+        // roll back yet. Only checked on a genuine assignment change (a
+        // no-op resend of the same assignee, or the field being omitted
+        // entirely, has nothing to check against).
+        if (nextAssignedUserId && nextAssignedUserId !== existingTask.assigned_user_id) {
+          const blocked = await this.caseInvestigatorService.isBlacklisted(existingTask.case_id, nextAssignedUserId, tenantId);
+          if (blocked) {
+            throw new ForbiddenException(await this.caseInvestigatorService.formatBlockedMessage(blocked));
+          }
+        }
+
+        // A task can't be started with nobody holding it: promoteCaseToInProgress would otherwise
+        // move the case to IN_PROGRESS while leaving case_owner_user_id null.
+        if (updateData.status === TaskStatus.STATUS_20_IN_PROGRESS && !nextAssignedUserId) {
+          throw new BadRequestException('A task must be assigned before it can be set to In Progress');
+        }
+
         const updateInput: Prisma.TaskUpdateInput = {
           status: updateData.status,
-          assigned_user_id: updateData.assignedUserId === existingTask.assigned_user_id ? existingTask.assigned_user_id : userId,
+          assigned_user_id: nextAssignedUserId,
           investigationNotes: investigationNote,
         };
 
@@ -116,11 +147,60 @@ export class TaskService {
             updateInput,
             existingTask,
             tenantId,
+            userId,
             tx,
           ));
         } else {
           updatedTask = await this.taskRepository.updateTask(taskId, updateInput, tx);
-          await this.executeFlowableOperation(updatedTask, updateData.assignedUserId ?? existingTask.assigned_user_id!);
+
+          const assigneeChanged = existingTask.assigned_user_id !== nextAssignedUserId;
+
+          // Covers both reassignment to someone else AND an explicit unassign (nextAssignedUserId
+          // === null) — either way the previous holder is losing the task and Flowable needs to
+          // hear about it before anything else happens with this task.
+          let unassignedPreviousHolder = false;
+          if (assigneeChanged && existingTask.assigned_user_id) {
+            await this.flowableService.handleTaskUnassigned({
+              taskId,
+              caseId: existingTask.case_id,
+              taskName: existingTask.name!,
+              assignedUser: null,
+            });
+            unassignedPreviousHolder = true;
+          }
+
+          if (nextAssignedUserId) {
+            // A new (or unchanged) real assignee — Flowable needs the current claim.
+            try {
+              await this.executeFlowableOperation(updatedTask, nextAssignedUserId);
+            } catch (error) {
+              if (unassignedPreviousHolder) {
+                // The old claim was just removed from Flowable above, and the DB write this
+                // transaction made is about to roll back along with everything else once this
+                // error propagates - without putting the old claim back, Flowable would be left
+                // with no claim at all on a task the DB still (once rolled back) says is held by
+                // existingTask.assigned_user_id.
+                try {
+                  await this.executeFlowableOperation(existingTask, existingTask.assigned_user_id!);
+                } catch (restoreError) {
+                  this.logger.error(
+                    `Failed to restore previous Flowable claim for task ${taskId} after a failed reassignment`,
+                    restoreError,
+                    TaskService.name,
+                  );
+                }
+              }
+              throw error;
+            }
+          } else if (!assigneeChanged) {
+            // Status/notes-only update to a task with no assignee, before or after. There's no
+            // real assignee to report, but this status transition still needs Flowable to record
+            // a claim, so fall back to whoever made this call rather than passing null.
+            await this.executeFlowableOperation(updatedTask, userId);
+          }
+          // else: assigneeChanged && !nextAssignedUserId - an explicit unassign. handleTaskUnassigned
+          // above already told Flowable; the previous holder must not be reclaimed for, so there is
+          // nothing left to pass to executeFlowableOperation.
         }
 
         if (existingTask.status === updatedTask.status) {
@@ -148,15 +228,24 @@ export class TaskService {
           );
         }
 
-        return { updatedTask, caseStatusNotification };
+        return { updatedTask, previousAssigneeId: existingTask.assigned_user_id, caseStatusNotification };
+      });
+
+      await this.syncCaseAcl(txResult.updatedTask.case_id, tenantId, userId, {
+        taskId,
+        previousAssigneeId: txResult.previousAssigneeId,
+        newAssigneeId: txResult.updatedTask.assigned_user_id,
+        newStatus: txResult.updatedTask.status,
       });
       if (txResult.caseStatusNotification) {
         try {
           await this.flowableService.handleCaseStatusChanged(txResult.caseStatusNotification);
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error);
+          const errorStack = error instanceof Error ? error.stack : undefined;
           this.logger.warn(
             `Case status change notification/Flowable sync failed for case ${txResult.caseStatusNotification.caseId} (continuing): ${errorMessage}`,
+            errorStack,
             TaskService.name,
           );
         }
@@ -219,9 +308,15 @@ export class TaskService {
     }
   }
 
-  async getTasks(tenantId: string, status?: string): Promise<Task[]> {
+  async getTasks(tenantId: string, userId: string, role: string, status?: string): Promise<Task[]> {
     try {
-      const where = status ? { status: status as TaskStatus } : {};
+      // Tenant-wide list: without this, an investigator could list tasks (and their case
+      // summary) for cases that GET /task/case/:caseId would 404 for them.
+      const caseIds = await this.caseInvestigatorService.getCaseIdScope(userId, tenantId, role);
+      const where = {
+        ...(status ? { status: status as TaskStatus } : {}),
+        ...(caseIds ? { case_id: { in: caseIds } } : {}),
+      };
       return await this.taskRepository.findTasks(where, tenantId, true);
     } catch (error) {
       this.logger.error('Error retrieving tasks', error, TaskService.name);
@@ -229,9 +324,63 @@ export class TaskService {
     }
   }
 
-  async getTaskById(taskId: number, tenantId: string): Promise<Task | null> {
+  /**
+   * Write-side counterpart of the read gate, for the task mutation endpoints
+   * (reassign/unassign/complete/PATCH). Called from the controller, not
+   * from updateTask itself, because updateTask also has internal callers (draft
+   * abandon/complete, triage, closure) that run on cases with no whitelist rows.
+   *
+   * Passes if the caller is the task's current assignee (a task's holder can always
+   * act on it), OR is claiming: `newAssigneeId` is the caller and the task is
+   * currently unassigned (claiming has to stay open - it's how an investigator
+   * first gets onto a case). Otherwise the caller needs case access (supervisor/
+   * compliance bypass, or a live whitelist row) just to be considered - a caller
+   * with no access gets the usual NotFound. If the task is still unassigned, case
+   * access alone is enough (e.g. assigning it to someone else). If it's already
+   * held by someone else, only a supervisor/compliance officer may act on it too -
+   * any other case member (e.g. a past OBSERVER, or a peer holding a different
+   * task on the same case) is rejected; mere case visibility isn't the same as
+   * being allowed to mutate someone else's active task. A missing task is left
+   * for the caller's own NotFound.
+   */
+  async assertCanMutateTask(taskId: number, tenantId: string, userId: string, role: string, newAssigneeId?: string | null): Promise<void> {
+    const task = await this.taskRepository.findTaskById(taskId, tenantId);
+    if (!task) return;
+    const blocked = await this.caseInvestigatorService.isBlacklisted(task.case_id, userId, tenantId);
+    if (blocked) {
+      throw new ForbiddenException(await this.caseInvestigatorService.formatBlockedMessage(blocked));
+    }
+    if (task.assigned_user_id === userId) return;
+
+    // Case visibility comes first: a user with no access at all (NONE) gets the usual 404 before anything
+    // below, so claiming an unassigned task can never be what grants them the case (assignment adds them).
+    const level = await this.caseInvestigatorService.assertViewAccess(task.case_id, userId, tenantId, role);
+
+    // A revoked (RESTRICTED) investigator may still re-claim an unassigned task for themselves - being
+    // assigned again is how their access returns.
+    if (!task.assigned_user_id && newAssigneeId === userId) return;
+
+    // Someone who was revoked from the case can still see it, but not act on a task they don't hold: say so
+    // plainly (403) instead of the "case not found" a person with no access at all gets (404).
+    if (level === 'RESTRICTED') {
+      throw new ForbiddenException('Your access to this case was revoked - you can view it but not change its tasks.');
+    }
+
+    if (task.assigned_user_id && role !== 'CMS_SUPERVISOR' && role !== 'CMS_COMPLIANCE_OFFICER') {
+      throw new ForbiddenException('This task is held by another investigator - only its current holder or a supervisor can mutate it.');
+    }
+  }
+
+  async getTaskById(taskId: number, tenantId: string, userId: string, role: string): Promise<Task | null> {
     try {
-      return await this.taskRepository.findTaskWithCase(taskId, tenantId);
+      const task = await this.taskRepository.findTaskWithCase(taskId, tenantId);
+      if (task) {
+        const level = await this.caseInvestigatorService.assertViewAccess(task.case_id, userId, tenantId, role);
+        if (level === 'RESTRICTED' && isInvestigateTask(task.name)) {
+          throw new ForbiddenException('Your access to this case was revoked - the Investigate Case task is no longer available to you.');
+        }
+      }
+      return task;
     } catch (error) {
       this.logger.error(`Error retrieving task ${taskId}`, error, TaskService.name);
       throw error;
@@ -249,9 +398,23 @@ export class TaskService {
 
       const previousAssignedUserId = existingTask.assigned_user_id;
 
+      // block the claim if the claimant is
+      // blacklisted on this case, before writing anything.
+      const blocked = await this.caseInvestigatorService.isBlacklisted(existingTask.case_id, userId, tenantId);
+      if (blocked) {
+        throw new ForbiddenException(await this.caseInvestigatorService.formatBlockedMessage(blocked));
+      }
+
       const updatedTask = await this.taskRepository.updateTask(taskId, {
         assigned_user_id: userId,
         status: TaskStatus.STATUS_10_ASSIGNED,
+      });
+
+      await this.syncCaseAcl(updatedTask.case_id, tenantId, userId, {
+        taskId,
+        previousAssigneeId: previousAssignedUserId,
+        newAssigneeId: userId,
+        newStatus: updatedTask.status,
       });
 
       this.eventEmitter.emit(
@@ -309,6 +472,7 @@ export class TaskService {
     updateInput: Prisma.TaskUpdateInput,
     existingTask: Task,
     tenantId: string,
+    userId: string,
     tx: Prisma.TransactionClient,
   ): Promise<{ task: Task; caseStatusNotification: { caseId: number; newStatus: CaseStatus } }> {
     try {
@@ -319,7 +483,28 @@ export class TaskService {
       const caseUpdateData: Prisma.CaseUpdateInput = { status: CaseStatus.STATUS_20_IN_PROGRESS };
       if (assigneeId && caseRecord!.case_owner_user_id !== assigneeId) caseUpdateData.case_owner_user_id = assigneeId;
       await this.taskRepository.updateCase(taskRecord.case_id, caseUpdateData, tx);
-      await this.executeFlowableOperation(taskRecord, taskRecord.assigned_user_id ?? existingTask.assigned_user_id!);
+
+      const assigneeChanged = existingTask.assigned_user_id !== taskRecord.assigned_user_id;
+
+      // Same rule as the non-promotion branch above: covers both reassignment to someone else
+      // and an explicit unassign landing alongside this promotion.
+      if (assigneeChanged && existingTask.assigned_user_id) {
+        await this.flowableService.handleTaskUnassigned({
+          taskId,
+          caseId: existingTask.case_id,
+          taskName: existingTask.name!,
+          assignedUser: null,
+        });
+      }
+
+      if (taskRecord.assigned_user_id) {
+        await this.executeFlowableOperation(taskRecord, taskRecord.assigned_user_id);
+      } else if (!assigneeChanged) {
+        // Status-only promotion of a task that has never had an assignee - fall back to the
+        // caller rather than passing null (previously ended up reclaiming for a stale holder,
+        // or passing null outright, whenever this task had no real assignee).
+        await this.executeFlowableOperation(taskRecord, userId);
+      }
 
       // Notify the Cases Dashboard (via CaseEventsGateway's @OnEvent listener) that this case's
       // status changed - this promotion path updates the case directly and otherwise never

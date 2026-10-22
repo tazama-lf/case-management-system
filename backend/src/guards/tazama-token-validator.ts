@@ -3,6 +3,7 @@ import * as jwt from 'jsonwebtoken';
 import { validateTokenAndClaims } from '@tazama-lf/auth-lib';
 
 import type { AuthenticatedUser, ClaimValidationResult, CMSToken } from '../utils/types/auth.types';
+import { resolveCmsRole } from '../utils/cms-roles';
 
 const logger = new Logger('TazamaTokenValidator');
 
@@ -56,8 +57,9 @@ export function validateTazamaToken(token: string, requiredClaims: string[], any
   const realmAccess = innerDecoded.realm_access as { roles?: unknown } | undefined;
   const realmRoles = Array.isArray(realmAccess?.roles) ? realmAccess.roles : undefined;
 
-  const supportedRoles = new Set(['CMS_INVESTIGATOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER', 'CMS_ADMIN']);
-  const actorRole = realmRoles?.find((role: unknown): role is string => typeof role === 'string' && supportedRoles.has(role));
+  // A user can hold several CMS roles. Pick by the shared precedence (supervisor / compliance officer outrank
+  // investigator), never by the order Keycloak lists them in, so the same person is the same role everywhere.
+  const actorRole = resolveCmsRole(realmRoles);
   if (!actorRole) {
     throw new UnauthorizedException('No supported CMS role found in token');
   }

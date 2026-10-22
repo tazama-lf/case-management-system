@@ -66,6 +66,10 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
     if (user) setCurrentUser(user);
   }, []);
 
+  const isRestrictedView =
+    (caseData as { accessLevel?: string } | undefined)?.accessLevel ===
+    'RESTRICTED';
+
   const filteredTasks = tasks.filter((task) => {
     if (hasSupervisorRole() || hasComplianceOfficerRole()) {
       return true;
@@ -140,13 +144,25 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
     task.name !== 'Approve Case Closure' &&
     task.name !== 'Approve Case Creation' &&
     task.name !== 'Approve Case Reopening';
-  /** Check if a task can be reassigned (has assignee + callback exists) */
-  const canReassignTask = (task: UnifiedWorkQueueTask) =>
-    task.assignee && onReassign;
+  /**
+   * Reassigning / unassigning a task is for its current holder, or a supervisor / compliance officer. The
+   * backend refuses anyone else - an investigator who is not the holder gets "held by another investigator",
+   * and someone revoked from the case gets "access revoked" - so offering the button only led to an error.
+   */
+  const canActOnTask = (task: UnifiedWorkQueueTask): boolean =>
+    !isRestrictedView &&
+    (canManageSupervisorActions ||
+      hasSupervisorRole() ||
+      hasComplianceOfficerRole() ||
+      isCurrentUserAssigned(task));
 
-  /** Check if a task can be unassigned (has assignee + callback exists) */
+  /** Check if a task can be reassigned (has assignee + callback exists + the viewer may act on it) */
+  const canReassignTask = (task: UnifiedWorkQueueTask) =>
+    task.assignee && onReassign && canActOnTask(task);
+
+  /** Check if a task can be unassigned (has assignee + callback exists + the viewer may act on it) */
   const canUnassignTask = (task: UnifiedWorkQueueTask) =>
-    task.assignee && onUnassign;
+    task.assignee && onUnassign && canActOnTask(task);
 
   const addAssignAction = (
     actions: React.ReactNode[],
@@ -210,6 +226,12 @@ const CaseDetailTaskLogTable: React.FC<CaseDetailTaskLogTableProps> = ({
     task: UnifiedWorkQueueTask,
   ) => {
     if (onTaskClick) {
+      const isInvestigateTask =
+        !!task.name && task.name.toLowerCase().includes('investigate');
+      // Revoked from this case: the Investigate Case task is withheld from them (the backend refuses it too).
+      if (isInvestigateTask && isRestrictedView) {
+        return;
+      }
       const isInvestigationTask =
         task.name &&
         (task.name.toLowerCase().includes('investigate') ||

@@ -24,6 +24,8 @@ import {
 import { AuthenticatedRequest } from '../../utils/types/auth.types';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { extractUserData } from '../../utils/helperFunction';
+import { CaseInvestigatorService } from '../case-investigator/case-investigator.service';
+import { redactCaseForRestrictedView } from '../case-investigator/restricted-view.util';
 import {
   GetUserCasesQueryDto,
   GetUserCasesResponseDto,
@@ -79,6 +81,7 @@ export class CaseController {
     private readonly caseCreationService: CaseCreationService,
     private readonly casePriorityService: CasePriorityService,
     private readonly casePriorityUtil: CasePriorityUtil,
+    private readonly caseInvestigatorService: CaseInvestigatorService,
   ) {}
 
   @Put(':caseId/abandon')
@@ -106,6 +109,7 @@ export class CaseController {
     @Req() req: AuthenticatedRequest,
   ): Promise<{ success: boolean; case: Case; task: Task }> {
     const { userId, tenantId } = extractUserData(req);
+    await this.caseInvestigatorService.assertCanModifyCase(caseId, userId, tenantId, req.user.actorRole);
     return await this.caseService.abandonCase(caseId, body.reason, userId, tenantId, req.user, 'PUT /api/v1/cases/:caseId/abandon');
   }
 
@@ -233,6 +237,7 @@ export class CaseController {
     @Req() req: AuthenticatedRequest,
   ): Promise<{ success: boolean; case: Case; completedTask: Task; newTask: Task }> {
     const { userId, tenantId } = extractUserData(req);
+    await this.caseInvestigatorService.assertCanModifyCase(caseId, userId, tenantId, req.user.actorRole);
     return await this.caseService.completeCase(caseId, userId, tenantId, req.user, 'PUT /api/v1/cases/:caseId/complete');
   }
 
@@ -624,8 +629,12 @@ export class CaseController {
   @ApiResponse({ status: 200, description: 'Case retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Case not found' })
   async getCase(@Param('caseId') caseId: number, @Req() req: AuthenticatedRequest): Promise<Case | null> {
-    const { isComplianceOfficer, tenantId } = extractUserData(req);
-    return await this.caseService.retrieveCase(caseId, tenantId, isComplianceOfficer);
+    const { userId, isComplianceOfficer, tenantId } = extractUserData(req);
+    // An investigator who was revoked from the case still sees its details (RESTRICTED), minus the
+    // investigation material; access_level is only stamped on the payload for that restricted view.
+    const level = await this.caseInvestigatorService.assertViewAccess(caseId, userId, tenantId, req.user.actorRole);
+    const caseData = await this.caseService.retrieveCase(caseId, tenantId, isComplianceOfficer);
+    return caseData !== null && level === 'RESTRICTED' ? redactCaseForRestrictedView(caseData) : caseData;
   }
 
   @Put(':caseId')
@@ -643,6 +652,7 @@ export class CaseController {
   @ApiResponse({ status: 404, description: 'Case not found' })
   async updateCase(@Param('caseId') caseId: number, @Body() dto: UpdateCaseDto, @Req() req: AuthenticatedRequest): Promise<Case> {
     const { userId, tenantId } = extractUserData(req);
+    await this.caseInvestigatorService.assertCanModifyCase(caseId, userId, tenantId, req.user.actorRole);
     return await this.caseService.updateCase(caseId, dto, userId, req.user, 'PUT /api/v1/cases/:caseId', tenantId);
   }
 
@@ -862,7 +872,7 @@ export class CaseController {
     message: string;
     case: { case_id: number; status: string; updated_at: Date };
     completed_approval_task: { task_id: number; status: string };
-    investigation_task: { task_id: number; name: string | null; assigned_to: string; status: string };
+    investigation_task: { task_id: number; name: string | null; assigned_to: string | null; status: string };
   }> {
     const { userId: supervisorId, tenantId } = extractUserData(req);
     return await this.caseService.rejectCaseClosure(

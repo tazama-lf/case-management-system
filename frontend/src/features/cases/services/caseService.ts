@@ -67,6 +67,8 @@ export interface CaseWithTasksDto {
   completed_tasks?: number;
   pending_tasks?: number;
   tasks?: TaskDTO[];
+  /** RESTRICTED when the viewer was revoked from this case: they still see it, minus the investigation material. Absent = full access. */
+  access_level?: 'FULL' | 'RESTRICTED';
 }
 
 export interface PaginationDto {

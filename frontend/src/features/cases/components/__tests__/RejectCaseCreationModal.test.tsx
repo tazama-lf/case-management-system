@@ -306,6 +306,12 @@ describe('RejectCaseCreationModal', () => {
 
     expect(screen.getByText('Rejecting...')).toBeInTheDocument();
     expect(submitButton).toBeDisabled();
+
+    // Let the pending submission settle so state updates don't fire after teardown
+    await waitFor(() => {
+      expect(screen.queryByText('Rejecting...')).not.toBeInTheDocument();
+    });
+    expect(mockOnClose).toHaveBeenCalled();
   });
 
   it('clears errors when user starts typing valid reason', async () => {
