@@ -27,19 +27,26 @@ describe('EmailWorkerService', () => {
     updated_at: new Date('2026-01-01'),
   };
 
-  const createMockConfig = (overrides?: Record<string, string>) => ({
-    get: jest.fn((key: string, defaultValue?: string) => {
-      const config: Record<string, string> = {
-        MAIL_FROM: '"CMS Notifications" <no-reply@cms.local>',
-        SMTP_HOST: 'smtp.example.com',
-        SMTP_PORT: '587',
-        SMTP_USER: 'user@example.com',
-        SMTP_PASS: 'password',
-        ...overrides,
-      };
-      return config[key] || defaultValue;
-    }),
-  });
+  const createMockConfig = (overrides?: Record<string, string>) => {
+    const config: Record<string, string> = {
+      SMTP_NOTIFICATIONS: 'true',
+      MAIL_FROM: '"CMS Notifications" <no-reply@cms.local>',
+      SMTP_HOST: 'smtp.example.com',
+      SMTP_PORT: '587',
+      SMTP_USER: 'user@example.com',
+      SMTP_PASS: 'password',
+      ...overrides,
+    };
+    return {
+      get: jest.fn((key: string, defaultValue?: string) => config[key] || defaultValue),
+      getOrThrow: jest.fn((key: string) => {
+        if (config[key] === undefined) {
+          throw new TypeError(`Configuration key "${key}" does not exist`);
+        }
+        return config[key];
+      }),
+    };
+  };
 
   beforeEach(async () => {
     mockTransporter = {
@@ -90,21 +97,37 @@ describe('EmailWorkerService', () => {
       });
     });
 
-    it('should warn when SMTP_HOST not configured', async () => {
-      const LoggerSpy = jest.spyOn(require('@nestjs/common').Logger.prototype, 'warn');
+    it('should log the SMTP target when email notifications are enabled', async () => {
+      const LoggerSpy = jest.spyOn(require('@nestjs/common').Logger.prototype, 'log');
 
-      const module: TestingModule = await Test.createTestingModule({
+      await Test.createTestingModule({
         providers: [
           EmailWorkerService,
           { provide: AsyncTaskService, useValue: asyncTaskService },
-          { provide: ConfigService, useValue: createMockConfig({ SMTP_HOST: '' }) },
+          { provide: ConfigService, useValue: createMockConfig() },
         ],
       }).compile();
 
-      expect(LoggerSpy).toHaveBeenCalledWith('SMTP_HOST not configured - emails will fail to send!');
-      expect(LoggerSpy).toHaveBeenCalledWith('Please configure SMTP settings in .env file');
+      expect(LoggerSpy).toHaveBeenCalledWith('Email Worker Service initialized - SMTP: smtp.example.com:587');
 
       LoggerSpy.mockRestore();
+    });
+
+    it('should fail to start when SMTP_NOTIFICATIONS is missing', async () => {
+      const config = createMockConfig();
+      config.getOrThrow.mockImplementation((key: string) => {
+        throw new TypeError(`Configuration key "${key}" does not exist`);
+      });
+
+      await expect(
+        Test.createTestingModule({
+          providers: [
+            EmailWorkerService,
+            { provide: AsyncTaskService, useValue: asyncTaskService },
+            { provide: ConfigService, useValue: config },
+          ],
+        }).compile(),
+      ).rejects.toThrow('Configuration key "SMTP_NOTIFICATIONS" does not exist');
     });
 
     it('should initialize without SMTP auth when SMTP_USER not provided', async () => {
@@ -122,6 +145,82 @@ describe('EmailWorkerService', () => {
         secure: false,
         auth: undefined,
       });
+    });
+
+    it('should treat SMTP_NOTIFICATIONS case-insensitively', async () => {
+      const module: TestingModule = await Test.createTestingModule({
+        providers: [
+          EmailWorkerService,
+          { provide: AsyncTaskService, useValue: asyncTaskService },
+          { provide: ConfigService, useValue: createMockConfig({ SMTP_NOTIFICATIONS: 'TRUE' }) },
+        ],
+      }).compile();
+      const enabledService = module.get<EmailWorkerService>(EmailWorkerService);
+      asyncTaskService.getPendingTasksForProcessing.mockResolvedValue([]);
+
+      await enabledService.processEmailQueue();
+
+      expect(asyncTaskService.getPendingTasksForProcessing).toHaveBeenCalledWith(10);
+    });
+
+    it('should fall back to the default sender and localhost when MAIL_FROM and SMTP_HOST are not set', async () => {
+      const LoggerSpy = jest.spyOn(require('@nestjs/common').Logger.prototype, 'log');
+      const module: TestingModule = await Test.createTestingModule({
+        providers: [
+          EmailWorkerService,
+          { provide: AsyncTaskService, useValue: asyncTaskService },
+          { provide: ConfigService, useValue: createMockConfig({ MAIL_FROM: '', SMTP_HOST: '' }) },
+        ],
+      }).compile();
+      const fallbackService = module.get<EmailWorkerService>(EmailWorkerService);
+      asyncTaskService.markAsProcessing.mockResolvedValue(undefined);
+      asyncTaskService.markAsCompleted.mockResolvedValue(undefined);
+
+      await fallbackService['processTask'](mockTask);
+
+      expect(nodemailer.createTransport).toHaveBeenCalledWith(expect.objectContaining({ host: 'localhost' }));
+      expect(LoggerSpy).toHaveBeenCalledWith('Email Worker Service initialized - SMTP: NOT CONFIGURED:587');
+      expect(mockTransporter.sendMail).toHaveBeenCalledWith(
+        expect.objectContaining({ from: '"CMS Notifications" <no-reply@cms.local>' }),
+      );
+
+      LoggerSpy.mockRestore();
+    });
+  });
+
+  describe('when SMTP_NOTIFICATIONS is false', () => {
+    const createDisabledService = async (): Promise<EmailWorkerService> => {
+      const module: TestingModule = await Test.createTestingModule({
+        providers: [
+          EmailWorkerService,
+          { provide: AsyncTaskService, useValue: asyncTaskService },
+          { provide: ConfigService, useValue: createMockConfig({ SMTP_NOTIFICATIONS: 'false' }) },
+        ],
+      }).compile();
+      return module.get<EmailWorkerService>(EmailWorkerService);
+    };
+
+    it('should warn at startup that email notifications are disabled', async () => {
+      const LoggerSpy = jest.spyOn(require('@nestjs/common').Logger.prototype, 'warn');
+
+      await createDisabledService();
+
+      expect(LoggerSpy).toHaveBeenCalledWith(
+        'SMTP_NOTIFICATIONS=false - email notifications are disabled, the email queue will not be processed',
+      );
+
+      LoggerSpy.mockRestore();
+    });
+
+    it('should not read or send queued emails', async () => {
+      const disabledService = await createDisabledService();
+      asyncTaskService.getPendingTasksForProcessing.mockResolvedValue([mockTask] as any);
+
+      await disabledService.processEmailQueue();
+
+      expect(asyncTaskService.getPendingTasksForProcessing).not.toHaveBeenCalled();
+      expect(asyncTaskService.markAsProcessing).not.toHaveBeenCalled();
+      expect(mockTransporter.sendMail).not.toHaveBeenCalled();
     });
   });
 
@@ -183,6 +282,18 @@ describe('EmailWorkerService', () => {
       await service.processEmailQueue();
 
       expect(errorSpy).toHaveBeenCalledWith('Email queue processing error: Queue error', expect.any(String));
+      expect(service['isProcessing']).toBe(false);
+    });
+
+    it('should log a task whose failure handling also fails', async () => {
+      asyncTaskService.getPendingTasksForProcessing.mockResolvedValue([mockTask] as any);
+      mockTransporter.sendMail.mockRejectedValue(new Error('SMTP error'));
+      asyncTaskService.scheduleRetry.mockRejectedValue(new Error('DB down'));
+      const errorSpy = jest.spyOn(service['logger'], 'error');
+
+      await service.processEmailQueue();
+
+      expect(errorSpy).toHaveBeenCalledWith('Task 1 failed: Error: DB down');
       expect(service['isProcessing']).toBe(false);
     });
 
