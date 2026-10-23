@@ -1,17 +1,6 @@
-import { plainToClass } from 'class-transformer';
-import {
-  IsEnum,
-  IsString,
-  IsUUID,
-  IsOptional,
-  IsNumberString,
-  validateSync,
-  IsBooleanString,
-  IsIn,
-  IsNotEmpty,
-  Matches,
-} from 'class-validator';
-import { SMTP_NOTIFICATIONS_PATTERN, normalizeSmtpSetting, parseSmtpNotificationsFlag } from './smtp.config';
+import { plainToClass, Transform } from 'class-transformer';
+import { IsEnum, IsString, IsUUID, IsOptional, IsNumberString, validateSync, IsBooleanString, IsIn, IsNotEmpty } from 'class-validator';
+import { normalizeSmtpSetting, parseSmtpNotificationsFlag } from './smtp.config';
 
 enum NodeEnv {
   DEVELOPMENT = 'dev',
@@ -141,7 +130,9 @@ class EnvironmentVariables {
   @IsNotEmpty()
   CORS_ALLOWED_ORIGINS!: string;
 
-  @Matches(SMTP_NOTIFICATIONS_PATTERN)
+  // Lower-cased first so TRUE/FALSE are accepted too.
+  @Transform(({ value }: { value: unknown }) => (typeof value === 'string' ? value.toLowerCase() : value))
+  @IsIn(['true', 'false'])
   SMTP_NOTIFICATIONS!: string;
 
   @IsOptional()
