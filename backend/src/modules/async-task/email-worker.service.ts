@@ -3,7 +3,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import { EmailPayload } from 'src/utils/interfaces/AsyncTask.interface';
-import { parseSmtpNotificationsFlag } from '../../config/smtp.config';
+import { normalizeSmtpSetting, parseSmtpNotificationsFlag } from '../../config/smtp.config';
 import { AsyncTaskService } from './async-task.service';
 @Injectable()
 export class EmailWorkerService {
@@ -18,11 +18,11 @@ export class EmailWorkerService {
     private readonly config: ConfigService,
   ) {
     this.enabled = parseSmtpNotificationsFlag(this.config.getOrThrow<string>('SMTP_NOTIFICATIONS'));
-    this.fromEmail = this.config.get<string>('MAIL_FROM') ?? '"CMS Notifications" <no-reply@cms.local>';
+    this.fromEmail = normalizeSmtpSetting(this.config.get<string>('MAIL_FROM')) ?? '"CMS Notifications" <no-reply@cms.local>';
 
-    const smtpHost = this.config.get<string>('SMTP_HOST');
+    const smtpHost = normalizeSmtpSetting(this.config.get<string>('SMTP_HOST'));
     const smtpPort = this.config.get<string>('SMTP_PORT', '587');
-    const smtpUser = this.config.get<string>('SMTP_USER');
+    const smtpUser = normalizeSmtpSetting(this.config.get<string>('SMTP_USER'));
 
     this.transporter = nodemailer.createTransport({
       host: smtpHost ?? 'localhost',

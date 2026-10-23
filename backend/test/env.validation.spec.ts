@@ -253,6 +253,18 @@ describe('env.validation', () => {
       expect(() => validate(config)).toThrow(`SMTP_NOTIFICATIONS=true requires ${key}`);
     });
 
+    it.each(['SMTP_HOST', 'MAIL_FROM'])('rejects true with a whitespace-only %s', (key) => {
+      const config = createValidConfig({ SMTP_NOTIFICATIONS: 'true', ...smtpAccount, [key]: '   ' });
+
+      expect(() => validate(config)).toThrow(`SMTP_NOTIFICATIONS=true requires ${key}`);
+    });
+
+    it('rejects true with a whitespace-only SMTP_USER while SMTP_PASS is set', () => {
+      const config = createValidConfig({ SMTP_NOTIFICATIONS: 'true', ...smtpAccount, SMTP_USER: '   ' });
+
+      expect(() => validate(config)).toThrow('SMTP_NOTIFICATIONS=true requires SMTP_USER and SMTP_PASS to be set together');
+    });
+
     it('reports both SMTP_HOST and MAIL_FROM when neither is set', () => {
       const config = createValidConfig({ SMTP_NOTIFICATIONS: 'true' });
 

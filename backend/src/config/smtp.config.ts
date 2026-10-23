@@ -15,3 +15,15 @@ export const SMTP_NOTIFICATIONS_PATTERN = /^(?:true|false)$/iv;
  * @returns Whether email notifications are switched on.
  */
 export const parseSmtpNotificationsFlag = (raw: string): boolean => raw.toLowerCase() === 'true';
+
+/**
+ * Trims an SMTP setting and returns `undefined` when nothing is left, so startup
+ * validation and the email worker agree on which settings count as set.
+ *
+ * @param raw - Raw env var value, if any.
+ * @returns The trimmed value, or `undefined` when it is missing or whitespace-only.
+ */
+export const normalizeSmtpSetting = (raw?: string): string | undefined => {
+  const value = raw?.trim();
+  return value === '' ? undefined : value;
+};

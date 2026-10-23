@@ -11,7 +11,7 @@ import {
   IsNotEmpty,
   Matches,
 } from 'class-validator';
-import { SMTP_NOTIFICATIONS_PATTERN, parseSmtpNotificationsFlag } from './smtp.config';
+import { SMTP_NOTIFICATIONS_PATTERN, normalizeSmtpSetting, parseSmtpNotificationsFlag } from './smtp.config';
 
 enum NodeEnv {
   DEVELOPMENT = 'dev',
@@ -197,12 +197,14 @@ class EnvironmentVariables {
  * skips auth when SMTP_USER is empty, so a password on its own gets every send rejected.
  */
 const assertSmtpConfigured = (config: EnvironmentVariables): void => {
-  const missing = (['SMTP_HOST', 'MAIL_FROM'] as const).filter((key) => !config[key]);
+  const isUnset = (value?: string): boolean => normalizeSmtpSetting(value) === undefined;
+
+  const missing = (['SMTP_HOST', 'MAIL_FROM'] as const).filter((key) => isUnset(config[key]));
   if (missing.length > 0) {
     throw new Error(`SMTP_NOTIFICATIONS=true requires ${missing.join(' and ')}`);
   }
 
-  if (Boolean(config.SMTP_USER) !== Boolean(config.SMTP_PASS)) {
+  if (isUnset(config.SMTP_USER) !== isUnset(config.SMTP_PASS)) {
     throw new Error('SMTP_NOTIFICATIONS=true requires SMTP_USER and SMTP_PASS to be set together');
   }
 };

@@ -163,6 +163,28 @@ describe('EmailWorkerService', () => {
       expect(asyncTaskService.getPendingTasksForProcessing).toHaveBeenCalledWith(10);
     });
 
+    it('should trim SMTP settings and treat whitespace-only values as unset', async () => {
+      const module: TestingModule = await Test.createTestingModule({
+        providers: [
+          EmailWorkerService,
+          { provide: AsyncTaskService, useValue: asyncTaskService },
+          {
+            provide: ConfigService,
+            useValue: createMockConfig({ SMTP_HOST: ' smtp.example.com ', SMTP_USER: '   ', MAIL_FROM: '   ' }),
+          },
+        ],
+      }).compile();
+      const trimmedService = module.get<EmailWorkerService>(EmailWorkerService);
+
+      expect(nodemailer.createTransport).toHaveBeenLastCalledWith({
+        host: 'smtp.example.com',
+        port: 587,
+        secure: false,
+        auth: undefined,
+      });
+      expect(trimmedService['fromEmail']).toBe('"CMS Notifications" <no-reply@cms.local>');
+    });
+
     it('should fall back to the default sender and localhost when MAIL_FROM and SMTP_HOST are not set', async () => {
       const LoggerSpy = jest.spyOn(require('@nestjs/common').Logger.prototype, 'log');
       const module: TestingModule = await Test.createTestingModule({
