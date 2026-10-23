@@ -28,6 +28,7 @@ describe('env.validation', () => {
     SESSION_COOKIE_SECURE: 'true',
     SESSION_COOKIE_SAMESITE: 'strict',
     CORS_ALLOWED_ORIGINS: 'http://localhost:3000',
+    SMTP_NOTIFICATIONS: 'false',
     AUDIT_PROVIDER: 'opensearch',
     OPENSEARCH_NODE: 'http://localhost:9200',
     OPENSEARCH_USERNAME: 'admin',
@@ -204,6 +205,91 @@ describe('env.validation', () => {
       expect(() => validate(config)).toThrow(
         /property CORS_ALLOWED_ORIGINS has failed the following constraints: isNotEmpty/,
       );
+    });
+  });
+
+  describe('SMTP_NOTIFICATIONS', () => {
+    const smtpAccount = {
+      SMTP_HOST: 'smtp.example.com',
+      SMTP_USER: 'cms@example.com',
+      SMTP_PASS: 'secret',
+      MAIL_FROM: 'cms@example.com',
+    };
+
+    it('rejects a missing value', () => {
+      const config = createValidConfig();
+      delete config.SMTP_NOTIFICATIONS;
+
+      expect(() => validate(config)).toThrow(/property SMTP_NOTIFICATIONS has failed the following constraints: isIn/);
+    });
+
+    it('rejects a non-string value', () => {
+      const config = createValidConfig({ SMTP_NOTIFICATIONS: true });
+
+      expect(() => validate(config)).toThrow(/property SMTP_NOTIFICATIONS has failed the following constraints: isIn/);
+    });
+
+    it.each(['', 'yes', '1', '0', ' true'])('rejects %p', (value) => {
+      const config = createValidConfig({ SMTP_NOTIFICATIONS: value });
+
+      expect(() => validate(config)).toThrow(/property SMTP_NOTIFICATIONS has failed the following constraints: isIn/);
+    });
+
+    it.each(['false', 'FALSE', 'False'])('accepts %p without any SMTP settings, normalized to "false"', (value) => {
+      const config = createValidConfig({ SMTP_NOTIFICATIONS: value });
+
+      expect(validate(config).SMTP_NOTIFICATIONS).toBe('false');
+    });
+
+    it.each(['true', 'TRUE', 'True'])('accepts %p with a complete SMTP account, normalized to "true"', (value) => {
+      const config = createValidConfig({ SMTP_NOTIFICATIONS: value, ...smtpAccount });
+
+      expect(validate(config).SMTP_NOTIFICATIONS).toBe('true');
+    });
+
+    it.each([
+      ['empty', ''],
+      ['whitespace-only', '   '],
+    ])('accepts true without SMTP auth when SMTP_USER is %s and SMTP_PASS is empty', (_label, user) => {
+      const config = createValidConfig({ SMTP_NOTIFICATIONS: 'true', ...smtpAccount, SMTP_USER: user, SMTP_PASS: '' });
+
+      expect(validate(config).SMTP_NOTIFICATIONS).toBe('true');
+    });
+
+    it.each(['SMTP_HOST', 'MAIL_FROM'])('rejects true with an empty %s', (key) => {
+      const config = createValidConfig({ SMTP_NOTIFICATIONS: 'true', ...smtpAccount, [key]: '' });
+
+      expect(() => validate(config)).toThrow(`SMTP_NOTIFICATIONS=true requires ${key}`);
+    });
+
+    it.each(['SMTP_HOST', 'MAIL_FROM'])('rejects true with a whitespace-only %s', (key) => {
+      const config = createValidConfig({ SMTP_NOTIFICATIONS: 'true', ...smtpAccount, [key]: '   ' });
+
+      expect(() => validate(config)).toThrow(`SMTP_NOTIFICATIONS=true requires ${key}`);
+    });
+
+    it.each(['SMTP_USER', 'SMTP_PASS'])('rejects true with a whitespace-only %s while the other is set', (key) => {
+      const config = createValidConfig({ SMTP_NOTIFICATIONS: 'true', ...smtpAccount, [key]: '   ' });
+
+      expect(() => validate(config)).toThrow('SMTP_NOTIFICATIONS=true requires SMTP_USER and SMTP_PASS to be set together');
+    });
+
+    it('reports both SMTP_HOST and MAIL_FROM when neither is set', () => {
+      const config = createValidConfig({ SMTP_NOTIFICATIONS: 'true' });
+
+      expect(() => validate(config)).toThrow('SMTP_NOTIFICATIONS=true requires SMTP_HOST and MAIL_FROM');
+    });
+
+    it('applies the SMTP account check to TRUE as well', () => {
+      const config = createValidConfig({ SMTP_NOTIFICATIONS: 'TRUE' });
+
+      expect(() => validate(config)).toThrow('SMTP_NOTIFICATIONS=true requires SMTP_HOST and MAIL_FROM');
+    });
+
+    it.each(['SMTP_USER', 'SMTP_PASS'])('rejects true with an empty %s while the other is set', (key) => {
+      const config = createValidConfig({ SMTP_NOTIFICATIONS: 'true', ...smtpAccount, [key]: '' });
+
+      expect(() => validate(config)).toThrow('SMTP_NOTIFICATIONS=true requires SMTP_USER and SMTP_PASS to be set together');
     });
   });
 });

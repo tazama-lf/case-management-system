@@ -1,5 +1,6 @@
-import { plainToClass } from 'class-transformer';
+import { plainToClass, Transform } from 'class-transformer';
 import { IsEnum, IsString, IsUUID, IsOptional, IsNumberString, validateSync, IsBooleanString, IsIn, IsNotEmpty } from 'class-validator';
+import { normalizeSmtpSetting, parseSmtpNotificationsFlag } from './smtp.config';
 
 enum NodeEnv {
   DEVELOPMENT = 'dev',
@@ -129,6 +130,27 @@ class EnvironmentVariables {
   @IsNotEmpty()
   CORS_ALLOWED_ORIGINS!: string;
 
+  // Lower-cased first so TRUE/FALSE are accepted too.
+  @Transform(({ value }: { value: unknown }) => (typeof value === 'string' ? value.toLowerCase() : value))
+  @IsIn(['true', 'false'])
+  SMTP_NOTIFICATIONS!: string;
+
+  @IsOptional()
+  @IsString()
+  SMTP_HOST?: string;
+
+  @IsOptional()
+  @IsString()
+  SMTP_USER?: string;
+
+  @IsOptional()
+  @IsString()
+  SMTP_PASS?: string;
+
+  @IsOptional()
+  @IsString()
+  MAIL_FROM?: string;
+
   @IsOptional()
   @IsString()
   VOILA_URL?: string;
@@ -160,6 +182,24 @@ class EnvironmentVariables {
   OPENSEARCH_REFRESH!: string;
 }
 
+/**
+ * Throws unless the SMTP settings can send mail. Auth is optional (an unauthenticated
+ * relay is valid), but SMTP_USER and SMTP_PASS must come as a pair: the email worker
+ * skips auth when SMTP_USER is empty, so a password on its own gets every send rejected.
+ */
+const assertSmtpConfigured = (config: EnvironmentVariables): void => {
+  const isUnset = (value?: string): boolean => normalizeSmtpSetting(value) === undefined;
+
+  const missing = (['SMTP_HOST', 'MAIL_FROM'] as const).filter((key) => isUnset(config[key]));
+  if (missing.length > 0) {
+    throw new Error(`SMTP_NOTIFICATIONS=true requires ${missing.join(' and ')}`);
+  }
+
+  if (isUnset(config.SMTP_USER) !== isUnset(config.SMTP_PASS)) {
+    throw new Error('SMTP_NOTIFICATIONS=true requires SMTP_USER and SMTP_PASS to be set together');
+  }
+};
+
 export const validate = (config: Record<string, unknown>): EnvironmentVariables => {
   const validatedConfig = plainToClass(EnvironmentVariables, config);
   const errors = validateSync(validatedConfig);
@@ -173,6 +213,12 @@ export const validate = (config: Record<string, unknown>): EnvironmentVariables 
   // stored or sent. Fail at boot rather than shipping a silently-broken session.
   if (validatedConfig.SESSION_COOKIE_SAMESITE === SameSitePolicy.NONE && validatedConfig.SESSION_COOKIE_SECURE !== 'true') {
     throw new Error('SESSION_COOKIE_SAMESITE=none requires SESSION_COOKIE_SECURE=true');
+  }
+
+  // Cross-field: with email on, a half-configured SMTP account makes every send fail
+  // and retry with nothing surfaced outside the backend logs. Fail at boot instead.
+  if (parseSmtpNotificationsFlag(validatedConfig.SMTP_NOTIFICATIONS)) {
+    assertSmtpConfigured(validatedConfig);
   }
 
   return validatedConfig;
