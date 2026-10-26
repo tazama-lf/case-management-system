@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, BadRequestException, ConflictException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { NotificationService } from 'src/modules/notification/notification.service';
@@ -439,10 +439,15 @@ export class TaskLifecycleService {
         },
       });
 
-      await tx.case.update({
-        where: { case_id: caseId },
+      // The status was checked above, outside this transaction: only move the case if it is still
+      // IN_PROGRESS (and in this tenant), otherwise throw so the new task and comment roll back.
+      const { count } = await tx.case.updateMany({
+        where: { case_id: caseId, tenant_id: tenantId, status: CaseStatus.STATUS_20_IN_PROGRESS },
         data: { status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT, case_owner_user_id: null, updated_at: new Date() },
       });
+      if (count === 0) {
+        throw new ConflictException(`Case ${caseId} is no longer IN_PROGRESS; not re-queuing it`);
+      }
 
       await this.commentRepository.createComment(actorUserId, { caseId, taskId: newTask.task_id, note: reason, tenantId }, tx);
     });

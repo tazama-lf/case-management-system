@@ -11,6 +11,9 @@
     records of what was written at the time.
 
   Runs in one transaction. Reverse by renaming everything back and restoring the value.
+
+  Deploy: NOT backward compatible. Stop the old backend before applying this and start the new
+  build only after it completes - the old build queries case_investigators_blacklist, the new one case_investigators_blocklist.
 */
 
 -- RenameTable

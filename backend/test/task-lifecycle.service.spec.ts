@@ -43,6 +43,7 @@ describe('TaskLifecycleService', () => {
       findUnique: jest.fn(),
       findFirst: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn(),
     },
     $transaction: jest.fn(),
   };
@@ -929,7 +930,9 @@ describe('TaskLifecycleService', () => {
 
       beforeEach(() => {
         mockPrisma.task.create.mockReset().mockResolvedValue({ task_id: 21 });
-        mockPrisma.case.update.mockClear();
+        mockPrisma.case.updateMany.mockReset().mockResolvedValue({ count: 1 });
+        mockCommentRepository.createComment.mockClear();
+        mockLoggingService.logActionsWithHistory.mockClear();
         mockFlowableService.handleCaseStatusChanged.mockClear();
         mockCaseRepository.findCaseById.mockResolvedValue({ case_id: 1, status: CaseStatus.STATUS_20_IN_PROGRESS });
         mockTaskRepository.findTasks.mockImplementation(async (where) =>
@@ -948,8 +951,8 @@ describe('TaskLifecycleService', () => {
             assigned_user_id: null,
           }),
         });
-        expect(mockPrisma.case.update).toHaveBeenCalledWith({
-          where: { case_id: 1 },
+        expect(mockPrisma.case.updateMany).toHaveBeenCalledWith({
+          where: { case_id: 1, tenant_id: 'tenant1', status: CaseStatus.STATUS_20_IN_PROGRESS },
           data: expect.objectContaining({ status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT, case_owner_user_id: null }),
         });
         expect(mockCommentRepository.createComment).toHaveBeenCalledWith(
@@ -967,6 +970,23 @@ describe('TaskLifecycleService', () => {
           caseId: 1,
           newStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
         });
+      });
+
+      it('aborts the transaction when the case left IN_PROGRESS after the check, so no comment, history or Flowable sync follows', async () => {
+        mockPrisma.case.updateMany.mockResolvedValue({ count: 0 });
+
+        await expect(service.handleAccessRemoved(event)).resolves.toBeUndefined();
+
+        // The new task is created inside the transaction; throwing from it is what rolls that back.
+        expect(mockPrisma.task.create).toHaveBeenCalled();
+        expect(mockCommentRepository.createComment).not.toHaveBeenCalled();
+        expect(mockLoggingService.logActionsWithHistory).not.toHaveBeenCalled();
+        expect(mockFlowableService.handleCaseStatusChanged).not.toHaveBeenCalled();
+        expect(mockLoggerService.error).toHaveBeenCalledWith(
+          expect.stringContaining('Failed to re-queue case 1'),
+          expect.any(String),
+          TaskLifecycleService.name,
+        );
       });
 
       it('does nothing when the case is not IN_PROGRESS', async () => {
