@@ -320,7 +320,44 @@ export class TaskLifecycleService {
 
     const previousAssigneeId = existingTask.assigned_user_id;
     await this.performUnassignEffects(existingTask, actorUserId, tenantId, reason);
+    await this.logTaskHistory(
+      existingTask.case_id,
+      taskId,
+      actorUserId,
+      tenantId,
+      `Unassigned task ${taskId} from user ${previousAssigneeId}: ${reason}`,
+    );
     await this.sendUnassignNotification(existingTask, previousAssigneeId, actorUserId, reason);
+  }
+
+  /** Task-log entry for a change made by the access-removal cascade; never fails the change itself. */
+  private async logTaskHistory(
+    caseId: number,
+    taskId: number,
+    actorUserId: string,
+    tenantId: string,
+    actionPerformed: string,
+  ): Promise<void> {
+    try {
+      await this.loggingOrchestrationService.logActionsWithHistory(
+        {
+          userId: actorUserId,
+          actionPerformed,
+          entityName: 'TaskService',
+          operation: 'unassignTask',
+          outcome: Outcome.SUCCESS,
+          tenantId,
+        },
+        caseId,
+        tenantId,
+        taskId,
+      );
+    } catch (error) {
+      this.logger.warn(
+        `Failed to write task history for task ${taskId}: ${error instanceof Error ? error.message : String(error)}`,
+        TaskLifecycleService.name,
+      );
+    }
   }
 
   /**
@@ -409,6 +446,14 @@ export class TaskLifecycleService {
 
       await this.commentRepository.createComment(actorUserId, { caseId, taskId: newTask.task_id, note: reason, tenantId }, tx);
     });
+
+    await this.logTaskHistory(
+      caseId,
+      latest.task_id,
+      actorUserId,
+      tenantId,
+      `Case re-queued: task ${latest.task_id} was completed by ${userId}, who lost access: ${reason}`,
+    );
 
     try {
       await this.flowableService.handleCaseStatusChanged({ caseId, newStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT });

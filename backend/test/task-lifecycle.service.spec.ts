@@ -819,6 +819,12 @@ describe('TaskLifecycleService', () => {
       expect(mockNotificationService.sendNotification).toHaveBeenCalledWith(
         expect.objectContaining({ userId: 'user1', type: 'TASK_UNASSIGNED' }),
       );
+      expect(mockLoggingService.logActionsWithHistory).toHaveBeenCalledWith(
+        expect.objectContaining({ userId: 'supervisor1', operation: 'unassignTask' }),
+        1,
+        'tenant1',
+        1,
+      );
     });
 
     it('does not call syncCaseAcl / CaseInvestigatorService - that would re-enter the in-progress revoke/blacklist', async () => {
@@ -950,6 +956,12 @@ describe('TaskLifecycleService', () => {
           'supervisor1',
           expect.objectContaining({ caseId: 1, taskId: 21, note: event.reason }),
           expect.anything(),
+        );
+        expect(mockLoggingService.logActionsWithHistory).toHaveBeenCalledWith(
+          expect.objectContaining({ userId: 'supervisor1' }),
+          1,
+          'tenant1',
+          20,
         );
         expect(mockFlowableService.handleCaseStatusChanged).toHaveBeenCalledWith({
           caseId: 1,
