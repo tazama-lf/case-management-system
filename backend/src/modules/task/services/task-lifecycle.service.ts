@@ -18,6 +18,9 @@ import { CaseInvestigatorService, SyncTaskAssignmentParams } from 'src/modules/c
 import { syncCaseAcl } from '../utils/sync-case-acl';
 import type { CaseInvestigatorAccessRemovedEvent } from 'src/modules/case-investigator/case-investigator.service';
 
+// Kept small: the access-removal cascade is awaited by the block/revoke request, and retry backs off 1s, 2s, ...
+const FLOWABLE_UNCLAIM_ATTEMPTS = 3;
+
 @Injectable()
 export class TaskLifecycleService {
   private readonly rbacService = new RbacService();
@@ -474,16 +477,26 @@ export class TaskLifecycleService {
     // "Complete Investigation" only completes the DB task, so Flowable's Investigate Case task is still
     // claimed by the investigator who lost access. Release it, or the next investigator's claim fails
     // ("Failed to claim task") because Flowable refuses to claim a task someone else holds.
-    try {
-      await this.flowableService.handleTaskUnassigned({
-        taskId: newTaskId,
-        caseId,
-        taskName: TASK_NAMES.INVESTIGATE_CASE,
-        assignedUser: null,
-      });
-    } catch (error) {
+    // Retried a few times (the DB requeue is already committed, so a transient Flowable error must not
+    // leave the stale claim behind); `retry` itself swallows the final failure, so track it here.
+    const unclaim: { done: boolean; error?: unknown } = { done: false };
+    await this.retry(async () => {
+      try {
+        await this.flowableService.handleTaskUnassigned({
+          taskId: newTaskId,
+          caseId,
+          taskName: TASK_NAMES.INVESTIGATE_CASE,
+          assignedUser: null,
+        });
+        unclaim.done = true;
+      } catch (error) {
+        unclaim.error = error;
+        throw error;
+      }
+    }, FLOWABLE_UNCLAIM_ATTEMPTS);
+    if (!unclaim.done) {
       this.logger.warn(
-        `Flowable unclaim failed after re-queueing case ${caseId}: ${error instanceof Error ? error.message : String(error)}`,
+        `Flowable unclaim failed after re-queueing case ${caseId}: ${unclaim.error instanceof Error ? unclaim.error.message : String(unclaim.error)}`,
         TaskLifecycleService.name,
       );
     }

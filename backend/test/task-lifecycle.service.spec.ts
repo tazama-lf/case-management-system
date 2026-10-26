@@ -934,7 +934,7 @@ describe('TaskLifecycleService', () => {
         mockCommentRepository.createComment.mockClear();
         mockLoggingService.logActionsWithHistory.mockClear();
         mockFlowableService.handleCaseStatusChanged.mockClear();
-        mockFlowableService.handleTaskUnassigned.mockClear();
+        mockFlowableService.handleTaskUnassigned.mockReset().mockResolvedValue(undefined);
         mockCaseRepository.findCaseById.mockResolvedValue({
           case_id: 1,
           status: CaseStatus.STATUS_20_IN_PROGRESS,
@@ -984,11 +984,25 @@ describe('TaskLifecycleService', () => {
         });
       });
 
-      it('keeps the requeue when Flowable cannot unclaim the task', async () => {
-        mockFlowableService.handleTaskUnassigned.mockRejectedValueOnce(new Error('flowable down'));
+      it('retries the Flowable unclaim after a transient failure, without warning', async () => {
+        mockLoggerService.warn.mockClear();
+        mockFlowableService.handleTaskUnassigned.mockRejectedValueOnce(new Error('flowable blip')).mockResolvedValueOnce(undefined);
+
+        await service.handleAccessRemoved(event);
+
+        expect(mockFlowableService.handleTaskUnassigned).toHaveBeenCalledTimes(2);
+        expect(mockLoggerService.warn).not.toHaveBeenCalledWith(
+          expect.stringContaining('Flowable unclaim failed'),
+          expect.anything(),
+        );
+      });
+
+      it('keeps the requeue and warns when Flowable still cannot unclaim the task after retrying', async () => {
+        mockFlowableService.handleTaskUnassigned.mockRejectedValue(new Error('flowable down'));
 
         await expect(service.handleAccessRemoved(event)).resolves.toBeUndefined();
 
+        expect(mockFlowableService.handleTaskUnassigned).toHaveBeenCalledTimes(3);
         expect(mockPrisma.case.updateMany).toHaveBeenCalled();
         expect(mockLoggerService.warn).toHaveBeenCalledWith(
           expect.stringContaining('Flowable unclaim failed after re-queueing case 1'),
