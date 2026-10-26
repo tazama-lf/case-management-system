@@ -353,6 +353,71 @@ export class TaskLifecycleService {
         );
       }
     });
+
+    try {
+      await this.requeueCompletedInvestigation(caseId, userId, actorUserId, tenantId, reason);
+    } catch (error) {
+      this.logger.error(
+        `Failed to re-queue case ${caseId} after case-investigator access change for ${userId}`,
+        error instanceof Error ? error.stack : String(error),
+        TaskLifecycleService.name,
+      );
+    }
+  }
+
+  /**
+   * "Complete Investigation" completes only the Investigate Case task - the case stays IN_PROGRESS until
+   * the investigator closes it. If that investigator loses access in between, no live task is left to
+   * unassign, and neither they nor a supervisor can close the case. Put it back in the queue: a fresh
+   * unassigned Investigate Case task, no owner, READY_FOR_ASSIGNMENT. Does nothing unless the case is
+   * IN_PROGRESS and the user's task is its latest Investigate Case task.
+   */
+  private async requeueCompletedInvestigation(
+    caseId: number,
+    userId: string,
+    actorUserId: string,
+    tenantId: string,
+    reason: string,
+  ): Promise<void> {
+    const existingCase = await this.caseRepository.findCaseById(caseId, tenantId);
+    if (existingCase.status !== CaseStatus.STATUS_20_IN_PROGRESS) {
+      return;
+    }
+
+    const investigationTasks = await this.taskRepository.findTasks({ case_id: caseId, name: TASK_NAMES.INVESTIGATE_CASE }, tenantId, false);
+    const latest = [...investigationTasks].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).at(0);
+    if (latest?.status !== TaskStatus.STATUS_30_COMPLETED || latest.assigned_user_id !== userId) {
+      return;
+    }
+
+    await this.taskRepository.transaction(async (tx) => {
+      const newTask = await tx.task.create({
+        data: {
+          case_id: caseId,
+          tenant_id: tenantId,
+          name: TASK_NAMES.INVESTIGATE_CASE,
+          description: 'Continue investigation. The previous investigator lost access to this case before closing it.',
+          status: TaskStatus.STATUS_01_UNASSIGNED,
+          assigned_user_id: null,
+        },
+      });
+
+      await tx.case.update({
+        where: { case_id: caseId },
+        data: { status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT, case_owner_user_id: null, updated_at: new Date() },
+      });
+
+      await this.commentRepository.createComment(actorUserId, { caseId, taskId: newTask.task_id, note: reason, tenantId }, tx);
+    });
+
+    try {
+      await this.flowableService.handleCaseStatusChanged({ caseId, newStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT });
+    } catch (error) {
+      this.logger.warn(
+        `Flowable sync failed after re-queueing case ${caseId}: ${error instanceof Error ? error.message : String(error)}`,
+        TaskLifecycleService.name,
+      );
+    }
   }
 
   /** Shared DB transaction + Flowable/BPMN sync + audit comment behind both unassignTask and unassignTaskDueToAccessChange. */

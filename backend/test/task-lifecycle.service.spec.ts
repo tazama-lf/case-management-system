@@ -37,6 +37,7 @@ describe('TaskLifecycleService', () => {
     task: {
       findUnique: jest.fn(),
       update: jest.fn(),
+      create: jest.fn(),
     },
     case: {
       findUnique: jest.fn(),
@@ -909,6 +910,79 @@ describe('TaskLifecycleService', () => {
         expect.any(Error),
         TaskLifecycleService.name,
       );
+    });
+
+    describe('re-queueing a case whose investigation was completed but not closed', () => {
+      const completedTask = {
+        task_id: 20,
+        name: 'Investigate Case',
+        status: TaskStatus.STATUS_30_COMPLETED,
+        assigned_user_id: 'user1',
+        created_at: new Date('2026-01-02'),
+      };
+
+      beforeEach(() => {
+        mockPrisma.task.create.mockReset().mockResolvedValue({ task_id: 21 });
+        mockPrisma.case.update.mockClear();
+        mockFlowableService.handleCaseStatusChanged.mockClear();
+        mockCaseRepository.findCaseById.mockResolvedValue({ case_id: 1, status: CaseStatus.STATUS_20_IN_PROGRESS });
+        mockTaskRepository.findTasks.mockImplementation(async (where) =>
+          where.name === 'Investigate Case' ? [completedTask] : [],
+        );
+      });
+
+      it('creates a fresh unassigned task and sends the case back to READY_FOR_ASSIGNMENT', async () => {
+        await service.handleAccessRemoved(event);
+
+        expect(mockPrisma.task.create).toHaveBeenCalledWith({
+          data: expect.objectContaining({
+            case_id: 1,
+            name: 'Investigate Case',
+            status: TaskStatus.STATUS_01_UNASSIGNED,
+            assigned_user_id: null,
+          }),
+        });
+        expect(mockPrisma.case.update).toHaveBeenCalledWith({
+          where: { case_id: 1 },
+          data: expect.objectContaining({ status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT, case_owner_user_id: null }),
+        });
+        expect(mockCommentRepository.createComment).toHaveBeenCalledWith(
+          'supervisor1',
+          expect.objectContaining({ caseId: 1, taskId: 21, note: event.reason }),
+          expect.anything(),
+        );
+        expect(mockFlowableService.handleCaseStatusChanged).toHaveBeenCalledWith({
+          caseId: 1,
+          newStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+        });
+      });
+
+      it('does nothing when the case is not IN_PROGRESS', async () => {
+        mockCaseRepository.findCaseById.mockResolvedValue({ case_id: 1, status: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL });
+
+        await service.handleAccessRemoved(event);
+
+        expect(mockPrisma.task.create).not.toHaveBeenCalled();
+      });
+
+      it('does nothing when the completed task belonged to someone else', async () => {
+        mockTaskRepository.findTasks.mockResolvedValue([{ ...completedTask, assigned_user_id: 'other' }]);
+
+        await service.handleAccessRemoved(event);
+
+        expect(mockPrisma.task.create).not.toHaveBeenCalled();
+      });
+
+      it('does nothing when a newer investigation task already exists', async () => {
+        mockTaskRepository.findTasks.mockResolvedValue([
+          completedTask,
+          { ...completedTask, task_id: 22, status: TaskStatus.STATUS_10_ASSIGNED, assigned_user_id: 'user2', created_at: new Date('2026-01-03') },
+        ]);
+
+        await service.handleAccessRemoved(event);
+
+        expect(mockPrisma.task.create).not.toHaveBeenCalled();
+      });
     });
   });
 
