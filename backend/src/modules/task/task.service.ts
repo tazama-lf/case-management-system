@@ -114,14 +114,14 @@ export class TaskService {
 
         // this is the one place a task mutation
         // must actually be BLOCKED by the ACL, not just synced after the
-        // fact — a blacklisted user must not be able to get back onto a
+        // fact — a blocklisted user must not be able to get back onto a
         // case merely by being (re)assigned a task on it. Checked here,
         // before any write, so it aborts the transaction with nothing to
         // roll back yet. Only checked on a genuine assignment change (a
         // no-op resend of the same assignee, or the field being omitted
         // entirely, has nothing to check against).
         if (nextAssignedUserId && nextAssignedUserId !== existingTask.assigned_user_id) {
-          const blocked = await this.caseInvestigatorService.isBlacklisted(existingTask.case_id, nextAssignedUserId, tenantId);
+          const blocked = await this.caseInvestigatorService.isBlocklisted(existingTask.case_id, nextAssignedUserId, tenantId);
           if (blocked) {
             throw new ForbiddenException(await this.caseInvestigatorService.formatBlockedMessage(blocked));
           }
@@ -328,13 +328,13 @@ export class TaskService {
    * Write-side counterpart of the read gate, for the task mutation endpoints
    * (reassign/unassign/complete/PATCH). Called from the controller, not
    * from updateTask itself, because updateTask also has internal callers (draft
-   * abandon/complete, triage, closure) that run on cases with no whitelist rows.
+   * abandon/complete, triage, closure) that run on cases with no allowlist rows.
    *
    * Passes if the caller is the task's current assignee (a task's holder can always
    * act on it), OR is claiming: `newAssigneeId` is the caller and the task is
    * currently unassigned (claiming has to stay open - it's how an investigator
    * first gets onto a case). Otherwise the caller needs case access (supervisor/
-   * compliance bypass, or a live whitelist row) just to be considered - a caller
+   * compliance bypass, or a live allowlist row) just to be considered - a caller
    * with no access gets the usual NotFound. If the task is still unassigned, case
    * access alone is enough (e.g. assigning it to someone else). If it's already
    * held by someone else, only a supervisor/compliance officer may act on it too -
@@ -346,7 +346,7 @@ export class TaskService {
   async assertCanMutateTask(taskId: number, tenantId: string, userId: string, role: string, newAssigneeId?: string | null): Promise<void> {
     const task = await this.taskRepository.findTaskById(taskId, tenantId);
     if (!task) return;
-    const blocked = await this.caseInvestigatorService.isBlacklisted(task.case_id, userId, tenantId);
+    const blocked = await this.caseInvestigatorService.isBlocklisted(task.case_id, userId, tenantId);
     if (blocked) {
       throw new ForbiddenException(await this.caseInvestigatorService.formatBlockedMessage(blocked));
     }
@@ -399,8 +399,8 @@ export class TaskService {
       const previousAssignedUserId = existingTask.assigned_user_id;
 
       // block the claim if the claimant is
-      // blacklisted on this case, before writing anything.
-      const blocked = await this.caseInvestigatorService.isBlacklisted(existingTask.case_id, userId, tenantId);
+      // blocklisted on this case, before writing anything.
+      const blocked = await this.caseInvestigatorService.isBlocklisted(existingTask.case_id, userId, tenantId);
       if (blocked) {
         throw new ForbiddenException(await this.caseInvestigatorService.formatBlockedMessage(blocked));
       }

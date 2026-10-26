@@ -9,10 +9,10 @@ import {
 import { useInvestigatorSupervisorList } from '@/features/cases/hooks/useInvestigatorSupervisorList';
 import {
   useCaseInvestigators,
-  useCaseBlacklist,
+  useCaseBlocklist,
   useCaseAccessHistory,
   useRevokeInvestigator,
-  useBlacklistInvestigator,
+  useBlocklistInvestigator,
   useUnblockInvestigator,
 } from '@/features/cases/hooks/useCaseInvestigators';
 import type {
@@ -29,7 +29,7 @@ interface AccessControlTabProps {
 
 type PendingAction =
   | { type: 'revoke'; userId: string }
-  | { type: 'blacklist'; userId: string }
+  | { type: 'blocklist'; userId: string }
   | { type: 'unblock'; userId: string }
   | null;
 
@@ -50,8 +50,8 @@ const membershipBadgeClass = (
     ? 'bg-indigo-100 text-indigo-800'
     : 'bg-gray-100 text-gray-700';
 
-// Supervisors and compliance officers can appear on the whitelist (task assignment
-// doesn't filter by role) but can never be revoked or blacklisted - the backend refuses
+// Supervisors and compliance officers can appear on the allowlist (task assignment
+// doesn't filter by role) but can never be revoked or blocklisted - the backend refuses
 // them - so their rows get a note instead of actions that could only fail.
 const NON_REMOVABLE_ROLE_LABELS: Record<string, string> = {
   CMS_SUPERVISOR: 'Supervisor',
@@ -62,18 +62,18 @@ const AccessControlTab: React.FC<AccessControlTabProps> = ({ caseId }) => {
   const { getAssigneeFullName } = useInvestigatorSupervisorList();
 
   const {
-    data: whitelist = [],
-    isLoading: whitelistLoading,
-    isError: whitelistError,
-    refetch: refetchWhitelist,
+    data: allowlist = [],
+    isLoading: allowlistLoading,
+    isError: allowlistError,
+    refetch: refetchAllowlist,
   } = useCaseInvestigators(caseId);
 
   const {
-    data: blacklist = [],
-    isLoading: blacklistLoading,
-    isError: blacklistError,
-    refetch: refetchBlacklist,
-  } = useCaseBlacklist(caseId);
+    data: blocklist = [],
+    isLoading: blocklistLoading,
+    isError: blocklistError,
+    refetch: refetchBlocklist,
+  } = useCaseBlocklist(caseId);
 
   const {
     data: accessHistory,
@@ -83,18 +83,18 @@ const AccessControlTab: React.FC<AccessControlTabProps> = ({ caseId }) => {
   } = useCaseAccessHistory(caseId);
 
   const revokeInvestigator = useRevokeInvestigator(caseId);
-  const blacklistInvestigator = useBlacklistInvestigator(caseId);
+  const blocklistInvestigator = useBlocklistInvestigator(caseId);
   const unblockInvestigator = useUnblockInvestigator(caseId);
 
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
 
-  const liveWhitelist = useMemo(
-    () => whitelist.filter((row) => !row.revoked_at),
-    [whitelist],
+  const liveAllowlist = useMemo(
+    () => allowlist.filter((row) => !row.revoked_at),
+    [allowlist],
   );
-  const liveBlacklist = useMemo(
-    () => blacklist.filter((row) => !row.unblocked_at),
-    [blacklist],
+  const liveBlocklist = useMemo(
+    () => blocklist.filter((row) => !row.unblocked_at),
+    [blocklist],
   );
 
   // One timeline, newest first: revokes (including automatic ones) and unblocks together.
@@ -153,8 +153,8 @@ const AccessControlTab: React.FC<AccessControlTabProps> = ({ caseId }) => {
         userId: pendingAction.userId,
         reason,
       });
-    } else if (pendingAction.type === 'blacklist') {
-      await blacklistInvestigator.mutateAsync({
+    } else if (pendingAction.type === 'blocklist') {
+      await blocklistInvestigator.mutateAsync({
         userId: pendingAction.userId,
         reason,
       });
@@ -166,7 +166,7 @@ const AccessControlTab: React.FC<AccessControlTabProps> = ({ caseId }) => {
     }
   };
 
-  const renderWhitelistRow = (row: CaseInvestigator): React.ReactNode => (
+  const renderAllowlistRow = (row: CaseInvestigator): React.ReactNode => (
     <tr key={row.id} className="border-b border-gray-100 last:border-0">
       <td className="py-2 pr-4 text-sm text-gray-900">
         {resolveName(row.user_id)}
@@ -204,12 +204,12 @@ const AccessControlTab: React.FC<AccessControlTabProps> = ({ caseId }) => {
             <button
               type="button"
               onClick={() => {
-                setPendingAction({ type: 'blacklist', userId: row.user_id });
+                setPendingAction({ type: 'blocklist', userId: row.user_id });
               }}
               className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50"
             >
               <NoSymbolIcon className="h-4 w-4" />
-              Blacklist
+              Blocklist
             </button>
           </div>
         )}
@@ -219,7 +219,7 @@ const AccessControlTab: React.FC<AccessControlTabProps> = ({ caseId }) => {
 
   return (
     <div className="space-y-8">
-      {/* Whitelist — read-only; populated only by task assignment, there is no add action anywhere on this tab. */}
+      {/* Allowlist — read-only; populated only by task assignment, there is no add action anywhere on this tab. */}
       <section>
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-base font-semibold text-gray-900">
@@ -227,23 +227,23 @@ const AccessControlTab: React.FC<AccessControlTabProps> = ({ caseId }) => {
           </h3>
         </div>
 
-        {whitelistLoading && (
+        {allowlistLoading && (
           <div className="flex justify-center py-8">
             <LoadingSpinner size="md" />
           </div>
         )}
 
-        {whitelistError && (
+        {allowlistError && (
           <ErrorState
             title="Failed to load investigators"
             message="Could not load this case's access list."
             onRetry={() => {
-              void refetchWhitelist();
+              void refetchAllowlist();
             }}
           />
         )}
 
-        {!whitelistLoading && !whitelistError && liveWhitelist.length === 0 && (
+        {!allowlistLoading && !allowlistError && liveAllowlist.length === 0 && (
           <EmptyState
             icon="folder"
             title="No investigators on this case yet"
@@ -251,7 +251,7 @@ const AccessControlTab: React.FC<AccessControlTabProps> = ({ caseId }) => {
           />
         )}
 
-        {!whitelistLoading && !whitelistError && liveWhitelist.length > 0 && (
+        {!allowlistLoading && !allowlistError && liveAllowlist.length > 0 && (
           <div className="overflow-x-auto">
             <table className="min-w-full">
               <thead>
@@ -263,43 +263,43 @@ const AccessControlTab: React.FC<AccessControlTabProps> = ({ caseId }) => {
                   <th className="py-2 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody>{liveWhitelist.map(renderWhitelistRow)}</tbody>
+              <tbody>{liveAllowlist.map(renderAllowlistRow)}</tbody>
             </table>
           </div>
         )}
       </section>
 
-      {/* Blacklist */}
+      {/* Blocklist */}
       <section>
         <div className="flex items-center gap-2 mb-3">
           <ShieldExclamationIcon className="h-5 w-5 text-red-600" />
-          <h3 className="text-base font-semibold text-gray-900">Blacklist</h3>
+          <h3 className="text-base font-semibold text-gray-900">Blocklist</h3>
         </div>
 
-        {blacklistLoading && (
+        {blocklistLoading && (
           <div className="flex justify-center py-8">
             <LoadingSpinner size="md" />
           </div>
         )}
 
-        {blacklistError && (
+        {blocklistError && (
           <ErrorState
-            title="Failed to load blacklist"
-            message="Could not load this case's blacklist."
+            title="Failed to load blocklist"
+            message="Could not load this case's blocklist."
             onRetry={() => {
-              void refetchBlacklist();
+              void refetchBlocklist();
             }}
           />
         )}
 
-        {!blacklistLoading && !blacklistError && liveBlacklist.length === 0 && (
+        {!blocklistLoading && !blocklistError && liveBlocklist.length === 0 && (
           <EmptyState
             icon="exclamation"
-            title="Nobody is blacklisted on this case"
+            title="Nobody is blocklisted on this case"
           />
         )}
 
-        {!blacklistLoading && !blacklistError && liveBlacklist.length > 0 && (
+        {!blocklistLoading && !blocklistError && liveBlocklist.length > 0 && (
           <div className="overflow-x-auto">
             <table className="min-w-full">
               <thead>
@@ -312,7 +312,7 @@ const AccessControlTab: React.FC<AccessControlTabProps> = ({ caseId }) => {
                 </tr>
               </thead>
               <tbody>
-                {liveBlacklist.map((row) => (
+                {liveBlocklist.map((row) => (
                   <tr
                     key={row.id}
                     className="border-b border-gray-100 last:border-0"
@@ -454,18 +454,18 @@ const AccessControlTab: React.FC<AccessControlTabProps> = ({ caseId }) => {
       />
 
       <ReasonRequiredModal
-        open={pendingAction?.type === 'blacklist'}
+        open={pendingAction?.type === 'blocklist'}
         onClose={closePendingAction}
         onConfirm={handleConfirmPendingAction}
-        title="Blacklist Investigator"
+        title="Blocklist Investigator"
         subtitle={pendingAction ? resolveName(pendingAction.userId) : undefined}
         description="This revokes any current access and refuses future task assignments for this person on this case, until a supervisor unblocks them."
         icon={<NoSymbolIcon className="h-5 w-5 text-red-600" />}
         iconWrapperClassName="bg-red-100"
-        reasonLabel="Reason for blacklisting"
+        reasonLabel="Reason for blocklisting"
         placeholder="e.g. conflict of interest, under investigation, HR flag, legal exclusion."
-        confirmLabel="Blacklist"
-        confirmingLabel="Blacklisting…"
+        confirmLabel="Blocklist"
+        confirmingLabel="Blocklisting…"
         confirmButtonClassName="bg-red-600 hover:bg-red-700 focus:ring-red-500"
       />
 
@@ -475,7 +475,7 @@ const AccessControlTab: React.FC<AccessControlTabProps> = ({ caseId }) => {
         onConfirm={handleConfirmPendingAction}
         title="Unblock Investigator"
         subtitle={pendingAction ? resolveName(pendingAction.userId) : undefined}
-        description="This does not grant access back — a new task assignment is still required for this person to reappear on the whitelist."
+        description="This does not grant access back — a new task assignment is still required for this person to reappear on the allowlist."
         icon={<LockOpenIcon className="h-5 w-5 text-emerald-600" />}
         iconWrapperClassName="bg-emerald-100"
         reasonLabel="Reason for unblocking"

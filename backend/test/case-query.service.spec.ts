@@ -136,9 +136,9 @@ describe('CaseQueryService', () => {
 
     const mockCaseInvestigatorService = {
       getAccessibleCaseIds: jest.fn().mockResolvedValue([]),
-      getBlacklistedCaseIds: jest.fn().mockResolvedValue([]),
+      getBlocklistedCaseIds: jest.fn().mockResolvedValue([]),
       getRestrictedCaseIds: jest.fn().mockResolvedValue([]),
-      isBlacklisted: jest.fn().mockResolvedValue(null),
+      isBlocklisted: jest.fn().mockResolvedValue(null),
     } as any;
 
     const module: TestingModule = await Test.createTestingModule({
@@ -616,9 +616,9 @@ describe('CaseQueryService', () => {
       expect(visibilityOr).toContainEqual({ case_id: { in: [42, 43] } });
     });
 
-    it('keeps cases the investigator was revoked from in their queue, and excludes only the blacklisted ones', async () => {
+    it('keeps cases the investigator was revoked from in their queue, and excludes only the blocklisted ones', async () => {
       caseInvestigatorService.getAccessibleCaseIds.mockResolvedValueOnce([]);
-      caseInvestigatorService.getBlacklistedCaseIds.mockResolvedValueOnce([7]);
+      caseInvestigatorService.getBlocklistedCaseIds.mockResolvedValueOnce([7]);
       caseInvestigatorService.getRestrictedCaseIds.mockResolvedValueOnce([843]);
       setupGetAllCasesMocks();
 
@@ -657,7 +657,7 @@ describe('CaseQueryService', () => {
       expect(normal.alert.transaction).toEqual({ keep: true });
     });
 
-    it('does not mark a revoked case restricted while it is open for claiming - anyone not blacklisted may claim it', async () => {
+    it('does not mark a revoked case restricted while it is open for claiming - anyone not blocklisted may claim it', async () => {
       caseInvestigatorService.getAccessibleCaseIds.mockResolvedValueOnce([]);
       caseInvestigatorService.getRestrictedCaseIds.mockResolvedValueOnce([843]);
       setupGetAllCasesMocks();

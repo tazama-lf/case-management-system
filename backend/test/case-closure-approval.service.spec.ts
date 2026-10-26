@@ -26,7 +26,7 @@ describe('CaseClosureApprovalService', () => {
   let loggingOrchestrationService: jest.Mocked<LoggingOrchestrationService>;
   let logger: jest.Mocked<LoggerService>;
   let taskValidationUtil: any;
-  let caseInvestigatorService: { isBlacklisted: jest.Mock; grant: jest.Mock };
+  let caseInvestigatorService: { isBlocklisted: jest.Mock; grant: jest.Mock };
 
   const mockCase = {
     case_id: 1,
@@ -194,7 +194,7 @@ describe('CaseClosureApprovalService', () => {
         { provide: TaskValidationUtil, useValue: mockTaskValidationUtil },
         {
           provide: CaseInvestigatorService,
-          useValue: { isBlacklisted: jest.fn().mockResolvedValue(null), grant: jest.fn().mockResolvedValue(undefined) },
+          useValue: { isBlocklisted: jest.fn().mockResolvedValue(null), grant: jest.fn().mockResolvedValue(undefined) },
         },
       ],
     }).compile();
@@ -970,7 +970,7 @@ describe('CaseClosureApprovalService', () => {
       notificationService.sendNotification.mockResolvedValue({} as any);
     };
 
-    it('gives the case back to the original investigator when they are not blocked (a revoked investigator is fine), and restores their whitelist row', async () => {
+    it('gives the case back to the original investigator when they are not blocked (a revoked investigator is fine), and restores their allowlist row', async () => {
       arrange();
       caseRepository.rejectClosureTask.mockResolvedValue({
         updatedCase: { ...mockCase, status: CaseStatus.STATUS_20_IN_PROGRESS },
@@ -990,7 +990,7 @@ describe('CaseClosureApprovalService', () => {
 
     it('puts the case back in the queue, unassigned, when the original investigator is blocked on it', async () => {
       arrange();
-      caseInvestigatorService.isBlacklisted.mockResolvedValueOnce({ id: 1, blocked_by: 'supervisor-9', block_reason: 'conflict' });
+      caseInvestigatorService.isBlocklisted.mockResolvedValueOnce({ id: 1, blocked_by: 'supervisor-9', block_reason: 'conflict' });
       caseRepository.rejectClosureTask.mockResolvedValue({
         updatedCase: { ...mockCase, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT },
         completedTask: { task_id: 2, status: TaskStatus.STATUS_30_COMPLETED },
@@ -1013,7 +1013,7 @@ describe('CaseClosureApprovalService', () => {
 
     it('does not restore access to, or notify, a blocked investigator', async () => {
       arrange();
-      caseInvestigatorService.isBlacklisted.mockResolvedValueOnce({ id: 1, blocked_by: 'supervisor-9', block_reason: 'conflict' });
+      caseInvestigatorService.isBlocklisted.mockResolvedValueOnce({ id: 1, blocked_by: 'supervisor-9', block_reason: 'conflict' });
       caseRepository.rejectClosureTask.mockResolvedValue({
         updatedCase: { ...mockCase, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT },
         completedTask: { task_id: 2, status: TaskStatus.STATUS_30_COMPLETED },
@@ -1036,10 +1036,10 @@ describe('CaseClosureApprovalService', () => {
 
       await service.rejectCaseClosure(1, 'Need more evidence for fraud confirmation', 'supervisor-123', 'tenant-123');
 
-      expect(caseInvestigatorService.isBlacklisted).toHaveBeenCalledWith(1, 'investigator-123', 'tenant-123');
+      expect(caseInvestigatorService.isBlocklisted).toHaveBeenCalledWith(1, 'investigator-123', 'tenant-123');
     });
 
-    it('still completes the rejection when restoring the whitelist row fails', async () => {
+    it('still completes the rejection when restoring the allowlist row fails', async () => {
       arrange();
       caseInvestigatorService.grant.mockRejectedValueOnce(new Error('acl down'));
       caseRepository.rejectClosureTask.mockResolvedValue({

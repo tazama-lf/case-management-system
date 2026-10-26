@@ -40,12 +40,12 @@ export class TaskLifecycleService {
 
   /**
    *the one place a task mutation must actually be
-   * BLOCKED by the ACL — a blacklisted user must not get back onto a case
+   * BLOCKED by the ACL - a blocklisted user must not get back onto a case
    * merely by being (re)assigned a task on it. Checked before the write, so
    * there's nothing to roll back when it throws.
    */
-  private async assertNotBlacklisted(caseId: number, userId: string, tenantId: string): Promise<void> {
-    const blocked = await this.caseInvestigatorService.isBlacklisted(caseId, userId, tenantId);
+  private async assertNotBlocklisted(caseId: number, userId: string, tenantId: string): Promise<void> {
+    const blocked = await this.caseInvestigatorService.isBlocklisted(caseId, userId, tenantId);
     if (blocked) {
       throw new ForbiddenException(await this.caseInvestigatorService.formatBlockedMessage(blocked));
     }
@@ -66,14 +66,14 @@ export class TaskLifecycleService {
     const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: existingCase.status });
     if (!t2.allowed) throw new ForbiddenException(t2.reason);
     // Assignment grants case ACL membership, so the caller must already have access to the case
-    // (live whitelist row, or the case is still open for claiming). Supervisors/compliance bypass.
+    // (live allowlist row, or the case is still open for claiming). Supervisors/compliance bypass.
     await this.caseInvestigatorService.assertReadAccess(existingTask.case_id, userId, tenantId, rbacRole);
     // assign is for unassigned tasks (claim / first assignment); taking over a held task goes through
     // reassign. Refusing here keeps self-assign open without letting assign act as an ungated reassign.
     if (existingTask.assigned_user_id) {
       throw new BadRequestException(`Task ${taskId} is already assigned. Use reassign to change its assignee.`);
     }
-    await this.assertNotBlacklisted(existingTask.case_id, assignedUserId, tenantId);
+    await this.assertNotBlocklisted(existingTask.case_id, assignedUserId, tenantId);
 
     const result = await this.taskRepository.transaction(async (tx) => {
       const updatedTask = await tx.task.update({
@@ -169,7 +169,7 @@ export class TaskLifecycleService {
     // Same gate as assign: the caller must have full access to the case (revoked/no access is refused),
     // not just be free of a block. Supervisors/compliance bypass.
     await this.caseInvestigatorService.assertReadAccess(existingTask.case_id, actorUserId, tenantId, rbacRole);
-    await this.assertNotBlacklisted(existingTask.case_id, assignedUserId, tenantId);
+    await this.assertNotBlocklisted(existingTask.case_id, assignedUserId, tenantId);
 
     const result = await this.taskRepository.transaction(async (tx) => {
       const updatedTask = await tx.task.update({
@@ -308,8 +308,8 @@ export class TaskLifecycleService {
 
   /**
    * Unassigns a task because its assignee lost case access (revoke/
-   * blacklist), not via the guarded unassign API. Skips syncCaseAcl (would
-   * re-enter the in-progress revoke/blacklist) and RBAC (no
+   * blocklist), not via the guarded unassign API. Skips syncCaseAcl (would
+   * re-enter the in-progress revoke/blocklist) and RBAC (no
    * AuthenticatedUser here). No-ops if the task is gone, unassigned, or completed.
    */
   async unassignTaskDueToAccessChange(taskId: number, actorUserId: string, tenantId: string, reason: string): Promise<void> {
@@ -361,7 +361,7 @@ export class TaskLifecycleService {
   }
 
   /**
-   * Reacts to CaseInvestigatorService.revoke()/blacklist() via an event
+   * Reacts to CaseInvestigatorService.revoke()/blocklist() via an event
    * (a direct injection would create a circular module dependency).
    * Unassigns every live task the user held on the case.
    */

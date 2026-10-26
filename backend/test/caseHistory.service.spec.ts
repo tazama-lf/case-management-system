@@ -332,7 +332,7 @@ describe('CaseHistoryService', () => {
       expect(where).toEqual({ tenant_id: tenantId, case_id: { in: [456, 789] } });
     });
 
-    it('should return nothing (empty IN list) for an investigator with no whitelisted cases', async () => {
+    it('should return nothing (empty IN list) for an investigator with no allowlisted cases', async () => {
       caseInvestigatorService.getCaseIdScope.mockResolvedValue([]);
       prismaService.caseHistory.findMany.mockResolvedValue([]);
 

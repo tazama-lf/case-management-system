@@ -1,12 +1,12 @@
-// Case-level ACL (whitelist/blacklist) API
+// Case-level ACL (allowlist/blocklist) API
 //
 /* eslint-disable @typescript-eslint/class-methods-use-this -- Service methods are called on instances, matching evidenceService.ts's convention */
 import apiClient from '../../../shared/services/apiClient';
 import type {
   CaseAccessHistory,
   CaseInvestigator,
-  CaseInvestigatorBlacklistEntry,
-  BlacklistCaseInvestigatorDto,
+  CaseInvestigatorBlocklistEntry,
+  BlocklistCaseInvestigatorDto,
 } from '../types/investigator.types';
 
 export class InvestigatorService {
@@ -23,16 +23,16 @@ export class InvestigatorService {
     }
   }
 
-  async getCaseBlacklist(
+  async getCaseBlocklist(
     caseId: number,
-  ): Promise<CaseInvestigatorBlacklistEntry[]> {
+  ): Promise<CaseInvestigatorBlocklistEntry[]> {
     try {
-      const response = await apiClient.get<CaseInvestigatorBlacklistEntry[]>(
-        `${this.baseUrl}/${caseId}/blacklist`,
+      const response = await apiClient.get<CaseInvestigatorBlocklistEntry[]>(
+        `${this.baseUrl}/${caseId}/blocklist`,
       );
       return Array.isArray(response) ? response : [];
     } catch (error) {
-      throw this.handleError(error, 'get case blacklist');
+      throw this.handleError(error, 'get case blocklist');
     }
   }
 
@@ -67,7 +67,7 @@ export class InvestigatorService {
     }
   }
 
-  // No addInvestigator. The whitelist is populated exclusively by task
+  // No addInvestigator. The allowlist is populated exclusively by task
   // assignment; nobody adds to it by hand, supervisor
   // included.
 
@@ -86,17 +86,17 @@ export class InvestigatorService {
     }
   }
 
-  async blacklistInvestigator(
+  async blocklistInvestigator(
     caseId: number,
-    dto: BlacklistCaseInvestigatorDto,
-  ): Promise<CaseInvestigatorBlacklistEntry> {
+    dto: BlocklistCaseInvestigatorDto,
+  ): Promise<CaseInvestigatorBlocklistEntry> {
     try {
-      return await apiClient.post<CaseInvestigatorBlacklistEntry>(
-        `${this.baseUrl}/${caseId}/blacklist`,
+      return await apiClient.post<CaseInvestigatorBlocklistEntry>(
+        `${this.baseUrl}/${caseId}/blocklist`,
         dto,
       );
     } catch (error) {
-      throw this.handleError(error, 'blacklist investigator');
+      throw this.handleError(error, 'blocklist investigator');
     }
   }
 
@@ -107,7 +107,7 @@ export class InvestigatorService {
   ): Promise<void> {
     try {
       await apiClient.delete<undefined>(
-        `${this.baseUrl}/${caseId}/blacklist/${userId}`,
+        `${this.baseUrl}/${caseId}/blocklist/${userId}`,
         { body: JSON.stringify({ reason }) },
       );
     } catch (error) {

@@ -27,7 +27,7 @@ const req = {
 
 /**
  * The write-side ACL gate lives in the controller (updateTask has internal callers that run on
- * draft cases with no whitelist rows), so what matters here is: each mutation endpoint calls
+ * draft cases with no allowlist rows), so what matters here is: each mutation endpoint calls
  * assertCanMutateTask BEFORE touching the write path, and a rejection stops it cold.
  */
 describe('TaskController - mutation ACL gate', () => {

@@ -104,8 +104,8 @@ describe('TaskLifecycleService', () => {
   };
 
   const mockCaseInvestigatorService = {
-    isBlacklisted: jest.fn().mockResolvedValue(null),
-    formatBlockedMessage: jest.fn().mockResolvedValue('User is blacklisted on this case (blocked by Sam Visor at 2026-01-01T00:00:00.000Z: conflict of interest) — unblock first.'),
+    isBlocklisted: jest.fn().mockResolvedValue(null),
+    formatBlockedMessage: jest.fn().mockResolvedValue('User is blocklisted on this case (blocked by Sam Visor at 2026-01-01T00:00:00.000Z: conflict of interest) — unblock first.'),
     assertReadAccess: jest.fn().mockResolvedValue(undefined),
     syncTaskAssignment: jest.fn().mockResolvedValue(undefined),
   };
@@ -216,11 +216,11 @@ describe('TaskLifecycleService', () => {
     caseInvestigatorService = module.get(CaseInvestigatorService);
 
     // jest.clearAllMocks() in afterEach clears call history but NOT
-    // mockResolvedValue overrides — a test that overrides isBlacklisted/
-    // syncTaskAssignment (e.g. to simulate a blacklist hit or a sync
+    // mockResolvedValue overrides — a test that overrides isBlocklisted/
+    // syncTaskAssignment (e.g. to simulate a blocklist hit or a sync
     // failure) would otherwise leak that override into every later test.
     // Restore the known-good defaults explicitly before each test.
-    mockCaseInvestigatorService.isBlacklisted.mockResolvedValue(null);
+    mockCaseInvestigatorService.isBlocklisted.mockResolvedValue(null);
     mockCaseInvestigatorService.assertReadAccess.mockResolvedValue(undefined);
     mockCaseInvestigatorService.syncTaskAssignment.mockResolvedValue(undefined);
   });
@@ -295,10 +295,10 @@ describe('TaskLifecycleService', () => {
       expect(mockCaseInvestigatorService.syncTaskAssignment).not.toHaveBeenCalled();
     });
 
-    it('should refuse to assign to a user blacklisted on this case, without writing anything', async () => {
+    it('should refuse to assign to a user blocklisted on this case, without writing anything', async () => {
       mockTaskRepository.findTaskById.mockResolvedValue(existingTask);
       mockCaseRepository.findCaseById.mockResolvedValue(existingCase);
-      mockCaseInvestigatorService.isBlacklisted.mockResolvedValue({
+      mockCaseInvestigatorService.isBlocklisted.mockResolvedValue({
         blocked_by: 'supervisor1',
         blocked_at: new Date('2026-01-01T00:00:00Z'),
         block_reason: 'conflict of interest',
@@ -570,10 +570,10 @@ describe('TaskLifecycleService', () => {
       expect(mockCaseInvestigatorService.syncTaskAssignment).not.toHaveBeenCalled();
     });
 
-    it('should refuse to reassign to a user blacklisted on this case, without writing anything', async () => {
+    it('should refuse to reassign to a user blocklisted on this case, without writing anything', async () => {
       mockTaskRepository.findTaskById.mockResolvedValue(existingTask);
       mockCaseRepository.findCaseById.mockResolvedValue(existingCase);
-      mockCaseInvestigatorService.isBlacklisted.mockResolvedValue({
+      mockCaseInvestigatorService.isBlocklisted.mockResolvedValue({
         blocked_by: 'supervisor1',
         blocked_at: new Date('2026-01-01T00:00:00Z'),
         block_reason: 'conflict of interest',
@@ -790,9 +790,9 @@ describe('TaskLifecycleService', () => {
   });
 
   describe('unassignTaskDueToAccessChange', () => {
-    // Called by CaseInvestigatorService.revoke/blacklist as a cascade -
+    // Called by CaseInvestigatorService.revoke/blocklist as a cascade -
     // no RBAC/AuthenticatedUser involved, and deliberately does not call
-    // syncCaseAcl (that would re-enter the in-progress revoke/blacklist).
+    // syncCaseAcl (that would re-enter the in-progress revoke/blocklist).
     const existingTask = {
       task_id: 1,
       case_id: 1,
@@ -827,7 +827,7 @@ describe('TaskLifecycleService', () => {
       );
     });
 
-    it('does not call syncCaseAcl / CaseInvestigatorService - that would re-enter the in-progress revoke/blacklist', async () => {
+    it('does not call syncCaseAcl / CaseInvestigatorService - that would re-enter the in-progress revoke/blocklist', async () => {
       mockTaskRepository.findTaskById.mockResolvedValue(existingTask);
       mockPrisma.task.update.mockResolvedValue({ ...existingTask, assigned_user_id: null, status: TaskStatus.STATUS_01_UNASSIGNED });
       mockPrisma.case.update.mockResolvedValue({ case_id: 1, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT });
@@ -863,7 +863,7 @@ describe('TaskLifecycleService', () => {
 
   describe('handleAccessRemoved', () => {
     // The @OnEvent('case-investigator.access-removed') listener -
-    // CaseInvestigatorService.revoke()/blacklist() emit this rather than
+    // CaseInvestigatorService.revoke()/blocklist() emit this rather than
     // calling TaskLifecycleService directly (see the module-level comment
     // on case-investigator.module.ts for why). This is the other half of
     // that cascade: find every live task the target held on the case and

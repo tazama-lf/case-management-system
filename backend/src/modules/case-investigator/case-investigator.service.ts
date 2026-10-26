@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { CaseInvestigator, CaseInvestigatorBlacklist, CaseInvestigatorMembership, CaseStatus, TaskStatus } from '@prisma/client-cms';
+import { CaseInvestigator, CaseInvestigatorBlocklist, CaseInvestigatorMembership, CaseStatus, TaskStatus } from '@prisma/client-cms';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { LoggingOrchestrationService } from '../logging-orchestration/logging-orchestration.service';
 import { CacheService } from '../shared/cache.service';
@@ -18,22 +18,22 @@ import { isAclBypassRole } from '../../utils/cms-roles';
 
 const INVESTIGATOR_ROLE = 'CMS_INVESTIGATOR';
 
-// Supervisors and compliance officers bypass the ACL entirely (hasAccess), so a whitelist row for
+// Supervisors and compliance officers bypass the ACL entirely (hasAccess), so an allowlist row for
 // them means nothing. They are no longer given one; rows from before this rule are left as they are.
 const UNIQUE_CONSTRAINT_VIOLATION = 'P2002';
 
 // Unclaimed cases every investigator can see and claim (same set ReportsService treats as visible to all).
 const OPEN_FOR_CLAIM_STATUSES: CaseStatus[] = [CaseStatus.STATUS_00_DRAFT, CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT];
 
-/** A whitelist row plus its user's role (null = unknown). */
+/** An allowlist row plus its user's role (null = unknown). */
 export type CaseInvestigatorWithRole = CaseInvestigator & { user_role: string | null };
 
 // Case-level ACL — The one place membership logic lives; every other module that needs to
 // know "can this investigator see this case" imports CaseInvestigatorModule
 // and calls into this service rather than querying case_investigators /
-// case_investigators_blacklist directly.
+// case_investigators_blocklist directly.
 //
-// Access is driven exclusively by task assignment. There is no manual-add path on the whitelist
+// Access is driven exclusively by task assignment. There is no manual-add path on the allowlist
 // at all: `grant`/`demote`/`syncTaskAssignment` are called internally by
 // the task lifecycle;
 
@@ -47,7 +47,7 @@ export interface SyncTaskAssignmentParams {
 /**
  * FULL: may work the case. RESTRICTED: was part of the case and later lost access (revoked, by a
  * supervisor or by being reassigned off it) - still sees it in their queue, its details and its task
- * log, but not the investigation material. NONE: no access, including anyone blacklisted on it.
+ * log, but not the investigation material. NONE: no access, including anyone blocklisted on it.
  */
 export type CaseAccessLevel = 'FULL' | 'RESTRICTED' | 'NONE';
 
@@ -72,9 +72,9 @@ export class CaseInvestigatorService {
   ) {}
 
   /**
-   * Only CMS_INVESTIGATOR targets may be revoked/blacklisted - supervisors/
+   * Only CMS_INVESTIGATOR targets may be revoked/blocklisted - supervisors/
    * compliance officers bypass the ACL in hasAccess() regardless, so
-   * blacklisting one would leave a misleading row with no real effect.
+   * blocklisting one would leave a misleading row with no real effect.
    * Role comes from CacheService's Redis cache, not a live call. A cache
    * miss means unknown, not "safe" - fail closed.
    */
@@ -83,12 +83,12 @@ export class CaseInvestigatorService {
 
     if (role === null) {
       throw new ForbiddenException(
-        `Could not verify the role of user ${userId} (not found in the user cache) - refusing to revoke or blacklist until their role can be confirmed.`,
+        `Could not verify the role of user ${userId} (not found in the user cache) - refusing to revoke or blocklist until their role can be confirmed.`,
       );
     }
 
     if (role !== INVESTIGATOR_ROLE) {
-      throw new ForbiddenException(`Cannot revoke or blacklist a ${role} - only investigators can be removed from a case.`);
+      throw new ForbiddenException(`Cannot revoke or blocklist a ${role} - only investigators can be removed from a case.`);
     }
   }
 
@@ -98,7 +98,7 @@ export class CaseInvestigatorService {
    * TaskLifecycleService directly, to avoid a circular module dependency
    * (see case-investigator.module.ts). emitAsync so this resolves only
    * once the listener finishes; its failure is still caught here too, so
-   * an already-successful revoke/blacklist can't fail on cleanup.
+   * an already-successful revoke/blocklist can't fail on cleanup.
    */
   private async unassignLiveTasks(caseId: number, userId: string, tenantId: string, actorUserId: string, reason: string): Promise<void> {
     try {
@@ -120,7 +120,7 @@ export class CaseInvestigatorService {
 
   /**
    * Tells connected dashboards (via CaseEventsGateway) that who can see this case changed, so the
-   * affected investigator's queue refreshes without a manual reload. Without it a blacklist or revoke
+   * affected investigator's queue refreshes without a manual reload. Without it a blocklist or revoke
    * on a case with no task to unassign - which is the only thing that otherwise emits a case event -
    * leaves the case sitting in their list until they reload. Never throws: the access change itself
    * has already been committed.
@@ -135,10 +135,10 @@ export class CaseInvestigatorService {
 
   /**
    * true immediately for CMS_SUPERVISOR/CMS_COMPLIANCE_OFFICER (pure
-   * bypass); for CMS_INVESTIGATOR, true iff a live whitelist row exists,
+   * bypass); for CMS_INVESTIGATOR, true iff a live allowlist row exists,
    * or the case is still open for claiming (DRAFT / READY_FOR_ASSIGNMENT —
-   * nobody has been assigned yet, so no whitelist row can exist) and the
-   * user isn't blacklisted on it.
+   * nobody has been assigned yet, so no allowlist row can exist) and the
+   * user isn't blocklisted on it.
    */
   async hasAccess(caseId: number, userId: string, tenantId: string, role: string): Promise<boolean> {
     if (isAclBypassRole(role)) {
@@ -168,14 +168,14 @@ export class CaseInvestigatorService {
       return await this.hasCreatorAccess(caseId, userId, tenantId);
     }
 
-    return (await this.isBlacklisted(caseId, userId, tenantId)) === null;
+    return (await this.isBlocklisted(caseId, userId, tenantId)) === null;
   }
 
   /**
-   * FULL when hasAccess; RESTRICTED when the user has a revoked whitelist row on the case (manual or
-   * automatic) and is not blacklisted on it; NONE otherwise. A revoke removes the right to work the
+   * FULL when hasAccess; RESTRICTED when the user has a revoked allowlist row on the case (manual or
+   * automatic) and is not blocklisted on it; NONE otherwise. A revoke removes the right to work the
    * case, not the fact that the person was on it, so they keep a read-only view of its details and
-   * task log. A blacklist removes the case from them entirely.
+   * task log. A blocklist removes the case from them entirely.
    */
   async getAccessLevel(caseId: number, userId: string, tenantId: string, role: string): Promise<CaseAccessLevel> {
     if (await this.hasAccess(caseId, userId, tenantId, role)) {
@@ -186,7 +186,7 @@ export class CaseInvestigatorService {
   }
 
   private async hasRestrictedAccess(caseId: number, userId: string, tenantId: string): Promise<boolean> {
-    if ((await this.isBlacklisted(caseId, userId, tenantId)) !== null) {
+    if ((await this.isBlocklisted(caseId, userId, tenantId)) !== null) {
       return false;
     }
 
@@ -211,9 +211,9 @@ export class CaseInvestigatorService {
   }
 
   /**
-   * The user created this case (case_creator_user_id) and has not been blacklisted or revoked from
+   * The user created this case (case_creator_user_id) and has not been blocklisted or revoked from
    * it. Covers cases that sit pending creation approval: the creator holds no task on them yet (the
-   * only task is the supervisor's unassigned "Approve Case Creation"), so neither a whitelist row nor
+   * only task is the supervisor's unassigned "Approve Case Creation"), so neither an allowlist row nor
    * an open-for-claim status would otherwise let them see the case they just submitted.
    */
   private async hasCreatorAccess(caseId: number, userId: string, tenantId: string): Promise<boolean> {
@@ -225,7 +225,7 @@ export class CaseInvestigatorService {
       return false;
     }
 
-    if ((await this.isBlacklisted(caseId, userId, tenantId)) !== null) {
+    if ((await this.isBlocklisted(caseId, userId, tenantId)) !== null) {
       return false;
     }
 
@@ -236,7 +236,7 @@ export class CaseInvestigatorService {
     return revoked === null;
   }
 
-  /** Ids of cases this user created, minus any they were blacklisted or revoked from. */
+  /** Ids of cases this user created, minus any they were blocklisted or revoked from. */
   private async getCreatedCaseIds(userId: string, tenantId: string): Promise<number[]> {
     const created = await this.prismaService.case.findMany({
       where: { tenant_id: tenantId, case_creator_user_id: userId },
@@ -248,7 +248,7 @@ export class CaseInvestigatorService {
 
     const caseIds = created.map((row) => row.case_id);
     const [blocked, revoked] = await Promise.all([
-      this.prismaService.caseInvestigatorBlacklist.findMany({
+      this.prismaService.caseInvestigatorBlocklist.findMany({
         where: { tenant_id: tenantId, user_id: userId, case_id: { in: caseIds }, unblocked_at: null },
         select: { case_id: true },
       }),
@@ -274,7 +274,7 @@ export class CaseInvestigatorService {
   }
 
   /**
-   * Case ids this user may open on the strength of their own record, tenant-scoped: live whitelist
+   * Case ids this user may open on the strength of their own record, tenant-scoped: live allowlist
    * rows plus cases they created (see hasCreatorAccess). For list-filtering call sites.
    */
   async getAccessibleCaseIds(userId: string, tenantId: string): Promise<number[]> {
@@ -294,10 +294,10 @@ export class CaseInvestigatorService {
   /**
    * For tenant-wide list endpoints that have no single caseId to assert on.
    * Returns `null` for CMS_SUPERVISOR/CMS_COMPLIANCE_OFFICER (same bypass as
-   * hasAccess — no filter needed). CMS_INVESTIGATOR gets its live whitelist
+   * hasAccess — no filter needed). CMS_INVESTIGATOR gets its live allowlist
    * case_ids plus every case still open for claiming (DRAFT /
-   * READY_FOR_ASSIGNMENT) that it isn't blacklisted on, mirroring hasAccess.
-   * Any other role fails closed to its own whitelist rather than seeing the
+   * READY_FOR_ASSIGNMENT) that it isn't blocklisted on, mirroring hasAccess.
+   * Any other role fails closed to its own allowlist rather than seeing the
    * whole tenant. `includeRestricted` adds the cases the user was revoked from, for the
    * history logs a revoked investigator may still read.
    */
@@ -306,26 +306,26 @@ export class CaseInvestigatorService {
       return null;
     }
 
-    const whitelisted = await this.getAccessibleCaseIds(userId, tenantId);
+    const allowlisted = await this.getAccessibleCaseIds(userId, tenantId);
     if (role !== 'CMS_INVESTIGATOR') {
-      return whitelisted;
+      return allowlisted;
     }
 
     if (includeRestricted) {
-      whitelisted.push(...(await this.getRestrictedCaseIds(userId, tenantId)));
+      allowlisted.push(...(await this.getRestrictedCaseIds(userId, tenantId)));
     }
 
-    const blacklisted = await this.getBlacklistedCaseIds(userId, tenantId);
+    const blocklisted = await this.getBlocklistedCaseIds(userId, tenantId);
     const openCases = await this.prismaService.case.findMany({
       where: {
         tenant_id: tenantId,
         status: { in: OPEN_FOR_CLAIM_STATUSES },
-        ...(blacklisted.length > 0 && { case_id: { notIn: blacklisted } }),
+        ...(blocklisted.length > 0 && { case_id: { notIn: blocklisted } }),
       },
       select: { case_id: true },
     });
 
-    return [...new Set([...whitelisted, ...openCases.map((row) => row.case_id)])];
+    return [...new Set([...allowlisted, ...openCases.map((row) => row.case_id)])];
   }
 
   /**
@@ -333,9 +333,9 @@ export class CaseInvestigatorService {
    * id), when, and why. The name comes from the cached user directory; if the blocker isn't in it
    * the id is shown rather than nothing.
    */
-  async formatBlockedMessage(blocked: CaseInvestigatorBlacklist): Promise<string> {
+  async formatBlockedMessage(blocked: CaseInvestigatorBlocklist): Promise<string> {
     const blockedBy = await this.resolveUserName(blocked.blocked_by);
-    return `User is blacklisted on this case (blocked by ${blockedBy} at ${blocked.blocked_at.toISOString()}: ${blocked.block_reason}) — unblock first.`;
+    return `User is blocklisted on this case (blocked by ${blockedBy} at ${blocked.blocked_at.toISOString()}: ${blocked.block_reason}) — unblock first.`;
   }
 
   private async resolveUserName(userId: string): Promise<string> {
@@ -348,24 +348,24 @@ export class CaseInvestigatorService {
     }
   }
 
-  /** The live blacklist row for (case, user), if any — lets refusal messages name who blocked and when. */
-  async isBlacklisted(caseId: number, userId: string, tenantId: string): Promise<CaseInvestigatorBlacklist | null> {
-    return await this.prismaService.caseInvestigatorBlacklist.findFirst({
+  /** The live blocklist row for (case, user), if any — lets refusal messages name who blocked and when. */
+  async isBlocklisted(caseId: number, userId: string, tenantId: string): Promise<CaseInvestigatorBlocklist | null> {
+    return await this.prismaService.caseInvestigatorBlocklist.findFirst({
       where: { case_id: caseId, user_id: userId, tenant_id: tenantId, unblocked_at: null },
     });
   }
 
   /**
-   * Bulk counterpart to `isBlacklisted`, for list-filtering call sites
+   * Bulk counterpart to `isBlocklisted`, for list-filtering call sites
    * (getAllCases / checkUserCaseAccess) that need to exclude every case this
-   * user is currently blacklisted on from their visibility OR — mirroring
-   * `hasAccess`'s own blacklist check for the open-for-claim branch, so a
+   * user is currently blocklisted on from their visibility OR — mirroring
+   * `hasAccess`'s own blocklist check for the open-for-claim branch, so a
    * case list can't surface (with its embedded alert/transaction data) a
    * case the detail/read gate would otherwise 404 on.
    */
   /**
    * Cases this user was revoked from, manually or automatically, and has not been re-granted since
-   * (no live whitelist row), minus any they are blacklisted on - a blacklist also revokes the row, but
+   * (no live allowlist row), minus any they are blocklisted on - a blocklist also revokes the row, but
    * it removes the case from their queue where a plain revoke does not. These stay in the user's
    * queue with a restricted view (see getAccessLevel).
    */
@@ -384,12 +384,12 @@ export class CaseInvestigatorService {
       select: { case_id: true },
     });
     const liveSet = new Set(live.map((row) => row.case_id));
-    const blacklisted = new Set(await this.getBlacklistedCaseIds(userId, tenantId));
-    return caseIds.filter((caseId) => !liveSet.has(caseId) && !blacklisted.has(caseId));
+    const blocklisted = new Set(await this.getBlocklistedCaseIds(userId, tenantId));
+    return caseIds.filter((caseId) => !liveSet.has(caseId) && !blocklisted.has(caseId));
   }
 
-  async getBlacklistedCaseIds(userId: string, tenantId: string): Promise<number[]> {
-    const rows = await this.prismaService.caseInvestigatorBlacklist.findMany({
+  async getBlocklistedCaseIds(userId: string, tenantId: string): Promise<number[]> {
+    const rows = await this.prismaService.caseInvestigatorBlocklist.findMany({
       where: { user_id: userId, tenant_id: tenantId, unblocked_at: null },
       select: { case_id: true },
     });
@@ -398,13 +398,13 @@ export class CaseInvestigatorService {
   }
 
   /**
-   * Creates a live whitelist row if none exists; upgrades an existing row
+   * Creates a live allowlist row if none exists; upgrades an existing row
    * to LEAD in place if the new grant is LEAD (never downgrades LEAD to
-   * OBSERVER here — that's `demote`'s job only). Refuses if blacklisted.
+   * OBSERVER here — that's `demote`'s job only). Refuses if blocklisted.
    *
    * No controller endpoint calls this with caller-supplied input — it's
    * called exclusively, internally, by `syncTaskAssignment`. There is no
-   * manual-add surface on the whitelist, for anyone, at any tier.
+   * manual-add surface on the allowlist, for anyone, at any tier.
    */
   async grant(
     caseId: number,
@@ -420,7 +420,7 @@ export class CaseInvestigatorService {
 
       await this.assertCaseInTenant(caseId, tenantId);
 
-      const blocked = await this.isBlacklisted(caseId, userId, tenantId);
+      const blocked = await this.isBlocklisted(caseId, userId, tenantId);
       if (blocked) {
         throw new ForbiddenException(await this.formatBlockedMessage(blocked));
       }
@@ -484,7 +484,7 @@ export class CaseInvestigatorService {
    * tenant_id is included in the WHERE even though every caller today
    * already derives caseId from a task row it just wrote (so a
    * cross-tenant caseId can't actually reach here in practice, unlike the
-   * grant/revoke/blacklist bug this fix rides along with) — added anyway
+   * grant/revoke/blocklist bug this fix rides along with) — added anyway
    * for defense-in-depth and consistency with every other query in this
    * service now filtering by tenant_id directly instead of trusting
    * case_id alone.
@@ -533,8 +533,8 @@ export class CaseInvestigatorService {
     });
 
     if (holders.some((holder) => holder.assigned_user_id === userId)) {
-      // Holding a live task doesn't override a blacklist - a blocked user must not modify the case.
-      if ((await this.isBlacklisted(caseId, userId, tenantId)) !== null) {
+      // Holding a live task doesn't override a blocklist - a blocked user must not modify the case.
+      if ((await this.isBlocklisted(caseId, userId, tenantId)) !== null) {
         throw new NotFoundException('Case not found or access denied');
       }
       return;
@@ -543,7 +543,7 @@ export class CaseInvestigatorService {
     // Either the case is open (no current holder at all) or it's held by someone else - either
     // way the caller still needs to be able to see this case before being allowed to write to
     // it. Without this, "the case is open" alone let anyone (including a caller with no access
-    // to the case at all - wrong tenant, blacklisted, or just not a member) through unconditionally.
+    // to the case at all - wrong tenant, blocklisted, or just not a member) through unconditionally.
     const level = await this.getAccessLevel(caseId, userId, tenantId, role);
     if (level === 'NONE') {
       throw new NotFoundException('Case not found or access denied');
@@ -561,13 +561,13 @@ export class CaseInvestigatorService {
 
   /**
    * The one entry point every task-mutating call site uses. Composes
-   * grant/demote/revoke/hasOtherLiveClaimOnCase/blacklist-refusal so this
+   * grant/demote/revoke/hasOtherLiveClaimOnCase/blocklist-refusal so this
    * logic lives in exactly one place instead of being re-implemented at
    * each of the six task write call sites.
    *
    * Expected to be called AFTER the task write succeeds (so before/after
    * values reflect what was actually persisted), and — once wired — inside
-   * the same transaction as that write, so a blacklist-refusal here also
+   * the same transaction as that write, so a blocklist-refusal here also
    * rolls back the task assignment itself rather than leaving the task
    * assigned but the ACL grant silently skipped.
    */
@@ -636,7 +636,7 @@ export class CaseInvestigatorService {
       });
 
       if (!existing) {
-        throw new NotFoundException('No live whitelist entry found for this user on this case');
+        throw new NotFoundException('No live allowlist entry found for this user on this case');
       }
 
       await this.prismaService.caseInvestigator.update({
@@ -665,13 +665,13 @@ export class CaseInvestigatorService {
   /**
    * Supervisor+ only, mandatory reason. Investigator-only target (see
    * assertTargetIsInvestigator). One transaction: revoke any live
-   * whitelist row (revoke_reason = 'blacklisted'), then write the
-   * blacklist row. Future task assignments refuse until unblocked.
+   * allowlist row (revoke_reason = 'blocklisted'), then write the
+   * blocklist row. Future task assignments refuse until unblocked.
    * Cascades: any live task this user holds on the case gets unassigned too.
    */
-  async blacklist(caseId: number, userId: string, tenantId: string, blockedBy: string, reason: string): Promise<void> {
+  async blocklist(caseId: number, userId: string, tenantId: string, blockedBy: string, reason: string): Promise<void> {
     await this.assertTargetIsInvestigator(userId);
-    this.assertReason(reason, 'Reason for blacklisting');
+    this.assertReason(reason, 'Reason for blocklisting');
 
     try {
       await this.assertCaseInTenant(caseId, tenantId);
@@ -685,11 +685,11 @@ export class CaseInvestigatorService {
           if (existing) {
             await tx.caseInvestigator.update({
               where: { id: existing.id },
-              data: { revoked_at: new Date(), revoked_by: blockedBy, revoke_reason: 'blacklisted' },
+              data: { revoked_at: new Date(), revoked_by: blockedBy, revoke_reason: 'blocklisted' },
             });
           }
 
-          await tx.caseInvestigatorBlacklist.create({
+          await tx.caseInvestigatorBlocklist.create({
             data: {
               case_id: caseId,
               tenant_id: tenantId,
@@ -700,9 +700,9 @@ export class CaseInvestigatorService {
           });
         });
       } catch (error) {
-        // A concurrent blacklist won the race against the live-row unique index; the transaction has already rolled back.
+        // A concurrent blocklist won the race against the live-row unique index; the transaction has already rolled back.
         if ((error as { code?: string }).code === UNIQUE_CONSTRAINT_VIOLATION) {
-          throw new ConflictException('User is already blacklisted on this case');
+          throw new ConflictException('User is already blocklisted on this case');
         }
         throw error;
       }
@@ -710,9 +710,9 @@ export class CaseInvestigatorService {
       await this.loggingOrchestrationService.logActionsWithHistory(
         {
           userId: blockedBy,
-          actionPerformed: `Blacklisted ${userId} from this case: ${reason}`,
+          actionPerformed: `Blocklisted ${userId} from this case: ${reason}`,
           entityName: CaseInvestigatorService.name,
-          operation: 'blacklistCaseInvestigator',
+          operation: 'blocklistCaseInvestigator',
           outcome: Outcome.SUCCESS,
           tenantId,
         },
@@ -720,10 +720,10 @@ export class CaseInvestigatorService {
         tenantId,
       );
 
-      await this.unassignLiveTasks(caseId, userId, tenantId, blockedBy, `Investigator blacklisted: ${reason}`);
+      await this.unassignLiveTasks(caseId, userId, tenantId, blockedBy, `Investigator blocklisted: ${reason}`);
       this.notifyAccessChanged(caseId, tenantId);
     } catch (error) {
-      this.logger.error(`Error blacklisting user ${userId} on case ${caseId}`, error, CaseInvestigatorService.name);
+      this.logger.error(`Error blocklisting user ${userId} on case ${caseId}`, error, CaseInvestigatorService.name);
       throw error;
     }
   }
@@ -731,21 +731,21 @@ export class CaseInvestigatorService {
   /**
    * Supervisor+ only, mandatory reason. Soft-update — does NOT grant
    * access back; a subsequent task assignment is still required for the
-   * person to reappear on the whitelist.
+   * person to reappear on the allowlist.
    */
   async unblock(caseId: number, userId: string, tenantId: string, unblockedBy: string, reason: string): Promise<void> {
     this.assertReason(reason, 'Reason for unblocking');
 
     try {
-      const existing = await this.prismaService.caseInvestigatorBlacklist.findFirst({
+      const existing = await this.prismaService.caseInvestigatorBlocklist.findFirst({
         where: { case_id: caseId, user_id: userId, tenant_id: tenantId, unblocked_at: null },
       });
 
       if (!existing) {
-        throw new NotFoundException('No live blacklist entry found for this user on this case');
+        throw new NotFoundException('No live blocklist entry found for this user on this case');
       }
 
-      await this.prismaService.caseInvestigatorBlacklist.update({
+      await this.prismaService.caseInvestigatorBlocklist.update({
         where: { id: existing.id },
         data: { unblocked_at: new Date(), unblocked_by: unblockedBy, unblock_reason: reason },
       });
@@ -771,15 +771,15 @@ export class CaseInvestigatorService {
   }
 
   /**
-   * Live whitelist rows for a case, tenant-scoped, each tagged with the user's
+   * Live allowlist rows for a case, tenant-scoped, each tagged with the user's
    * role so the Access screen can tell which rows can actually be revoked or
-   * blacklisted. Supervisors and compliance officers can land on the whitelist
-   * (task assignment doesn't filter by role) but revoke/blacklist refuse them
+   * blocklisted. Supervisors and compliance officers can land on the allowlist
+   * (task assignment doesn't filter by role) but revoke/blocklist refuse them
    * (assertTargetIsInvestigator), so the UI must not offer those actions.
    * Role comes from the same cache assertTargetIsInvestigator uses; a miss or
    * cache failure is `null` (unknown), never guessed.
    */
-  async listWhitelist(caseId: number, tenantId: string): Promise<CaseInvestigatorWithRole[]> {
+  async listAllowlist(caseId: number, tenantId: string): Promise<CaseInvestigatorWithRole[]> {
     const rows = await this.prismaService.caseInvestigator.findMany({
       where: { case_id: caseId, tenant_id: tenantId, revoked_at: null },
       orderBy: { granted_at: 'asc' },
@@ -823,13 +823,13 @@ export class CaseInvestigatorService {
   async listAccessHistory(
     caseId: number,
     tenantId: string,
-  ): Promise<{ revoked: CaseInvestigatorWithRole[]; unblocked: CaseInvestigatorBlacklist[] }> {
+  ): Promise<{ revoked: CaseInvestigatorWithRole[]; unblocked: CaseInvestigatorBlocklist[] }> {
     const [revoked, unblocked] = await Promise.all([
       this.prismaService.caseInvestigator.findMany({
         where: { case_id: caseId, tenant_id: tenantId, revoked_at: { not: null } },
         orderBy: { revoked_at: 'desc' },
       }),
-      this.prismaService.caseInvestigatorBlacklist.findMany({
+      this.prismaService.caseInvestigatorBlocklist.findMany({
         where: { case_id: caseId, tenant_id: tenantId, unblocked_at: { not: null } },
         orderBy: { unblocked_at: 'desc' },
       }),
@@ -844,16 +844,16 @@ export class CaseInvestigatorService {
    * anyone who may view the case. Assigning one of them is refused by the backend regardless.
    */
   async listBlockedUserIds(caseId: number, tenantId: string): Promise<string[]> {
-    const rows = await this.prismaService.caseInvestigatorBlacklist.findMany({
+    const rows = await this.prismaService.caseInvestigatorBlocklist.findMany({
       where: { case_id: caseId, tenant_id: tenantId, unblocked_at: null },
       select: { user_id: true },
     });
     return rows.map((row) => row.user_id);
   }
 
-  /** Live blacklist rows for a case, tenant-scoped. */
-  async listBlacklist(caseId: number, tenantId: string): Promise<CaseInvestigatorBlacklist[]> {
-    return await this.prismaService.caseInvestigatorBlacklist.findMany({
+  /** Live blocklist rows for a case, tenant-scoped. */
+  async listBlocklist(caseId: number, tenantId: string): Promise<CaseInvestigatorBlocklist[]> {
+    return await this.prismaService.caseInvestigatorBlocklist.findMany({
       where: { case_id: caseId, tenant_id: tenantId, unblocked_at: null },
       orderBy: { blocked_at: 'asc' },
     });
@@ -866,7 +866,7 @@ export class CaseInvestigatorService {
   }
 
   /**
-   * `grant`/`blacklist` are the two methods that CREATE a new row, trusting
+   * `grant`/`blocklist` are the two methods that CREATE a new row, trusting
    * the caller's `tenantId` verbatim to stamp onto it. Unlike `revoke`/
    * `demote`/`unblock` (which only UPDATE a row already found via a
    * tenant-filtered lookup, so a cross-tenant caseId simply finds nothing),

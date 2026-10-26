@@ -83,7 +83,7 @@ describe('investigatorService', () => {
     });
   });
 
-  describe('getCaseInvestigators / getCaseBlacklist', () => {
+  describe('getCaseInvestigators / getCaseBlocklist', () => {
     it('return an empty list when the response is not an array', async () => {
       mockGet
         .mockResolvedValueOnce(null)
@@ -92,7 +92,7 @@ describe('investigatorService', () => {
       await expect(
         investigatorService.getCaseInvestigators(42),
       ).resolves.toEqual([]);
-      await expect(investigatorService.getCaseBlacklist(42)).resolves.toEqual(
+      await expect(investigatorService.getCaseBlocklist(42)).resolves.toEqual(
         [],
       );
     });

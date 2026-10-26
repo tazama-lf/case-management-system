@@ -6,7 +6,7 @@ import type { CaseInvestigatorService, SyncTaskAssignmentParams } from '../../ca
 const RETRY_DELAYS_MS = [100, 300, 900];
 
 /**
- * The one place task writes sync the case ACL (whitelist) afterwards. Best-effort: the task mutation has
+ * The one place task writes sync the case ACL (allowlist) afterwards. Best-effort: the task mutation has
  * already committed, so a failure here never fails the caller. A failed sync is retried a few times first -
  * syncTaskAssignment is safe to re-run (grants skip existing rows, a revoke of an already-revoked row is a
  * no-op) and re-derives the state from the same task transition, so a retry preserves the reassignment /

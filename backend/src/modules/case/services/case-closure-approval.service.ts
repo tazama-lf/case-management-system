@@ -574,7 +574,7 @@ export class CaseClosureApprovalService {
       // are blocked on this case (blocked after submitting): then the case goes back in the queue,
       // unassigned and ready for assignment, for anyone not blocked to take. A merely revoked
       // investigator is fine to hand it back to - being assigned again is how access returns.
-      const investigatorBlocked = (await this.caseInvestigatorService.isBlacklisted(caseId, originalInvestigatorId, tenantId)) !== null;
+      const investigatorBlocked = (await this.caseInvestigatorService.isBlocklisted(caseId, originalInvestigatorId, tenantId)) !== null;
       const nextStatus = investigatorBlocked ? CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT : CaseStatus.STATUS_20_IN_PROGRESS;
 
       const result = await this.caseRepository.rejectClosureTask(
@@ -692,7 +692,7 @@ export class CaseClosureApprovalService {
 
   /**
    * The rejected closure puts the investigator back on the case through a direct repository write, which
-   * bypasses the task service's whitelist sync - so give them their LEAD row back here. This is what
+   * bypasses the task service's allowlist sync - so give them their LEAD row back here. This is what
    * restores access for an investigator who had been revoked in the meantime. Best-effort: the
    * rejection itself has already committed.
    */

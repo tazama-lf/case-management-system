@@ -1,5 +1,5 @@
 -- Rollback for the case-level ACL feature (case_investigators /
--- case_investigators_blacklist), covering both:
+-- case_investigators_blocklist), covering both:
 --   Step 1 — undo backfill-case-investigators.sql (delete the rows it seeded)
 --   Step 2 — undo migration 20260914000000_add_case_investigator_acl (drop
 --            the tables/enum entirely)
@@ -16,7 +16,7 @@
 -- SAFETY MODEL: both steps below open with the same preflight check and
 -- ABORT (RAISE EXCEPTION, which rolls back that step's transaction) if they
 -- find ANY row that isn't attributable to the backfill — i.e. any grant made
--- by someone other than the row's own user, any revoke, any blacklist/
+-- by someone other than the row's own user, any revoke, any blocklist/
 -- unblock activity at all.
 --
 -- HOW BACKFILL ROWS ARE RECOGNISED: the backfill sets granted_by = user_id
@@ -28,7 +28,7 @@
 -- not preserved. Once
 -- real activity exists, this feature's data is not safely undoable by a
 -- generic script: a revoked row carries a supervisor's real revoke_reason,
--- a blacklist row carries a real block_reason — deleting or dropping those
+-- a blocklist row carries a real block_reason — deleting or dropping those
 -- is a genuine, possibly-regulator-relevant data loss, not a no-op. If the
 -- preflight aborts, restore from a backup taken before the activity you
 -- want to undo, or hand-author a migration that preserves what must be
@@ -56,12 +56,12 @@ BEGIN
         WHERE granted_by <> user_id
            OR revoked_at IS NOT NULL
         UNION ALL
-        SELECT 1 FROM case_investigators_blacklist
+        SELECT 1 FROM case_investigators_blocklist
     ) AS real_rows;
 
     IF real_activity_count > 0 THEN
         RAISE EXCEPTION
-            'Rollback aborted: % row(s) of real activity found (a grant made by someone other than the grantee themselves, a revoke, or any blacklist/unblock entry). This script only undoes the backfill, not real usage — restore from backup or handle manually.',
+            'Rollback aborted: % row(s) of real activity found (a grant made by someone other than the grantee themselves, a revoke, or any blocklist/unblock entry). This script only undoes the backfill, not real usage — restore from backup or handle manually.',
             real_activity_count;
     END IF;
 END $$;
@@ -91,7 +91,7 @@ COMMIT;
 --         WHERE granted_by <> user_id
 --            OR revoked_at IS NOT NULL
 --         UNION ALL
---         SELECT 1 FROM case_investigators_blacklist
+--         SELECT 1 FROM case_investigators_blocklist
 --     ) AS real_rows;
 --
 --     IF real_activity_count > 0 THEN
@@ -101,16 +101,16 @@ COMMIT;
 --     END IF;
 -- END $$;
 --
--- ALTER TABLE "case_investigators_blacklist" DROP CONSTRAINT "case_investigators_blacklist_case_id_fkey";
+-- ALTER TABLE "case_investigators_blocklist" DROP CONSTRAINT "case_investigators_blocklist_case_id_fkey";
 -- ALTER TABLE "case_investigators" DROP CONSTRAINT "case_investigators_case_id_fkey";
--- DROP TABLE "case_investigators_blacklist";
+-- DROP TABLE "case_investigators_blocklist";
 -- DROP TABLE "case_investigators";
 -- DROP TYPE "CaseInvestigatorMembership";
 --
 -- COMMIT;
 --
 -- After running Step 2, also:
---   1. Remove the CaseInvestigator / CaseInvestigatorBlacklist models,
+--   1. Remove the CaseInvestigator / CaseInvestigatorBlocklist models,
 --      the CaseInvestigatorMembership enum, and the two reverse relations
 --      on Case from prisma/schema.prisma.
 --   2. Delete (or mark reverted) the migration folder

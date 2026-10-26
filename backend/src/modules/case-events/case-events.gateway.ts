@@ -265,9 +265,9 @@ export class CaseEventsGateway implements OnGatewayConnection, OnGatewayDisconne
     }
   }
 
-  // Who may see a case changed (blacklist / revoke / unblock) without its status changing. Clients
+  // Who may see a case changed (blocklist / revoke / unblock) without its status changing. Clients
   // react exactly as for any other change: re-fetch GET /cases/all, whose visibility rules already
-  // drop a blacklisted investigator's case from their queue.
+  // drop a blocklisted investigator's case from their queue.
   @OnEvent('case.access-changed')
   handleCaseAccessChangedEvent(payload: { caseId: number; tenantId: string }): void {
     try {

@@ -1,15 +1,15 @@
 import { Controller, Get, Post, Delete, Body, Param, Req, UseGuards, HttpCode, HttpStatus, ParseUUIDPipe } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiParam, ApiResponse } from '@nestjs/swagger';
-import { CaseInvestigatorBlacklist } from '@prisma/client-cms';
+import { CaseInvestigatorBlocklist } from '@prisma/client-cms';
 import { TazamaAuthGuard } from 'src/guards/tazama-auth.guard';
 import { RequireInvestigatorOrSupervisorRole, RequireSupervisorRole } from 'src/decorators/auth.decorator';
 import { Audit } from '../audit/decorators/audit-log.decorator';
 import { AuthenticatedRequest } from 'src/utils/types/auth.types';
 import { extractUserData } from 'src/utils/helperFunction';
 import { CaseInvestigatorService, CaseInvestigatorWithRole } from './case-investigator.service';
-import { RevokeCaseInvestigatorDto, BlacklistCaseInvestigatorDto, UnblockCaseInvestigatorDto } from './dto';
+import { RevokeCaseInvestigatorDto, BlocklistCaseInvestigatorDto, UnblockCaseInvestigatorDto } from './dto';
 
-// There is no POST /investigators (manual add) — the whitelist is
+// There is no POST /investigators (manual add) — the allowlist is
 // populated exclusively by task assignment; nobody, including a
 // supervisor, adds to it by hand. Every route here, including both GETs,
 // requires CMS_SUPERVISOR — there's no "on-case investigator" peer tier
@@ -29,13 +29,13 @@ export class CaseInvestigatorController {
   @ApiOperation({
     summary: 'Revoke case-investigator access',
     description:
-      'Soft-removes a live whitelist row. Mandatory reason. The user can be re-added later only via a fresh task assignment, not by hand.',
+      'Soft-removes a live allowlist row. Mandatory reason. The user can be re-added later only via a fresh task assignment, not by hand.',
   })
   @ApiParam({ name: 'caseId', type: 'number', example: 123 })
   @ApiParam({ name: 'userId', type: 'string', format: 'uuid' })
   @ApiResponse({ status: 200, description: 'Access revoked' })
   @ApiResponse({ status: 400, description: 'Bad Request - reason missing' })
-  @ApiResponse({ status: 404, description: 'Not Found - no live whitelist entry for this user on this case' })
+  @ApiResponse({ status: 404, description: 'Not Found - no live allowlist entry for this user on this case' })
   async revokeInvestigator(
     @Param('caseId') caseId: number,
     @Param('userId', new ParseUUIDPipe()) userId: string,
@@ -47,41 +47,41 @@ export class CaseInvestigatorController {
     return { message: 'Investigator access revoked' };
   }
 
-  @Post(':caseId/blacklist')
+  @Post(':caseId/blocklist')
   @RequireSupervisorRole()
   @Audit()
   @ApiOperation({
-    summary: 'Blacklist a user from a case',
+    summary: 'Blocklist a user from a case',
     description:
-      'One transaction: revokes any live whitelist row (revoke_reason = "blacklisted"), then writes the blacklist row. Mandatory reason. Future task assignments for this user on this case refuse until a supervisor unblocks them.',
+      'One transaction: revokes any live allowlist row (revoke_reason = "blocklisted"), then writes the blocklist row. Mandatory reason. Future task assignments for this user on this case refuse until a supervisor unblocks them.',
   })
   @ApiParam({ name: 'caseId', type: 'number', example: 123 })
-  @ApiResponse({ status: 201, description: 'User blacklisted' })
+  @ApiResponse({ status: 201, description: 'User blocklisted' })
   @ApiResponse({ status: 400, description: 'Bad Request - reason missing or invalid userId' })
-  async blacklistInvestigator(
+  async blocklistInvestigator(
     @Param('caseId') caseId: number,
-    @Body() dto: BlacklistCaseInvestigatorDto,
+    @Body() dto: BlocklistCaseInvestigatorDto,
     @Req() req: AuthenticatedRequest,
   ): Promise<{ message: string }> {
     const { userId: callerId, tenantId } = extractUserData(req);
-    await this.caseInvestigatorService.blacklist(caseId, dto.userId, tenantId, callerId, dto.reason);
-    return { message: 'Investigator blacklisted' };
+    await this.caseInvestigatorService.blocklist(caseId, dto.userId, tenantId, callerId, dto.reason);
+    return { message: 'Investigator blocklisted' };
   }
 
-  @Delete(':caseId/blacklist/:userId')
+  @Delete(':caseId/blocklist/:userId')
   @RequireSupervisorRole()
   @Audit()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Unblock a user on a case',
     description:
-      'Soft-update. Mandatory reason. Does NOT grant access back — a new task assignment is still required for this person to reappear on the whitelist.',
+      'Soft-update. Mandatory reason. Does NOT grant access back — a new task assignment is still required for this person to reappear on the allowlist.',
   })
   @ApiParam({ name: 'caseId', type: 'number', example: 123 })
   @ApiParam({ name: 'userId', type: 'string', format: 'uuid' })
   @ApiResponse({ status: 200, description: 'User unblocked' })
   @ApiResponse({ status: 400, description: 'Bad Request - reason missing' })
-  @ApiResponse({ status: 404, description: 'Not Found - no live blacklist entry for this user on this case' })
+  @ApiResponse({ status: 404, description: 'Not Found - no live blocklist entry for this user on this case' })
   async unblockInvestigator(
     @Param('caseId') caseId: number,
     @Param('userId', new ParseUUIDPipe()) userId: string,
@@ -96,15 +96,15 @@ export class CaseInvestigatorController {
   @Get(':caseId/investigators')
   @RequireSupervisorRole()
   @ApiOperation({
-    summary: 'List a case live whitelist',
+    summary: 'List a case live allowlist',
     description:
-      'Supervisor+ only. Each row carries user_role (null if unknown) so callers can tell which rows can be revoked/blacklisted (investigators only).',
+      'Supervisor+ only. Each row carries user_role (null if unknown) so callers can tell which rows can be revoked/blocklisted (investigators only).',
   })
   @ApiParam({ name: 'caseId', type: 'number', example: 123 })
-  @ApiResponse({ status: 200, description: 'Live whitelist rows' })
+  @ApiResponse({ status: 200, description: 'Live allowlist rows' })
   async getInvestigators(@Param('caseId') caseId: number, @Req() req: AuthenticatedRequest): Promise<CaseInvestigatorWithRole[]> {
     const { tenantId } = extractUserData(req);
-    return await this.caseInvestigatorService.listWhitelist(caseId, tenantId);
+    return await this.caseInvestigatorService.listAllowlist(caseId, tenantId);
   }
 
   @Get(':caseId/investigators/history')
@@ -112,14 +112,14 @@ export class CaseInvestigatorController {
   @ApiOperation({
     summary: 'List who lost access to a case, and who was unblocked',
     description:
-      'Supervisor+ only. Revoked whitelist rows (manual and automatic) and unblocked blacklist rows for this case, most recent first. Rows are soft-updated, never deleted, so this is the full record.',
+      'Supervisor+ only. Revoked allowlist rows (manual and automatic) and unblocked blocklist rows for this case, most recent first. Rows are soft-updated, never deleted, so this is the full record.',
   })
   @ApiParam({ name: 'caseId', type: 'number', example: 123 })
-  @ApiResponse({ status: 200, description: 'Revoked whitelist rows and unblocked blacklist rows' })
+  @ApiResponse({ status: 200, description: 'Revoked allowlist rows and unblocked blocklist rows' })
   async getAccessHistory(
     @Param('caseId') caseId: number,
     @Req() req: AuthenticatedRequest,
-  ): Promise<{ revoked: CaseInvestigatorWithRole[]; unblocked: CaseInvestigatorBlacklist[] }> {
+  ): Promise<{ revoked: CaseInvestigatorWithRole[]; unblocked: CaseInvestigatorBlocklist[] }> {
     const { tenantId } = extractUserData(req);
     return await this.caseInvestigatorService.listAccessHistory(caseId, tenantId);
   }
@@ -139,13 +139,13 @@ export class CaseInvestigatorController {
     return { userIds: await this.caseInvestigatorService.listBlockedUserIds(caseId, tenantId) };
   }
 
-  @Get(':caseId/blacklist')
+  @Get(':caseId/blocklist')
   @RequireSupervisorRole()
-  @ApiOperation({ summary: 'List a case live blacklist', description: 'Supervisor+ only.' })
+  @ApiOperation({ summary: 'List a case live blocklist', description: 'Supervisor+ only.' })
   @ApiParam({ name: 'caseId', type: 'number', example: 123 })
-  @ApiResponse({ status: 200, description: 'Live blacklist rows' })
-  async getBlacklist(@Param('caseId') caseId: number, @Req() req: AuthenticatedRequest): Promise<CaseInvestigatorBlacklist[]> {
+  @ApiResponse({ status: 200, description: 'Live blocklist rows' })
+  async getBlocklist(@Param('caseId') caseId: number, @Req() req: AuthenticatedRequest): Promise<CaseInvestigatorBlocklist[]> {
     const { tenantId } = extractUserData(req);
-    return await this.caseInvestigatorService.listBlacklist(caseId, tenantId);
+    return await this.caseInvestigatorService.listBlocklist(caseId, tenantId);
   }
 }

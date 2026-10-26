@@ -31,7 +31,7 @@ describe('CaseInvestigatorService', () => {
         create: jest.fn(),
         update: jest.fn(),
       },
-      caseInvestigatorBlacklist: {
+      caseInvestigatorBlocklist: {
         findFirst: jest.fn(),
         findMany: jest.fn(),
         create: jest.fn(),
@@ -47,7 +47,7 @@ describe('CaseInvestigatorService', () => {
       },
       $transaction: jest.fn(),
     };
-    // blacklist() runs its work inside `this.prismaService.$transaction(async (tx) => ...)`
+    // blocklist() runs its work inside `this.prismaService.$transaction(async (tx) => ...)`
     // — reuse the same top-level mocks as `tx` so tests can set expectations
     // on the same jest.fn() instances regardless of which path wrote them.
     mockPrisma.$transaction.mockImplementation(async (cb: any) => cb(mockPrisma));
@@ -63,16 +63,16 @@ describe('CaseInvestigatorService', () => {
       logActionsWithHistory: jest.fn().mockResolvedValue(undefined),
     };
 
-    // revoke/blacklist only reach the DB once the target's cached role
+    // revoke/blocklist only reach the DB once the target's cached role
     // passes assertTargetIsInvestigator - default to a live investigator
-    // target so every existing revoke/blacklist test still exercises the
+    // target so every existing revoke/blocklist test still exercises the
     // same behavior it did before that guard existed. Role-guard behavior
     // itself is covered by its own dedicated tests below.
     const mockCacheService = {
       getUserRole: jest.fn().mockResolvedValue('CMS_INVESTIGATOR'),
     };
 
-    // revoke/blacklist emit 'case-investigator.access-removed' (via emitAsync)
+    // revoke/blocklist emit 'case-investigator.access-removed' (via emitAsync)
     // rather than calling TaskLifecycleService directly - see the docstring
     // on unassignLiveTasks for why. Default to resolving with an empty
     // listener-result array, matching "no listener threw."
@@ -115,7 +115,7 @@ describe('CaseInvestigatorService', () => {
       },
     );
 
-    it('returns true for CMS_INVESTIGATOR with a live whitelist row', async () => {
+    it('returns true for CMS_INVESTIGATOR with a live allowlist row', async () => {
       prisma.caseInvestigator.findFirst.mockResolvedValue({ id: 1 });
 
       const result = await service.hasAccess(CASE_ID, USER_ID, TENANT, 'CMS_INVESTIGATOR');
@@ -147,17 +147,17 @@ describe('CaseInvestigatorService', () => {
     it('returns true for CMS_INVESTIGATOR with no live row on an open-for-claim case', async () => {
       prisma.caseInvestigator.findFirst.mockResolvedValue(null);
       prisma.case.findFirst.mockResolvedValue({ case_id: CASE_ID });
-      prisma.caseInvestigatorBlacklist.findFirst.mockResolvedValue(null);
+      prisma.caseInvestigatorBlocklist.findFirst.mockResolvedValue(null);
 
       const result = await service.hasAccess(CASE_ID, USER_ID, TENANT, 'CMS_INVESTIGATOR');
 
       expect(result).toBe(true);
     });
 
-    it('returns false for a blacklisted CMS_INVESTIGATOR even on an open-for-claim case', async () => {
+    it('returns false for a blocklisted CMS_INVESTIGATOR even on an open-for-claim case', async () => {
       prisma.caseInvestigator.findFirst.mockResolvedValue(null);
       prisma.case.findFirst.mockResolvedValue({ case_id: CASE_ID });
-      prisma.caseInvestigatorBlacklist.findFirst.mockResolvedValue({ id: 9 });
+      prisma.caseInvestigatorBlocklist.findFirst.mockResolvedValue({ id: 9 });
 
       const result = await service.hasAccess(CASE_ID, USER_ID, TENANT, 'CMS_INVESTIGATOR');
 
@@ -192,7 +192,7 @@ describe('CaseInvestigatorService', () => {
   });
 
   describe('getAccessibleCaseIds', () => {
-    it('returns the live whitelist case_ids for this user, tenant-scoped', async () => {
+    it('returns the live allowlist case_ids for this user, tenant-scoped', async () => {
       prisma.caseInvestigator.findMany.mockResolvedValue([{ case_id: 1 }, { case_id: 5 }]);
 
       const result = await service.getAccessibleCaseIds(USER_ID, TENANT);
@@ -224,7 +224,7 @@ describe('CaseInvestigatorService', () => {
 
     it('is open when nobody currently holds the case, as long as the caller can see it', async () => {
       prisma.task.findMany.mockResolvedValue([]);
-      // A real live whitelist row - genuine case access, not just an unconfigured mock default.
+      // A real live allowlist row - genuine case access, not just an unconfigured mock default.
       prisma.caseInvestigator.findFirst.mockResolvedValue({ id: 1 });
 
       await expect(service.assertCanModifyCase(CASE_ID, USER_ID, TENANT, 'CMS_INVESTIGATOR')).resolves.toBeUndefined();
@@ -244,14 +244,14 @@ describe('CaseInvestigatorService', () => {
 
     it('lets the holder through, including when several people hold live tasks on the case', async () => {
       prisma.task.findMany.mockResolvedValue(holders('someone-else', USER_ID));
-      prisma.caseInvestigatorBlacklist.findFirst.mockResolvedValue(null);
+      prisma.caseInvestigatorBlocklist.findFirst.mockResolvedValue(null);
 
       await expect(service.assertCanModifyCase(CASE_ID, USER_ID, TENANT, 'CMS_INVESTIGATOR')).resolves.toBeUndefined();
     });
 
-    it('rejects a blacklisted holder even though they hold a live task on the case', async () => {
+    it('rejects a blocklisted holder even though they hold a live task on the case', async () => {
       prisma.task.findMany.mockResolvedValue(holders(USER_ID));
-      prisma.caseInvestigatorBlacklist.findFirst.mockResolvedValue({ id: 9 });
+      prisma.caseInvestigatorBlocklist.findFirst.mockResolvedValue({ id: 9 });
 
       await expect(service.assertCanModifyCase(CASE_ID, USER_ID, TENANT, 'CMS_INVESTIGATOR')).rejects.toThrow(NotFoundException);
     });
@@ -289,16 +289,16 @@ describe('CaseInvestigatorService', () => {
   });
 
   describe('getCaseIdScope', () => {
-    it.each(['CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'])('returns null (unrestricted) for %s without querying the whitelist', async (role) => {
+    it.each(['CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'])('returns null (unrestricted) for %s without querying the allowlist', async (role) => {
       const result = await service.getCaseIdScope(USER_ID, TENANT, role);
 
       expect(result).toBeNull();
       expect(prisma.caseInvestigator.findMany).not.toHaveBeenCalled();
     });
 
-    it('returns the investigator\'s whitelist case_ids plus open-for-claim cases, deduplicated', async () => {
+    it('returns the investigator\'s allowlist case_ids plus open-for-claim cases, deduplicated', async () => {
       prisma.caseInvestigator.findMany.mockResolvedValue([{ case_id: 1 }, { case_id: 5 }]);
-      prisma.caseInvestigatorBlacklist.findMany.mockResolvedValue([]);
+      prisma.caseInvestigatorBlocklist.findMany.mockResolvedValue([]);
       prisma.case.findMany.mockResolvedValue([{ case_id: 5 }, { case_id: 9 }]);
 
       const result = await service.getCaseIdScope(USER_ID, TENANT, 'CMS_INVESTIGATOR');
@@ -313,9 +313,9 @@ describe('CaseInvestigatorService', () => {
       });
     });
 
-    it('excludes open cases the investigator is blacklisted on', async () => {
+    it('excludes open cases the investigator is blocklisted on', async () => {
       prisma.caseInvestigator.findMany.mockResolvedValue([{ case_id: 1 }]);
-      prisma.caseInvestigatorBlacklist.findMany.mockResolvedValue([{ case_id: 7 }]);
+      prisma.caseInvestigatorBlocklist.findMany.mockResolvedValue([{ case_id: 7 }]);
       prisma.case.findMany.mockResolvedValue([{ case_id: 9 }]);
 
       const result = await service.getCaseIdScope(USER_ID, TENANT, 'CMS_INVESTIGATOR');
@@ -326,7 +326,7 @@ describe('CaseInvestigatorService', () => {
       );
     });
 
-    it('fails closed for any other role: scoped to its own whitelist, not the whole tenant', async () => {
+    it('fails closed for any other role: scoped to its own allowlist, not the whole tenant', async () => {
       prisma.caseInvestigator.findMany.mockResolvedValue([]);
 
       const result = await service.getCaseIdScope(USER_ID, TENANT, 'alert-triage');
@@ -337,23 +337,23 @@ describe('CaseInvestigatorService', () => {
     });
   });
 
-  describe('isBlacklisted', () => {
-    it('returns the live blacklist row when one exists', async () => {
+  describe('isBlocklisted', () => {
+    it('returns the live blocklist row when one exists', async () => {
       const row = { id: 1, blocked_by: BLOCKED_BY, block_reason: 'conflict of interest' };
-      prisma.caseInvestigatorBlacklist.findFirst.mockResolvedValue(row);
+      prisma.caseInvestigatorBlocklist.findFirst.mockResolvedValue(row);
 
-      const result = await service.isBlacklisted(CASE_ID, USER_ID, TENANT);
+      const result = await service.isBlocklisted(CASE_ID, USER_ID, TENANT);
 
       expect(result).toBe(row);
-      expect(prisma.caseInvestigatorBlacklist.findFirst).toHaveBeenCalledWith({
+      expect(prisma.caseInvestigatorBlocklist.findFirst).toHaveBeenCalledWith({
         where: { case_id: CASE_ID, user_id: USER_ID, tenant_id: TENANT, unblocked_at: null },
       });
     });
 
     it('returns null when there is no live block (never blocked, or already unblocked)', async () => {
-      prisma.caseInvestigatorBlacklist.findFirst.mockResolvedValue(null);
+      prisma.caseInvestigatorBlocklist.findFirst.mockResolvedValue(null);
 
-      const result = await service.isBlacklisted(CASE_ID, USER_ID, TENANT);
+      const result = await service.isBlocklisted(CASE_ID, USER_ID, TENANT);
 
       expect(result).toBeNull();
     });
@@ -362,10 +362,10 @@ describe('CaseInvestigatorService', () => {
   describe('grant', () => {
     beforeEach(() => {
       prisma.case.findFirst.mockResolvedValue({ case_id: CASE_ID });
-      prisma.caseInvestigatorBlacklist.findFirst.mockResolvedValue(null);
+      prisma.caseInvestigatorBlocklist.findFirst.mockResolvedValue(null);
     });
 
-    it('creates a new whitelist row when none exists', async () => {
+    it('creates a new allowlist row when none exists', async () => {
       prisma.caseInvestigator.findFirst.mockResolvedValue(null);
 
       await service.grant(CASE_ID, USER_ID, TENANT, GRANTED_BY, CaseInvestigatorMembership.LEAD);
@@ -416,7 +416,7 @@ describe('CaseInvestigatorService', () => {
 
     it('refuses with a message naming who blocked and when, and writes nothing', async () => {
       const blockedAt = new Date('2026-01-01T00:00:00Z');
-      prisma.caseInvestigatorBlacklist.findFirst.mockResolvedValue({
+      prisma.caseInvestigatorBlocklist.findFirst.mockResolvedValue({
         blocked_by: BLOCKED_BY,
         blocked_at: blockedAt,
         block_reason: 'conflict of interest',
@@ -424,20 +424,20 @@ describe('CaseInvestigatorService', () => {
 
       await expect(service.grant(CASE_ID, USER_ID, TENANT, GRANTED_BY, CaseInvestigatorMembership.LEAD)).rejects.toThrow(
         new ForbiddenException(
-          `User is blacklisted on this case (blocked by ${BLOCKED_BY} at ${blockedAt.toISOString()}: conflict of interest) — unblock first.`,
+          `User is blocklisted on this case (blocked by ${BLOCKED_BY} at ${blockedAt.toISOString()}: conflict of interest) — unblock first.`,
         ),
       );
       expect(prisma.caseInvestigator.create).not.toHaveBeenCalled();
       expect(prisma.caseInvestigator.update).not.toHaveBeenCalled();
     });
 
-    it('refuses a cross-tenant caseId before ever checking blacklist status or writing', async () => {
+    it('refuses a cross-tenant caseId before ever checking blocklist status or writing', async () => {
       prisma.case.findFirst.mockResolvedValue(null);
 
       await expect(service.grant(CASE_ID, USER_ID, 'tenant-other', GRANTED_BY)).rejects.toThrow(
         new NotFoundException('Case not found or access denied'),
       );
-      expect(prisma.caseInvestigatorBlacklist.findFirst).not.toHaveBeenCalled();
+      expect(prisma.caseInvestigatorBlocklist.findFirst).not.toHaveBeenCalled();
       expect(prisma.caseInvestigator.create).not.toHaveBeenCalled();
     });
 
@@ -642,7 +642,7 @@ describe('CaseInvestigatorService', () => {
       prisma.caseInvestigator.findFirst.mockResolvedValue(null);
 
       await expect(service.revoke(CASE_ID, USER_ID, TENANT, GRANTED_BY, 'reassigned')).rejects.toThrow(
-        new NotFoundException('No live whitelist entry found for this user on this case'),
+        new NotFoundException('No live allowlist entry found for this user on this case'),
       );
     });
 
@@ -678,7 +678,7 @@ describe('CaseInvestigatorService', () => {
 
       // grant() re-queries for a LIVE row (revoked_at: null) — the just-revoked
       // row no longer matches, so it correctly finds none and creates a new one.
-      prisma.caseInvestigatorBlacklist.findFirst.mockResolvedValue(null);
+      prisma.caseInvestigatorBlocklist.findFirst.mockResolvedValue(null);
       prisma.case.findFirst.mockResolvedValue({ case_id: CASE_ID });
       prisma.caseInvestigator.findFirst.mockResolvedValueOnce(null);
       await service.grant(CASE_ID, USER_ID, TENANT, GRANTED_BY, CaseInvestigatorMembership.LEAD);
@@ -726,7 +726,7 @@ describe('CaseInvestigatorService', () => {
     });
   });
 
-  describe('supervisors and compliance officers get no whitelist rows', () => {
+  describe('supervisors and compliance officers get no allowlist rows', () => {
     it.each(['CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER'])('grant() does nothing for a %s', async (role) => {
       cacheService.getUserRole.mockResolvedValue(role);
 
@@ -740,7 +740,7 @@ describe('CaseInvestigatorService', () => {
     it('grant() still writes for an investigator', async () => {
       cacheService.getUserRole.mockResolvedValue('CMS_INVESTIGATOR');
       prisma.case.findFirst.mockResolvedValue({ case_id: CASE_ID });
-      prisma.caseInvestigatorBlacklist.findFirst.mockResolvedValue(null);
+      prisma.caseInvestigatorBlocklist.findFirst.mockResolvedValue(null);
       prisma.caseInvestigator.findFirst.mockResolvedValue(null);
 
       await service.grant(CASE_ID, USER_ID, TENANT, GRANTED_BY, CaseInvestigatorMembership.LEAD);
@@ -751,7 +751,7 @@ describe('CaseInvestigatorService', () => {
     it('grant() still writes when the cached role is unknown (a cache miss must never cost an investigator their row)', async () => {
       cacheService.getUserRole.mockResolvedValue(null);
       prisma.case.findFirst.mockResolvedValue({ case_id: CASE_ID });
-      prisma.caseInvestigatorBlacklist.findFirst.mockResolvedValue(null);
+      prisma.caseInvestigatorBlocklist.findFirst.mockResolvedValue(null);
       prisma.caseInvestigator.findFirst.mockResolvedValue(null);
 
       await service.grant(CASE_ID, USER_ID, TENANT, GRANTED_BY, CaseInvestigatorMembership.LEAD);
@@ -775,18 +775,18 @@ describe('CaseInvestigatorService', () => {
   });
 
   describe('listBlockedUserIds', () => {
-    it('returns the ids of the live blacklist entries for the case, tenant-scoped, ids only', async () => {
-      prisma.caseInvestigatorBlacklist.findMany.mockResolvedValue([{ user_id: USER_ID }, { user_id: OTHER_USER_ID }]);
+    it('returns the ids of the live blocklist entries for the case, tenant-scoped, ids only', async () => {
+      prisma.caseInvestigatorBlocklist.findMany.mockResolvedValue([{ user_id: USER_ID }, { user_id: OTHER_USER_ID }]);
 
       await expect(service.listBlockedUserIds(CASE_ID, TENANT)).resolves.toEqual([USER_ID, OTHER_USER_ID]);
-      expect(prisma.caseInvestigatorBlacklist.findMany).toHaveBeenCalledWith({
+      expect(prisma.caseInvestigatorBlocklist.findMany).toHaveBeenCalledWith({
         where: { case_id: CASE_ID, tenant_id: TENANT, unblocked_at: null },
         select: { user_id: true },
       });
     });
 
     it('returns an empty list when nobody is blocked', async () => {
-      prisma.caseInvestigatorBlacklist.findMany.mockResolvedValue([]);
+      prisma.caseInvestigatorBlocklist.findMany.mockResolvedValue([]);
 
       await expect(service.listBlockedUserIds(CASE_ID, TENANT)).resolves.toEqual([]);
     });
@@ -800,7 +800,7 @@ describe('CaseInvestigatorService', () => {
 
       const message = await service.formatBlockedMessage(blocked);
 
-      expect(message).toBe('User is blacklisted on this case (blocked by Sam Visor at 2026-01-01T00:00:00.000Z: conflict of interest) — unblock first.');
+      expect(message).toBe('User is blocklisted on this case (blocked by Sam Visor at 2026-01-01T00:00:00.000Z: conflict of interest) — unblock first.');
       expect(message).not.toContain(BLOCKED_BY);
       expect(cacheService.getUserFromCache).toHaveBeenCalledWith(BLOCKED_BY);
     });
@@ -827,7 +827,7 @@ describe('CaseInvestigatorService', () => {
       cacheService.getUserRole.mockResolvedValue('CMS_INVESTIGATOR');
       cacheService.getUserFromCache = jest.fn().mockResolvedValue({ id: BLOCKED_BY, fullName: 'Sam Visor', username: 'sam@x.org' });
       prisma.case.findFirst.mockResolvedValue({ case_id: CASE_ID });
-      prisma.caseInvestigatorBlacklist.findFirst.mockResolvedValue(blocked);
+      prisma.caseInvestigatorBlocklist.findFirst.mockResolvedValue(blocked);
 
       await expect(service.grant(CASE_ID, USER_ID, TENANT, GRANTED_BY)).rejects.toThrow(/blocked by Sam Visor/);
     });
@@ -838,7 +838,7 @@ describe('CaseInvestigatorService', () => {
       prisma.caseInvestigator.findMany
         .mockResolvedValueOnce([{ case_id: 843 }, { case_id: 843 }, { case_id: 9 }]) // revoked rows (843 twice)
         .mockResolvedValueOnce([{ case_id: 9 }]); // 9 was re-granted since
-      prisma.caseInvestigatorBlacklist.findMany.mockResolvedValueOnce([]);
+      prisma.caseInvestigatorBlocklist.findMany.mockResolvedValueOnce([]);
 
       await expect(service.getRestrictedCaseIds(USER_ID, TENANT)).resolves.toEqual([843]);
       expect(prisma.caseInvestigator.findMany).toHaveBeenNthCalledWith(1, {
@@ -847,11 +847,11 @@ describe('CaseInvestigatorService', () => {
       });
     });
 
-    it('leaves out cases the user is blacklisted on - a blacklist also revokes the row, but it removes the case from the queue', async () => {
+    it('leaves out cases the user is blocklisted on - a blocklist also revokes the row, but it removes the case from the queue', async () => {
       prisma.caseInvestigator.findMany
         .mockResolvedValueOnce([{ case_id: 843 }, { case_id: 9 }]) // both revoked
         .mockResolvedValueOnce([]); // neither re-granted
-      prisma.caseInvestigatorBlacklist.findMany.mockResolvedValueOnce([{ case_id: 9 }]); // 9 is blacklisted
+      prisma.caseInvestigatorBlocklist.findMany.mockResolvedValueOnce([{ case_id: 9 }]); // 9 is blocklisted
 
       await expect(service.getRestrictedCaseIds(USER_ID, TENANT)).resolves.toEqual([843]);
     });
@@ -871,7 +871,7 @@ describe('CaseInvestigatorService', () => {
       prisma.case.findFirst.mockResolvedValueOnce(null).mockResolvedValueOnce(null);
     };
 
-    it('FULL with a live whitelist row', async () => {
+    it('FULL with a live allowlist row', async () => {
       prisma.caseInvestigator.findFirst.mockResolvedValueOnce({ id: 1 });
 
       await expect(service.getAccessLevel(CASE_ID, USER_ID, TENANT, 'CMS_INVESTIGATOR')).resolves.toBe('FULL');
@@ -882,24 +882,24 @@ describe('CaseInvestigatorService', () => {
       expect(prisma.caseInvestigator.findFirst).not.toHaveBeenCalled();
     });
 
-    it('RESTRICTED when revoked (no live row) and not blacklisted', async () => {
+    it('RESTRICTED when revoked (no live row) and not blocklisted', async () => {
       noFullAccess();
-      prisma.caseInvestigatorBlacklist.findFirst.mockResolvedValue(null);
+      prisma.caseInvestigatorBlocklist.findFirst.mockResolvedValue(null);
       prisma.caseInvestigator.findFirst.mockResolvedValueOnce({ id: 9 }); // the revoked row
 
       await expect(service.getAccessLevel(CASE_ID, USER_ID, TENANT, 'CMS_INVESTIGATOR')).resolves.toBe('RESTRICTED');
     });
 
-    it('NONE when revoked but also blacklisted - a block removes the case, a plain revoke does not', async () => {
+    it('NONE when revoked but also blocklisted - a block removes the case, a plain revoke does not', async () => {
       noFullAccess();
-      prisma.caseInvestigatorBlacklist.findFirst.mockResolvedValue({ id: 1, blocked_by: BLOCKED_BY, blocked_at: new Date(), block_reason: 'x' });
+      prisma.caseInvestigatorBlocklist.findFirst.mockResolvedValue({ id: 1, blocked_by: BLOCKED_BY, blocked_at: new Date(), block_reason: 'x' });
 
       await expect(service.getAccessLevel(CASE_ID, USER_ID, TENANT, 'CMS_INVESTIGATOR')).resolves.toBe('NONE');
     });
 
     it('NONE when the user was never part of the case', async () => {
       noFullAccess();
-      prisma.caseInvestigatorBlacklist.findFirst.mockResolvedValue(null);
+      prisma.caseInvestigatorBlocklist.findFirst.mockResolvedValue(null);
       prisma.caseInvestigator.findFirst.mockResolvedValueOnce(null); // no revoked row either
 
       await expect(service.getAccessLevel(CASE_ID, USER_ID, TENANT, 'CMS_INVESTIGATOR')).resolves.toBe('NONE');
@@ -907,7 +907,7 @@ describe('CaseInvestigatorService', () => {
 
     it('assertViewAccess returns the level for restricted users and the usual 404 for none', async () => {
       noFullAccess();
-      prisma.caseInvestigatorBlacklist.findFirst.mockResolvedValue(null);
+      prisma.caseInvestigatorBlocklist.findFirst.mockResolvedValue(null);
       prisma.caseInvestigator.findFirst.mockResolvedValueOnce({ id: 9 });
       await expect(service.assertViewAccess(CASE_ID, USER_ID, TENANT, 'CMS_INVESTIGATOR')).resolves.toBe('RESTRICTED');
 
@@ -920,7 +920,7 @@ describe('CaseInvestigatorService', () => {
 
     it('assertReadAccess (evidence, comments, reports) still refuses a restricted user - they are not allowed the investigation material', async () => {
       noFullAccess();
-      prisma.caseInvestigatorBlacklist.findFirst.mockResolvedValue(null);
+      prisma.caseInvestigatorBlocklist.findFirst.mockResolvedValue(null);
 
       await expect(service.assertReadAccess(CASE_ID, USER_ID, TENANT, 'CMS_INVESTIGATOR')).rejects.toThrow(NotFoundException);
     });
@@ -928,7 +928,7 @@ describe('CaseInvestigatorService', () => {
     it('assertCanModifyCase gives a restricted user a 403 (they can see the case, not change it)', async () => {
       prisma.task.findMany.mockResolvedValue([{ assigned_user_id: 'someone-else' }]);
       noFullAccess();
-      prisma.caseInvestigatorBlacklist.findFirst.mockResolvedValue(null);
+      prisma.caseInvestigatorBlocklist.findFirst.mockResolvedValue(null);
       prisma.caseInvestigator.findFirst.mockResolvedValueOnce({ id: 9 });
 
       await expect(service.assertCanModifyCase(CASE_ID, USER_ID, TENANT, 'CMS_INVESTIGATOR')).rejects.toThrow(ForbiddenException);
@@ -936,10 +936,10 @@ describe('CaseInvestigatorService', () => {
 
     it('getCaseIdScope adds revoked cases only when asked (the history logs a revoked investigator may read)', async () => {
       prisma.caseInvestigator.findMany
-        .mockResolvedValueOnce([{ case_id: 1 }]) // live whitelist
+        .mockResolvedValueOnce([{ case_id: 1 }]) // live allowlist
         .mockResolvedValueOnce([{ case_id: 843 }]) // revoked
         .mockResolvedValueOnce([]); // none re-granted
-      prisma.caseInvestigatorBlacklist.findMany.mockResolvedValue([]);
+      prisma.caseInvestigatorBlocklist.findMany.mockResolvedValue([]);
       prisma.case.findMany.mockResolvedValue([]);
 
       await expect(service.getCaseIdScope(USER_ID, TENANT, 'CMS_INVESTIGATOR', true)).resolves.toEqual([1, 843]);
@@ -948,11 +948,11 @@ describe('CaseInvestigatorService', () => {
 
   describe('creator access (cases pending creation approval)', () => {
     it('lets the creator open their own case when they hold no task, row or open-for-claim status', async () => {
-      prisma.caseInvestigator.findFirst.mockResolvedValueOnce(null); // no live whitelist row
+      prisma.caseInvestigator.findFirst.mockResolvedValueOnce(null); // no live allowlist row
       prisma.case.findFirst
         .mockResolvedValueOnce(null) // not open for claiming
         .mockResolvedValueOnce({ case_id: CASE_ID }); // but created by this user
-      prisma.caseInvestigatorBlacklist.findFirst.mockResolvedValue(null);
+      prisma.caseInvestigatorBlocklist.findFirst.mockResolvedValue(null);
       prisma.caseInvestigator.findFirst.mockResolvedValueOnce(null); // no revoked row
 
       await expect(service.hasAccess(CASE_ID, USER_ID, TENANT, 'CMS_INVESTIGATOR')).resolves.toBe(true);
@@ -969,10 +969,10 @@ describe('CaseInvestigatorService', () => {
       await expect(service.hasAccess(CASE_ID, USER_ID, TENANT, 'CMS_INVESTIGATOR')).resolves.toBe(false);
     });
 
-    it('denies the creator once they are blacklisted on the case', async () => {
+    it('denies the creator once they are blocklisted on the case', async () => {
       prisma.caseInvestigator.findFirst.mockResolvedValueOnce(null);
       prisma.case.findFirst.mockResolvedValueOnce(null).mockResolvedValueOnce({ case_id: CASE_ID });
-      prisma.caseInvestigatorBlacklist.findFirst.mockResolvedValue({ id: 1, blocked_by: BLOCKED_BY, blocked_at: new Date(), block_reason: 'x' });
+      prisma.caseInvestigatorBlocklist.findFirst.mockResolvedValue({ id: 1, blocked_by: BLOCKED_BY, blocked_at: new Date(), block_reason: 'x' });
 
       await expect(service.hasAccess(CASE_ID, USER_ID, TENANT, 'CMS_INVESTIGATOR')).resolves.toBe(false);
     });
@@ -980,28 +980,28 @@ describe('CaseInvestigatorService', () => {
     it('denies the creator once a supervisor has revoked them from the case', async () => {
       prisma.caseInvestigator.findFirst.mockResolvedValueOnce(null).mockResolvedValueOnce({ id: 9 }); // no live row, but a revoked one
       prisma.case.findFirst.mockResolvedValueOnce(null).mockResolvedValueOnce({ case_id: CASE_ID });
-      prisma.caseInvestigatorBlacklist.findFirst.mockResolvedValue(null);
+      prisma.caseInvestigatorBlocklist.findFirst.mockResolvedValue(null);
 
       await expect(service.hasAccess(CASE_ID, USER_ID, TENANT, 'CMS_INVESTIGATOR')).resolves.toBe(false);
     });
 
-    it('getAccessibleCaseIds adds created cases to the whitelist ids, minus blacklisted and revoked ones', async () => {
+    it('getAccessibleCaseIds adds created cases to the allowlist ids, minus blocklisted and revoked ones', async () => {
       prisma.caseInvestigator.findMany
-        .mockResolvedValueOnce([{ case_id: 1 }]) // live whitelist
+        .mockResolvedValueOnce([{ case_id: 1 }]) // live allowlist
         .mockResolvedValueOnce([{ case_id: 4 }]); // revoked among the created ones
       prisma.case.findMany.mockResolvedValueOnce([{ case_id: 1 }, { case_id: 2 }, { case_id: 3 }, { case_id: 4 }]); // created
-      prisma.caseInvestigatorBlacklist.findMany.mockResolvedValueOnce([{ case_id: 3 }]); // blacklisted among the created ones
+      prisma.caseInvestigatorBlocklist.findMany.mockResolvedValueOnce([{ case_id: 3 }]); // blocklisted among the created ones
 
       await expect(service.getAccessibleCaseIds(USER_ID, TENANT)).resolves.toEqual([1, 2]);
     });
   });
 
   describe('live dashboard refresh: case.access-changed', () => {
-    it('emits case.access-changed after a blacklist, so the investigator queue refreshes', async () => {
+    it('emits case.access-changed after a blocklist, so the investigator queue refreshes', async () => {
       prisma.case.findFirst.mockResolvedValue({ case_id: CASE_ID });
       prisma.caseInvestigator.findFirst.mockResolvedValue(null);
 
-      await service.blacklist(CASE_ID, USER_ID, TENANT, BLOCKED_BY, 'conflict of interest');
+      await service.blocklist(CASE_ID, USER_ID, TENANT, BLOCKED_BY, 'conflict of interest');
 
       expect(eventEmitter.emit).toHaveBeenCalledWith('case.access-changed', { caseId: CASE_ID, tenantId: TENANT });
     });
@@ -1018,7 +1018,7 @@ describe('CaseInvestigatorService', () => {
         order.push('notify');
       });
 
-      await service.blacklist(CASE_ID, USER_ID, TENANT, BLOCKED_BY, 'conflict');
+      await service.blocklist(CASE_ID, USER_ID, TENANT, BLOCKED_BY, 'conflict');
 
       expect(order).toEqual(['cascade', 'notify']);
     });
@@ -1032,23 +1032,23 @@ describe('CaseInvestigatorService', () => {
     });
 
     it('emits case.access-changed after an unblock, so the case reappears in the queue', async () => {
-      prisma.caseInvestigatorBlacklist.findFirst.mockResolvedValue({ id: 6 });
+      prisma.caseInvestigatorBlocklist.findFirst.mockResolvedValue({ id: 6 });
 
       await service.unblock(CASE_ID, USER_ID, TENANT, BLOCKED_BY, 'resolved');
 
       expect(eventEmitter.emit).toHaveBeenCalledWith('case.access-changed', { caseId: CASE_ID, tenantId: TENANT });
     });
 
-    it('does not emit when the blacklist is refused (nothing changed)', async () => {
+    it('does not emit when the blocklist is refused (nothing changed)', async () => {
       cacheService.getUserRole.mockResolvedValue('CMS_SUPERVISOR');
 
-      await expect(service.blacklist(CASE_ID, USER_ID, TENANT, BLOCKED_BY, 'conflict')).rejects.toThrow();
+      await expect(service.blocklist(CASE_ID, USER_ID, TENANT, BLOCKED_BY, 'conflict')).rejects.toThrow();
 
       expect(eventEmitter.emit).not.toHaveBeenCalled();
     });
 
     it('never fails the access change if the emit itself throws', async () => {
-      prisma.caseInvestigatorBlacklist.findFirst.mockResolvedValue({ id: 6 });
+      prisma.caseInvestigatorBlocklist.findFirst.mockResolvedValue({ id: 6 });
       eventEmitter.emit.mockImplementationOnce(() => {
         throw new Error('listener blew up');
       });
@@ -1057,7 +1057,7 @@ describe('CaseInvestigatorService', () => {
     });
   });
 
-  describe('revoke / blacklist: task-unassign cascade', () => {
+  describe('revoke / blocklist: task-unassign cascade', () => {
     // CaseInvestigatorService does not call the task repository or
     // TaskLifecycleService directly for this cascade - it emits
     // 'case-investigator.access-removed' (via emitAsync, awaited) and
@@ -1079,11 +1079,11 @@ describe('CaseInvestigatorService', () => {
       });
     });
 
-    it('emits case-investigator.access-removed when blacklisted too', async () => {
+    it('emits case-investigator.access-removed when blocklisted too', async () => {
       prisma.case.findFirst.mockResolvedValue({ case_id: CASE_ID });
       prisma.caseInvestigator.findFirst.mockResolvedValue({ id: 5 });
 
-      await service.blacklist(CASE_ID, USER_ID, TENANT, BLOCKED_BY, 'conflict of interest');
+      await service.blocklist(CASE_ID, USER_ID, TENANT, BLOCKED_BY, 'conflict of interest');
 
       expect(eventEmitter.emitAsync).toHaveBeenCalledWith('case-investigator.access-removed', {
         caseId: CASE_ID,
@@ -1102,91 +1102,91 @@ describe('CaseInvestigatorService', () => {
       expect(logger.error).toHaveBeenCalled();
     });
 
-    it('a listener failure is caught and logged but does not fail the blacklist itself', async () => {
+    it('a listener failure is caught and logged but does not fail the blocklist itself', async () => {
       prisma.case.findFirst.mockResolvedValue({ case_id: CASE_ID });
       prisma.caseInvestigator.findFirst.mockResolvedValue({ id: 5 });
       eventEmitter.emitAsync.mockRejectedValueOnce(new Error('flowable unavailable'));
 
-      await expect(service.blacklist(CASE_ID, USER_ID, TENANT, BLOCKED_BY, 'conflict of interest')).resolves.toBeUndefined();
+      await expect(service.blocklist(CASE_ID, USER_ID, TENANT, BLOCKED_BY, 'conflict of interest')).resolves.toBeUndefined();
       expect(logger.error).toHaveBeenCalled();
     });
   });
 
-  describe('blacklist', () => {
+  describe('blocklist', () => {
     it('requires a non-blank reason', async () => {
-      await expect(service.blacklist(CASE_ID, USER_ID, TENANT, BLOCKED_BY, '')).rejects.toThrow(BadRequestException);
+      await expect(service.blocklist(CASE_ID, USER_ID, TENANT, BLOCKED_BY, '')).rejects.toThrow(BadRequestException);
       expect(prisma.case.findFirst).not.toHaveBeenCalled();
     });
 
-    it('refuses to blacklist a supervisor or compliance officer target before ever touching the DB', async () => {
+    it('refuses to blocklist a supervisor or compliance officer target before ever touching the DB', async () => {
       cacheService.getUserRole.mockResolvedValue('CMS_SUPERVISOR');
 
-      await expect(service.blacklist(CASE_ID, USER_ID, TENANT, BLOCKED_BY, 'conflict')).rejects.toThrow(ForbiddenException);
+      await expect(service.blocklist(CASE_ID, USER_ID, TENANT, BLOCKED_BY, 'conflict')).rejects.toThrow(ForbiddenException);
       expect(prisma.case.findFirst).not.toHaveBeenCalled();
     });
 
     it('refuses a cross-tenant caseId before writing anything', async () => {
       prisma.case.findFirst.mockResolvedValue(null);
 
-      await expect(service.blacklist(CASE_ID, USER_ID, 'tenant-other', BLOCKED_BY, 'conflict')).rejects.toThrow(
+      await expect(service.blocklist(CASE_ID, USER_ID, 'tenant-other', BLOCKED_BY, 'conflict')).rejects.toThrow(
         new NotFoundException('Case not found or access denied'),
       );
-      expect(prisma.caseInvestigatorBlacklist.create).not.toHaveBeenCalled();
+      expect(prisma.caseInvestigatorBlocklist.create).not.toHaveBeenCalled();
     });
 
-    it('revokes any live whitelist row (reason "blacklisted") and creates the blacklist row, in one transaction', async () => {
+    it('revokes any live allowlist row (reason "blocklisted") and creates the blocklist row, in one transaction', async () => {
       prisma.case.findFirst.mockResolvedValue({ case_id: CASE_ID });
       prisma.caseInvestigator.findFirst.mockResolvedValue({ id: 5 });
 
-      await service.blacklist(CASE_ID, USER_ID, TENANT, BLOCKED_BY, 'conflict of interest');
+      await service.blocklist(CASE_ID, USER_ID, TENANT, BLOCKED_BY, 'conflict of interest');
 
       expect(prisma.caseInvestigator.update).toHaveBeenCalledWith({
         where: { id: 5 },
-        data: { revoked_at: expect.any(Date), revoked_by: BLOCKED_BY, revoke_reason: 'blacklisted' },
+        data: { revoked_at: expect.any(Date), revoked_by: BLOCKED_BY, revoke_reason: 'blocklisted' },
       });
-      expect(prisma.caseInvestigatorBlacklist.create).toHaveBeenCalledWith({
+      expect(prisma.caseInvestigatorBlocklist.create).toHaveBeenCalledWith({
         data: { case_id: CASE_ID, tenant_id: TENANT, user_id: USER_ID, blocked_by: BLOCKED_BY, block_reason: 'conflict of interest' },
       });
       expect(loggingOrchestrationService.logActionsWithHistory).toHaveBeenCalled();
     });
 
-    it('creates the blacklist row even when there was no live whitelist row to revoke', async () => {
+    it('creates the blocklist row even when there was no live allowlist row to revoke', async () => {
       prisma.case.findFirst.mockResolvedValue({ case_id: CASE_ID });
       prisma.caseInvestigator.findFirst.mockResolvedValue(null);
 
-      await service.blacklist(CASE_ID, USER_ID, TENANT, BLOCKED_BY, 'preemptive block');
+      await service.blocklist(CASE_ID, USER_ID, TENANT, BLOCKED_BY, 'preemptive block');
 
       expect(prisma.caseInvestigator.update).not.toHaveBeenCalled();
-      expect(prisma.caseInvestigatorBlacklist.create).toHaveBeenCalled();
+      expect(prisma.caseInvestigatorBlocklist.create).toHaveBeenCalled();
     });
 
-    it('maps a P2002 from the live-blacklist unique index to a 409 and skips logging and task unassignment', async () => {
+    it('maps a P2002 from the live-blocklist unique index to a 409 and skips logging and task unassignment', async () => {
       prisma.case.findFirst.mockResolvedValue({ case_id: CASE_ID });
       prisma.caseInvestigator.findFirst.mockResolvedValue(null);
-      prisma.caseInvestigatorBlacklist.create.mockRejectedValue({ code: 'P2002' });
+      prisma.caseInvestigatorBlocklist.create.mockRejectedValue({ code: 'P2002' });
 
-      await expect(service.blacklist(CASE_ID, USER_ID, TENANT, BLOCKED_BY, 'dup')).rejects.toThrow(ConflictException);
+      await expect(service.blocklist(CASE_ID, USER_ID, TENANT, BLOCKED_BY, 'dup')).rejects.toThrow(ConflictException);
       expect(loggingOrchestrationService.logActionsWithHistory).not.toHaveBeenCalled();
       expect(prisma.task.findMany).not.toHaveBeenCalled();
     });
 
-    it('rethrows non-P2002 errors from the blacklist transaction unchanged', async () => {
+    it('rethrows non-P2002 errors from the blocklist transaction unchanged', async () => {
       prisma.case.findFirst.mockResolvedValue({ case_id: CASE_ID });
       prisma.caseInvestigator.findFirst.mockResolvedValue(null);
       const boom = new Error('db down');
-      prisma.caseInvestigatorBlacklist.create.mockRejectedValue(boom);
+      prisma.caseInvestigatorBlocklist.create.mockRejectedValue(boom);
 
-      await expect(service.blacklist(CASE_ID, USER_ID, TENANT, BLOCKED_BY, 'x')).rejects.toBe(boom);
+      await expect(service.blocklist(CASE_ID, USER_ID, TENANT, BLOCKED_BY, 'x')).rejects.toBe(boom);
     });
 
-    it('blacklist-then-refuse-grant: a live block causes a later grant() to be refused', async () => {
+    it('blocklist-then-refuse-grant: a live block causes a later grant() to be refused', async () => {
       prisma.case.findFirst.mockResolvedValue({ case_id: CASE_ID });
       prisma.caseInvestigator.findFirst.mockResolvedValue(null);
-      await service.blacklist(CASE_ID, USER_ID, TENANT, BLOCKED_BY, 'conflict of interest');
-      expect(prisma.caseInvestigatorBlacklist.create).toHaveBeenCalled();
+      await service.blocklist(CASE_ID, USER_ID, TENANT, BLOCKED_BY, 'conflict of interest');
+      expect(prisma.caseInvestigatorBlocklist.create).toHaveBeenCalled();
 
       // Simulate the write actually landing, then a task assignment trying to grant this user access.
-      prisma.caseInvestigatorBlacklist.findFirst.mockResolvedValue({
+      prisma.caseInvestigatorBlocklist.findFirst.mockResolvedValue({
         blocked_by: BLOCKED_BY,
         blocked_at: new Date(),
         block_reason: 'conflict of interest',
@@ -1202,31 +1202,31 @@ describe('CaseInvestigatorService', () => {
   describe('unblock', () => {
     it('requires a non-blank reason', async () => {
       await expect(service.unblock(CASE_ID, USER_ID, TENANT, BLOCKED_BY, '')).rejects.toThrow(BadRequestException);
-      expect(prisma.caseInvestigatorBlacklist.findFirst).not.toHaveBeenCalled();
+      expect(prisma.caseInvestigatorBlocklist.findFirst).not.toHaveBeenCalled();
     });
 
     it('throws NotFoundException when there is no live block to unblock', async () => {
-      prisma.caseInvestigatorBlacklist.findFirst.mockResolvedValue(null);
+      prisma.caseInvestigatorBlocklist.findFirst.mockResolvedValue(null);
 
       await expect(service.unblock(CASE_ID, USER_ID, TENANT, BLOCKED_BY, 'resolved')).rejects.toThrow(
-        new NotFoundException('No live blacklist entry found for this user on this case'),
+        new NotFoundException('No live blocklist entry found for this user on this case'),
       );
     });
 
     it('soft-unblocks the live row and logs to case history', async () => {
-      prisma.caseInvestigatorBlacklist.findFirst.mockResolvedValue({ id: 6 });
+      prisma.caseInvestigatorBlocklist.findFirst.mockResolvedValue({ id: 6 });
 
       await service.unblock(CASE_ID, USER_ID, TENANT, BLOCKED_BY, 'resolved');
 
-      expect(prisma.caseInvestigatorBlacklist.update).toHaveBeenCalledWith({
+      expect(prisma.caseInvestigatorBlocklist.update).toHaveBeenCalledWith({
         where: { id: 6 },
         data: { unblocked_at: expect.any(Date), unblocked_by: BLOCKED_BY, unblock_reason: 'resolved' },
       });
       expect(loggingOrchestrationService.logActionsWithHistory).toHaveBeenCalled();
     });
 
-    it('does NOT grant access back — an unblocked user still has no live whitelist row until a fresh task assignment', async () => {
-      prisma.caseInvestigatorBlacklist.findFirst.mockResolvedValue({ id: 6 });
+    it('does NOT grant access back — an unblocked user still has no live allowlist row until a fresh task assignment', async () => {
+      prisma.caseInvestigatorBlocklist.findFirst.mockResolvedValue({ id: 6 });
 
       await service.unblock(CASE_ID, USER_ID, TENANT, BLOCKED_BY, 'resolved');
 
@@ -1236,11 +1236,11 @@ describe('CaseInvestigatorService', () => {
   });
 
   describe('listAccessHistory', () => {
-    it('returns revoked whitelist rows and unblocked blacklist rows, tenant-scoped and most recent first', async () => {
+    it('returns revoked allowlist rows and unblocked blocklist rows, tenant-scoped and most recent first', async () => {
       const revoked = [{ id: 7, user_id: USER_ID, revoked_at: new Date('2026-10-21'), revoke_reason: 'fsafasde' }];
       const unblocked = [{ id: 2, user_id: OTHER_USER_ID, unblocked_at: new Date('2026-10-20'), unblock_reason: 'cleared' }];
       prisma.caseInvestigator.findMany.mockResolvedValue(revoked);
-      prisma.caseInvestigatorBlacklist.findMany.mockResolvedValue(unblocked);
+      prisma.caseInvestigatorBlocklist.findMany.mockResolvedValue(unblocked);
 
       const result = await service.listAccessHistory(CASE_ID, TENANT);
 
@@ -1249,7 +1249,7 @@ describe('CaseInvestigatorService', () => {
         where: { case_id: CASE_ID, tenant_id: TENANT, revoked_at: { not: null } },
         orderBy: { revoked_at: 'desc' },
       });
-      expect(prisma.caseInvestigatorBlacklist.findMany).toHaveBeenCalledWith({
+      expect(prisma.caseInvestigatorBlocklist.findMany).toHaveBeenCalledWith({
         where: { case_id: CASE_ID, tenant_id: TENANT, unblocked_at: { not: null } },
         orderBy: { unblocked_at: 'desc' },
       });
@@ -1258,7 +1258,7 @@ describe('CaseInvestigatorService', () => {
     it('does not filter by reason, so automatic revokes (reassigned away) are part of the history too', async () => {
       const auto = { id: 8, user_id: USER_ID, revoked_at: new Date(), revoke_reason: 'Automatically revoked: no longer assigned to any task on this case' };
       prisma.caseInvestigator.findMany.mockResolvedValue([auto]);
-      prisma.caseInvestigatorBlacklist.findMany.mockResolvedValue([]);
+      prisma.caseInvestigatorBlocklist.findMany.mockResolvedValue([]);
 
       const result = await service.listAccessHistory(CASE_ID, TENANT);
 
@@ -1267,14 +1267,14 @@ describe('CaseInvestigatorService', () => {
 
     it('returns empty lists when nobody was ever revoked or unblocked', async () => {
       prisma.caseInvestigator.findMany.mockResolvedValue([]);
-      prisma.caseInvestigatorBlacklist.findMany.mockResolvedValue([]);
+      prisma.caseInvestigatorBlocklist.findMany.mockResolvedValue([]);
 
       await expect(service.listAccessHistory(CASE_ID, TENANT)).resolves.toEqual({ revoked: [], unblocked: [] });
     });
 
     it('reports role null (unknown), not a guess, when the role lookup fails - and still returns the rows', async () => {
       prisma.caseInvestigator.findMany.mockResolvedValue([{ id: 7, user_id: USER_ID }]);
-      prisma.caseInvestigatorBlacklist.findMany.mockResolvedValue([]);
+      prisma.caseInvestigatorBlocklist.findMany.mockResolvedValue([]);
       cacheService.getUserRole.mockRejectedValue(new Error('redis down'));
 
       const result = await service.listAccessHistory(CASE_ID, TENANT);
@@ -1283,11 +1283,11 @@ describe('CaseInvestigatorService', () => {
     });
   });
 
-  describe('listWhitelist / listBlacklist', () => {
-    it('listWhitelist filters live rows by case_id and tenant_id, ordered by granted_at asc', async () => {
+  describe('listAllowlist / listBlocklist', () => {
+    it('listAllowlist filters live rows by case_id and tenant_id, ordered by granted_at asc', async () => {
       prisma.caseInvestigator.findMany.mockResolvedValue([{ id: 1, user_id: USER_ID }]);
 
-      const result = await service.listWhitelist(CASE_ID, TENANT);
+      const result = await service.listAllowlist(CASE_ID, TENANT);
 
       expect(result).toEqual([{ id: 1, user_id: USER_ID, user_role: 'CMS_INVESTIGATOR' }]);
       expect(prisma.caseInvestigator.findMany).toHaveBeenCalledWith({
@@ -1296,7 +1296,7 @@ describe('CaseInvestigatorService', () => {
       });
     });
 
-    it('listWhitelist tags each row with its user role, and keeps rows that already exist for supervisors/compliance officers', async () => {
+    it('listAllowlist tags each row with its user role, and keeps rows that already exist for supervisors/compliance officers', async () => {
       prisma.caseInvestigator.findMany.mockResolvedValue([
         { id: 1, user_id: USER_ID },
         { id: 2, user_id: OTHER_USER_ID },
@@ -1306,18 +1306,18 @@ describe('CaseInvestigatorService', () => {
         ({ [USER_ID]: 'CMS_INVESTIGATOR', [OTHER_USER_ID]: 'CMS_SUPERVISOR', [GRANTED_BY]: 'CMS_COMPLIANCE_OFFICER' })[id] ?? null,
       );
 
-      const result = await service.listWhitelist(CASE_ID, TENANT);
+      const result = await service.listAllowlist(CASE_ID, TENANT);
 
       expect(result.map((r: any) => r.user_role)).toEqual(['CMS_INVESTIGATOR', 'CMS_SUPERVISOR', 'CMS_COMPLIANCE_OFFICER']);
     });
 
-    it('listWhitelist looks each distinct user up once', async () => {
+    it('listAllowlist looks each distinct user up once', async () => {
       prisma.caseInvestigator.findMany.mockResolvedValue([
         { id: 1, user_id: USER_ID },
         { id: 2, user_id: USER_ID },
       ]);
 
-      await service.listWhitelist(CASE_ID, TENANT);
+      await service.listAllowlist(CASE_ID, TENANT);
 
       expect(cacheService.getUserRole).toHaveBeenCalledTimes(1);
     });
@@ -1327,23 +1327,23 @@ describe('CaseInvestigatorService', () => {
       ['a cache failure', async () => {
         throw new Error('redis down');
       }],
-    ])('listWhitelist reports role null (unknown), not a guess, on %s - and still returns the rows', async (_desc, impl) => {
+    ])('listAllowlist reports role null (unknown), not a guess, on %s - and still returns the rows', async (_desc, impl) => {
       prisma.caseInvestigator.findMany.mockResolvedValue([{ id: 1, user_id: USER_ID }]);
       cacheService.getUserRole.mockImplementation(impl);
 
-      const result = await service.listWhitelist(CASE_ID, TENANT);
+      const result = await service.listAllowlist(CASE_ID, TENANT);
 
       expect(result).toEqual([{ id: 1, user_id: USER_ID, user_role: null }]);
     });
 
-    it('listBlacklist filters live rows by case_id and tenant_id, ordered by blocked_at asc', async () => {
+    it('listBlocklist filters live rows by case_id and tenant_id, ordered by blocked_at asc', async () => {
       const rows = [{ id: 2 }];
-      prisma.caseInvestigatorBlacklist.findMany.mockResolvedValue(rows);
+      prisma.caseInvestigatorBlocklist.findMany.mockResolvedValue(rows);
 
-      const result = await service.listBlacklist(CASE_ID, TENANT);
+      const result = await service.listBlocklist(CASE_ID, TENANT);
 
       expect(result).toBe(rows);
-      expect(prisma.caseInvestigatorBlacklist.findMany).toHaveBeenCalledWith({
+      expect(prisma.caseInvestigatorBlocklist.findMany).toHaveBeenCalledWith({
         where: { case_id: CASE_ID, tenant_id: TENANT, unblocked_at: null },
         orderBy: { blocked_at: 'asc' },
       });

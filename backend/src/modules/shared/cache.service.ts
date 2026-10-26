@@ -27,7 +27,7 @@ export class CacheService {
 
   // In-memory copy of the user directory, kept alongside Redis. Redis stays the shared, 30-day source of
   // truth, but role lookups (who is a supervisor, who may be revoked) must not stop working just because
-  // Redis is down or was restarted empty - without this every role was "unknown" and revoke/blacklist
+  // Redis is down or was restarted empty - without this every role was "unknown" and revoke/blocklist
   // failed closed. Per process, and short-lived so a role change in Keycloak is picked up.
   private readonly localUsers = new Map<string, { user: UserDetails; expiresAt: number }>();
   private readonly LOCAL_USER_TTL_MS = 12 * 60 * 60 * 1000;

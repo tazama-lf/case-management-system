@@ -705,7 +705,7 @@ describe('EvidenceService', () => {
       expect(couchdbService.queryDocuments).toHaveBeenCalledWith(expect.objectContaining({ caseIds: [100, 101] }));
     });
 
-    it('uses the same scope as the per-case evidence gates, not the narrower whitelist-only ids', async () => {
+    it('uses the same scope as the per-case evidence gates, not the narrower allowlist-only ids', async () => {
       await service.getEvidenceByType(evidenceType as any, userId, tenantId, 'CMS_INVESTIGATOR');
 
       expect(caseInvestigatorService.getAccessibleCaseIds).not.toHaveBeenCalled();

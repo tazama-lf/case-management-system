@@ -246,7 +246,7 @@ describe('TaskHistoryService', () => {
       expect(where).toEqual({ tenant_id: 'tenant-123', case_id: { in: [456, 789] } });
     });
 
-    it('should return nothing (empty IN list) for an investigator with no whitelisted cases', async () => {
+    it('should return nothing (empty IN list) for an investigator with no allowlisted cases', async () => {
       caseInvestigatorService.getCaseIdScope.mockResolvedValue([]);
 
       await service.getLogs('tenant-123', TEST_USER_ID, 'CMS_INVESTIGATOR');
