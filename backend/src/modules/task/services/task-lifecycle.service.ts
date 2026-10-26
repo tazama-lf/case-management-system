@@ -407,7 +407,7 @@ export class TaskLifecycleService {
    * the investigator closes it. If that investigator loses access in between, no live task is left to
    * unassign, and neither they nor a supervisor can close the case. Put it back in the queue: a fresh
    * unassigned Investigate Case task, no owner, READY_FOR_ASSIGNMENT. Does nothing unless the case is
-   * IN_PROGRESS and the user's task is its latest Investigate Case task.
+   * IN_PROGRESS, owned by this user, and the user's task is its latest Investigate Case task.
    */
   private async requeueCompletedInvestigation(
     caseId: number,
@@ -417,7 +417,7 @@ export class TaskLifecycleService {
     reason: string,
   ): Promise<void> {
     const existingCase = await this.caseRepository.findCaseById(caseId, tenantId);
-    if (existingCase.status !== CaseStatus.STATUS_20_IN_PROGRESS) {
+    if (existingCase.status !== CaseStatus.STATUS_20_IN_PROGRESS || existingCase.case_owner_user_id !== userId) {
       return;
     }
 
@@ -439,14 +439,15 @@ export class TaskLifecycleService {
         },
       });
 
-      // The status was checked above, outside this transaction: only move the case if it is still
-      // IN_PROGRESS (and in this tenant), otherwise throw so the new task and comment roll back.
+      // The status and owner were checked above, outside this transaction: only move the case if it is
+      // still IN_PROGRESS and still owned by this user (in this tenant), otherwise throw so the new task
+      // and comment roll back.
       const { count } = await tx.case.updateMany({
-        where: { case_id: caseId, tenant_id: tenantId, status: CaseStatus.STATUS_20_IN_PROGRESS },
+        where: { case_id: caseId, tenant_id: tenantId, status: CaseStatus.STATUS_20_IN_PROGRESS, case_owner_user_id: userId },
         data: { status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT, case_owner_user_id: null, updated_at: new Date() },
       });
       if (count === 0) {
-        throw new ConflictException(`Case ${caseId} is no longer IN_PROGRESS; not re-queuing it`);
+        throw new ConflictException(`Case ${caseId} is no longer IN_PROGRESS under ${userId}; not re-queuing it`);
       }
 
       await this.commentRepository.createComment(actorUserId, { caseId, taskId: newTask.task_id, note: reason, tenantId }, tx);

@@ -935,7 +935,11 @@ describe('TaskLifecycleService', () => {
         mockLoggingService.logActionsWithHistory.mockClear();
         mockFlowableService.handleCaseStatusChanged.mockClear();
         mockFlowableService.handleTaskUnassigned.mockClear();
-        mockCaseRepository.findCaseById.mockResolvedValue({ case_id: 1, status: CaseStatus.STATUS_20_IN_PROGRESS });
+        mockCaseRepository.findCaseById.mockResolvedValue({
+          case_id: 1,
+          status: CaseStatus.STATUS_20_IN_PROGRESS,
+          case_owner_user_id: 'user1',
+        });
         mockTaskRepository.findTasks.mockImplementation(async (where) =>
           where.name === 'Investigate Case' ? [completedTask] : [],
         );
@@ -953,7 +957,7 @@ describe('TaskLifecycleService', () => {
           }),
         });
         expect(mockPrisma.case.updateMany).toHaveBeenCalledWith({
-          where: { case_id: 1, tenant_id: 'tenant1', status: CaseStatus.STATUS_20_IN_PROGRESS },
+          where: { case_id: 1, tenant_id: 'tenant1', status: CaseStatus.STATUS_20_IN_PROGRESS, case_owner_user_id: 'user1' },
           data: expect.objectContaining({ status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT, case_owner_user_id: null }),
         });
         expect(mockCommentRepository.createComment).toHaveBeenCalledWith(
@@ -1008,6 +1012,19 @@ describe('TaskLifecycleService', () => {
           expect.any(String),
           TaskLifecycleService.name,
         );
+      });
+
+      it('does nothing when the case is IN_PROGRESS but owned by someone else', async () => {
+        mockCaseRepository.findCaseById.mockResolvedValue({
+          case_id: 1,
+          status: CaseStatus.STATUS_20_IN_PROGRESS,
+          case_owner_user_id: 'user2',
+        });
+
+        await service.handleAccessRemoved(event);
+
+        expect(mockPrisma.task.create).not.toHaveBeenCalled();
+        expect(mockPrisma.case.updateMany).not.toHaveBeenCalled();
       });
 
       it('does nothing when the case is not IN_PROGRESS', async () => {
