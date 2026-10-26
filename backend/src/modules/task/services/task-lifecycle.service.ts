@@ -427,7 +427,7 @@ export class TaskLifecycleService {
       return;
     }
 
-    await this.taskRepository.transaction(async (tx) => {
+    const newTaskId = await this.taskRepository.transaction(async (tx) => {
       const newTask = await tx.task.create({
         data: {
           case_id: caseId,
@@ -450,6 +450,7 @@ export class TaskLifecycleService {
       }
 
       await this.commentRepository.createComment(actorUserId, { caseId, taskId: newTask.task_id, note: reason, tenantId }, tx);
+      return newTask.task_id;
     });
 
     await this.logTaskHistory(
@@ -465,6 +466,23 @@ export class TaskLifecycleService {
     } catch (error) {
       this.logger.warn(
         `Flowable sync failed after re-queueing case ${caseId}: ${error instanceof Error ? error.message : String(error)}`,
+        TaskLifecycleService.name,
+      );
+    }
+
+    // "Complete Investigation" only completes the DB task, so Flowable's Investigate Case task is still
+    // claimed by the investigator who lost access. Release it, or the next investigator's claim fails
+    // ("Failed to claim task") because Flowable refuses to claim a task someone else holds.
+    try {
+      await this.flowableService.handleTaskUnassigned({
+        taskId: newTaskId,
+        caseId,
+        taskName: TASK_NAMES.INVESTIGATE_CASE,
+        assignedUser: null,
+      });
+    } catch (error) {
+      this.logger.warn(
+        `Flowable unclaim failed after re-queueing case ${caseId}: ${error instanceof Error ? error.message : String(error)}`,
         TaskLifecycleService.name,
       );
     }

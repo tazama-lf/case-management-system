@@ -934,6 +934,7 @@ describe('TaskLifecycleService', () => {
         mockCommentRepository.createComment.mockClear();
         mockLoggingService.logActionsWithHistory.mockClear();
         mockFlowableService.handleCaseStatusChanged.mockClear();
+        mockFlowableService.handleTaskUnassigned.mockClear();
         mockCaseRepository.findCaseById.mockResolvedValue({ case_id: 1, status: CaseStatus.STATUS_20_IN_PROGRESS });
         mockTaskRepository.findTasks.mockImplementation(async (where) =>
           where.name === 'Investigate Case' ? [completedTask] : [],
@@ -970,6 +971,25 @@ describe('TaskLifecycleService', () => {
           caseId: 1,
           newStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
         });
+        // Flowable still has the previous investigator as assignee; release it so the next claim works.
+        expect(mockFlowableService.handleTaskUnassigned).toHaveBeenCalledWith({
+          taskId: 21,
+          caseId: 1,
+          taskName: 'Investigate Case',
+          assignedUser: null,
+        });
+      });
+
+      it('keeps the requeue when Flowable cannot unclaim the task', async () => {
+        mockFlowableService.handleTaskUnassigned.mockRejectedValueOnce(new Error('flowable down'));
+
+        await expect(service.handleAccessRemoved(event)).resolves.toBeUndefined();
+
+        expect(mockPrisma.case.updateMany).toHaveBeenCalled();
+        expect(mockLoggerService.warn).toHaveBeenCalledWith(
+          expect.stringContaining('Flowable unclaim failed after re-queueing case 1'),
+          TaskLifecycleService.name,
+        );
       });
 
       it('aborts the transaction when the case left IN_PROGRESS after the check, so no comment, history or Flowable sync follows', async () => {
@@ -982,6 +1002,7 @@ describe('TaskLifecycleService', () => {
         expect(mockCommentRepository.createComment).not.toHaveBeenCalled();
         expect(mockLoggingService.logActionsWithHistory).not.toHaveBeenCalled();
         expect(mockFlowableService.handleCaseStatusChanged).not.toHaveBeenCalled();
+        expect(mockFlowableService.handleTaskUnassigned).not.toHaveBeenCalled();
         expect(mockLoggerService.error).toHaveBeenCalledWith(
           expect.stringContaining('Failed to re-queue case 1'),
           expect.any(String),
