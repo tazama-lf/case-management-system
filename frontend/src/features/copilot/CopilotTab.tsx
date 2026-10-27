@@ -3,9 +3,12 @@ import { ArrowPathIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import CheckedTextView from './CheckedTextView';
 import AgentTracePanel from './AgentTracePanel';
 import CaseChat from './CaseChat';
+import FeedbackButtons from './FeedbackButtons';
+import { GovernanceReportButton } from './GovernanceReportPanel';
 import {
   copilotService,
   modelLabel,
+  provenanceLabel,
   type CopilotModelInfo,
   type InvestigationRecord,
 } from './copilotService';
@@ -80,19 +83,22 @@ const CopilotTab: React.FC<Props> = ({ caseId }) => {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
         <ModelStatus status={status} />
-        <button
-          type="button"
-          onClick={run}
-          disabled={busy !== null}
-          className="inline-flex items-center gap-1 rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
-        >
-          {busy === 'run' ? (
-            <ArrowPathIcon className="h-4 w-4 animate-spin" />
-          ) : (
-            <SparklesIcon className="h-4 w-4" />
-          )}
-          {record ? 'Re-run on latest case data' : 'Run copilot on this case'}
-        </button>
+        <div className="flex items-center gap-2">
+          <GovernanceReportButton />
+          <button
+            type="button"
+            onClick={run}
+            disabled={busy !== null}
+            className="inline-flex items-center gap-1 rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+          >
+            {busy === 'run' ? (
+              <ArrowPathIcon className="h-4 w-4 animate-spin" />
+            ) : (
+              <SparklesIcon className="h-4 w-4" />
+            )}
+            {record ? 'Re-run on latest case data' : 'Run copilot on this case'}
+          </button>
+        </div>
       </div>
 
       {err && (
@@ -146,6 +152,15 @@ const CopilotTab: React.FC<Props> = ({ caseId }) => {
               asList
             />
           </section>
+
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <FeedbackButtons caseId={caseId} recordId={record.id} />
+            {record.provenance && (
+              <span className="text-[11px] text-gray-400">
+                Produced by {provenanceLabel(record.provenance)}
+              </span>
+            )}
+          </div>
 
           {record.agent && <AgentTracePanel agent={record.agent} />}
 

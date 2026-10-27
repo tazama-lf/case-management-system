@@ -49,6 +49,24 @@ export interface AgentTrace {
   fellBack: boolean;
 }
 
+/** The model the endpoint actually served: file, quantisation and build from llama.cpp, the resolved id from a provider. */
+export interface ServedModel {
+  model: string | null;
+  file?: string;
+  quantisation?: string;
+  build?: string;
+}
+
+/** Exactly what produced a record: the prompts, the settings and the model served. */
+export interface Provenance {
+  promptVersion: string;
+  strategy: 'pipeline' | 'agent';
+  temperature: number;
+  maxTokens: number;
+  meaningCheck: boolean;
+  served: ServedModel | null;
+}
+
 export interface InvestigationRecord {
   id: number;
   caseId: number;
@@ -61,14 +79,75 @@ export interface InvestigationRecord {
   nextSteps: CheckedText;
   notice?: string;
   agent?: AgentTrace;
+  provenance?: Provenance;
+  raw?: string | null;
 }
 
 export interface AskResult {
   recordId: number;
+  /** The stored record of this question and answer; feedback on the answer refers to it. */
+  askId: number;
   factIds: string[];
   answer: CheckedText;
   notice?: string;
   agent?: AgentTrace;
+}
+
+export type FeedbackRating = 'up' | 'down';
+
+export interface Feedback {
+  id: number;
+  recordId: number;
+  rating: FeedbackRating;
+  comment: string;
+  createdAt: string;
+}
+
+/** Result of recomputing the hash of every copilot record of the tenant. */
+export interface ChainReport {
+  ok: boolean;
+  checked: number;
+  unchained: number;
+  head: string | null;
+  brokenAt?: number;
+  reason?: string;
+}
+
+/** What the copilot did in a period, for supervisors and compliance officers. */
+export interface GovernanceReport {
+  tenantId: string;
+  from: string;
+  to: string;
+  records: Record<string, number>;
+  models: Array<{
+    provider: string;
+    model: string | null;
+    file?: string;
+    build?: string;
+    promptVersion: string;
+    strategy: string;
+    records: number;
+  }>;
+  writing: {
+    modelParts: number;
+    codeParts: number;
+    sentencesKept: number;
+    sentencesRemoved: number;
+    removalReasons: Array<{ reason: string; count: number }>;
+  };
+  agent: { runs: number; fellBack: number };
+  feedback: {
+    up: number;
+    down: number;
+    recent: Array<{
+      recordId: number;
+      rating: FeedbackRating;
+      comment: string;
+      at: string;
+    }>;
+  };
+  review: Record<string, number>;
+  chain: ChainReport;
 }
 
 export interface SarSection {
@@ -91,6 +170,8 @@ export interface SarDraft {
   goamlXml: string;
   checks: Array<{ name: string; ok: boolean; detail: string }>;
   notice?: string;
+  provenance?: Provenance;
+  raw?: string | null;
 }
 
 const base = '/api/v1/copilot';
@@ -108,7 +189,57 @@ export const copilotService = {
     await apiClient.get(`${base}/cases/${caseId}/sar-draft`),
   draftSar: async (caseId: number, refresh = false): Promise<SarDraft> =>
     await apiClient.post(`${base}/cases/${caseId}/sar-draft`, { refresh }),
+  feedback: async (
+    caseId: number,
+    recordId: number,
+    rating: FeedbackRating,
+    comment?: string,
+  ): Promise<Feedback> =>
+    await apiClient.post(`${base}/cases/${caseId}/feedback`, {
+      recordId,
+      rating,
+      comment,
+    }),
+  governance: async (days: number): Promise<GovernanceReport> =>
+    await apiClient.get(`${base}/governance?days=${days}`),
 };
+
+/** One line on what produced a record: the model served, its build, the prompt version and the strategy. */
+export function provenanceLabel(p: Provenance): string {
+  const s = p.served;
+  const model = s
+    ? [
+        s.file ?? s.model ?? 'model not reported',
+        s.quantisation,
+        s.build ? `build ${s.build}` : undefined,
+      ]
+        .filter(Boolean)
+        .join(', ')
+    : 'no model';
+  return `${model} · prompts ${p.promptVersion} · ${p.strategy} · meaning check ${p.meaningCheck ? 'on' : 'off'}`;
+}
+
+/** The narrative as a text file, headed by a note that it was drafted with AI assistance and must be reviewed. */
+export function sarNarrative(d: SarDraft): string {
+  const model =
+    d.model.mode === 'off'
+      ? 'no model, written by code'
+      : `${d.model.model ?? 'model not set'}, ${d.model.mode === 'bundled' ? 'bundled model' : 'your provider'}`;
+  return [
+    `STR draft for CMS case ${d.caseId} (copilot record ${d.investigationRecordId}, ${new Date(d.createdAt).toLocaleString()})`,
+    `Prepared with AI assistance by the Tazama CMS copilot (${model}) from investigation record ${d.investigationRecordId}, draft ${d.id}.`,
+    'Every sentence cites case facts and passed automated checks. It must be reviewed and approved under the CMS maker-checker workflow before filing.',
+    ...(d.provenance ? [`Produced by: ${provenanceLabel(d.provenance)}`] : []),
+    '',
+    ...d.sections.flatMap((s) => [
+      s.title.toUpperCase(),
+      s.text.sentences.map((x) => x.text).join(' '),
+      '',
+    ]),
+    'INDICATORS',
+    ...d.indicators.map((i) => `- ${i}`),
+  ].join('\n');
+}
 
 export function modelLabel(m: CopilotModelInfo): string {
   if (m.mode === 'off') return 'Model off: text written by code from the facts';
