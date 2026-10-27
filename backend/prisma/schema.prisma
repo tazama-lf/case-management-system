@@ -622,3 +622,24 @@ model InvestigationGroup {
 
   @@map("investigation_groups")
 }
+
+/// Investigation copilot output (backlog P4-2) and SAR drafts (P3-2).
+/// INVESTIGATION: the facts computed for a case, their embedding vectors and the copilot's findings.
+/// SAR_DRAFT: a narrative and goAML XML built from one INVESTIGATION record (parent_id).
+model CopilotRecord {
+  id              Int      @id @default(autoincrement())
+  case_id         Int
+  tenant_id       String
+  kind            String   @db.VarChar(30)
+  parent_id       Int?
+  created_by      String   @db.Uuid
+  provider        String   @db.VarChar(30)
+  model           String?  @db.VarChar(200)
+  embedding_model String?  @db.VarChar(200)
+  payload         Json
+  created_at      DateTime @default(now()) @db.Timestamp(6)
+
+  @@index([case_id, kind])
+  @@index([tenant_id])
+  @@map("copilot_records")
+}
