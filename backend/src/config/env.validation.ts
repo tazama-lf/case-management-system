@@ -159,10 +159,31 @@ class EnvironmentVariables {
   @IsBooleanString()
   OPENSEARCH_REFRESH!: string;
 
-  // Copilot feature toggle: only 'true' switches the copilot on (default off)
+  // Copilot feature toggles: each is on only when exactly 'true' (default off)
   @IsOptional()
   @IsBooleanString()
-  COPILOT_ENABLED?: string;
+  COPILOT_INVESTIGATION_ENABLED?: string;
+
+  @IsOptional()
+  @IsBooleanString()
+  COPILOT_SAR_ENABLED?: string;
+
+  // How the investigation is produced: the model reads all facts at once, or chooses facts to read with tools
+  @IsOptional()
+  @IsIn(['pipeline', 'agent'])
+  COPILOT_STRATEGY?: string;
+
+  @IsOptional()
+  @IsNumberString()
+  COPILOT_AGENT_MAX_STEPS?: string;
+
+  @IsOptional()
+  @IsNumberString()
+  COPILOT_AGENT_MAX_TOOL_CALLS?: string;
+
+  @IsOptional()
+  @IsNumberString()
+  COPILOT_AGENT_TIMEOUT_MS?: string;
 
   // Investigation copilot: bundled open-weight model, bring-your-own-key endpoint, or off
   @IsOptional()

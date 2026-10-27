@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import type { AssistantTurn, ChatMessage, ToolChoice, ToolSpec } from './agent/agent.types';
 import type { ModelInfo } from './copilot.types';
 import { BUILTIN_EMBEDDING, embedBuiltin, normalise } from './embeddings';
 
@@ -96,6 +97,43 @@ export class ModelProviderService {
       const content = json.choices?.[0]?.message?.content ?? '';
       this.logger.log(`${this.mode} model ${this.model} answered in ${Date.now() - started} ms`);
       return parseJsonObject(content) as T | null;
+    } catch (e) {
+      this.logger.warn(`model call failed after ${Date.now() - started} ms: ${e instanceof Error ? e.message : String(e)}`);
+      return null;
+    }
+  }
+
+  /**
+   * One turn of a tool-using conversation (OpenAI-compatible `tools`). Returns null when there is no model or it fails.
+   * llama.cpp needs --jinja for tool calls; the compose service sets it.
+   */
+  async chatTurn(messages: ChatMessage[], tools: ToolSpec[], toolChoice: ToolChoice): Promise<AssistantTurn | null> {
+    if (!this.url || !this.model) return null;
+    const started = Date.now();
+    const body = {
+      model: this.model,
+      temperature: 0.1,
+      max_tokens: this.maxTokens,
+      messages,
+      ...(tools.length ? { tools, tool_choice: toolChoice } : {}),
+    };
+    try {
+      const r = await fetch(`${this.url}/chat/completions`, {
+        method: 'POST',
+        headers: this.headers(),
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(this.timeoutMs),
+      });
+      if (!r.ok) {
+        this.logger.warn(`model returned HTTP ${r.status}: ${(await r.text()).slice(0, 200)}`);
+        return null;
+      }
+      const json = (await r.json()) as { choices?: Array<{ message?: ChatMessage }> };
+      const message = json.choices?.[0]?.message;
+      if (!message) return null;
+      this.logger.log(`${this.mode} model ${this.model} took a turn in ${Date.now() - started} ms`);
+      const toolCalls = (message.tool_calls ?? []).map((c) => ({ id: c.id, name: c.function.name, arguments: c.function.arguments }));
+      return { content: message.content ?? '', toolCalls, message: { ...message, content: message.content ?? null } };
     } catch (e) {
       this.logger.warn(`model call failed after ${Date.now() - started} ms: ${e instanceof Error ? e.message : String(e)}`);
       return null;

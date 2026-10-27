@@ -32,6 +32,13 @@ describe('copilot verifier', () => {
     expect(numbersIn('PKR 450,000.00 in 3 credits [F12], 97%')).toEqual(['450000', '3', '97']);
   });
 
+  it('checks counts written as words, in the sentence and in the facts alike', () => {
+    expect(numbersIn('Three of the Ten payees, often new; no one else, one of them.')).toEqual(['3', '10']);
+    const r = (text: string): string[] => checkSentence({ text, cites: ['F1'] }, map, all).reasons;
+    expect(r('Three of the ten counterparties were new.')).toEqual(['the number 10 is not in the cited facts']);
+    expect(r('The account had three credits.')).toEqual([]);
+  });
+
   it('keeps a sentence whose numbers are in the cited facts', () => {
     expect(checkSentence({ text: 'Hamza Rafiq received PKR 450,000 in 3 credits.', cites: ['F1'] }, map, all).ok).toBe(true);
   });
@@ -72,7 +79,7 @@ describe('copilot facts', () => {
     expect(text).toMatch(/3 credits totalling PKR 450,000 from 3 counterparties/);
     expect(text).toMatch(/left the account within 24 hours; the median time from a credit to the next debit was 30 minutes/);
     expect(text).toMatch(/times the declared monthly income of PKR 30,000/);
-    expect(text).toMatch(/4 of the 4 counterparties in the window had not appeared/);
+    expect(text).toMatch(/4 of the 4 counterparty accounts in the window, not counting cash, card, bill and top-up payments, had not appeared/);
     expect(text).toMatch(/3 debits totalling PKR 441,000 to 1 counterparty\./);
     expect(text).toMatch(/^98% of the value credited/m);
     expect(cf.facts.find((f) => f.kind === 'kyc')?.text).toMatch(/^Comment 7 on Investigate Case by cms investigator/);

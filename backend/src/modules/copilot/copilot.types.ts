@@ -1,3 +1,5 @@
+import type { StopReason, ToolTrace } from './agent/agent.types';
+
 export type FactKind =
   'case' | 'alert' | 'rule' | 'transaction' | 'subject' | 'kyc' | 'activity' | 'pattern' | 'counterparty' | 'screening' | 'note';
 
@@ -80,6 +82,16 @@ export interface ModelInfo {
   embeddings: string;
 }
 
+/** How an agent run produced the findings: every tool call, and why it stopped. Stored with the record as the audit trail. */
+export interface AgentTrace {
+  stopped: StopReason;
+  calls: ToolTrace[];
+  /** Facts the tools returned; the only ones the model's sentences may cite. */
+  factIds: string[];
+  /** True when the model did not use the tools or failed, and the pipeline wrote the findings instead. */
+  fellBack: boolean;
+}
+
 /** What the copilot stores for a case: the facts with their vectors, and its findings. The SAR agent reads this. */
 export interface InvestigationRecord {
   id: number;
@@ -93,6 +105,8 @@ export interface InvestigationRecord {
   redFlags: CheckedText;
   nextSteps: CheckedText;
   notice?: string;
+  /** Present when the findings were produced by the agent strategy. */
+  agent?: AgentTrace;
 }
 
 export interface SarSection {
@@ -114,9 +128,19 @@ export interface SarDraft {
   investigationRecordId: number;
   createdAt: string;
   model: ModelInfo;
+  /** The facts the draft cites, copied from the investigation record so the draft stands on its own. */
+  facts: Fact[];
   sections: SarSection[];
   indicators: string[];
   goamlXml: string;
   checks: SarCheck[];
   notice?: string;
+}
+
+/** Who is asking, taken from the verified token. */
+export interface Caller {
+  userId: string;
+  tenantId: string;
+  name: string;
+  email?: string;
 }

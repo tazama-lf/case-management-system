@@ -1,7 +1,11 @@
 import { NotFoundException } from '@nestjs/common';
 import { CaseFactsService, htmlToText } from '../src/modules/copilot/case-facts.service';
-import { CopilotService, codeFindings } from '../src/modules/copilot/copilot.service';
+import { codeFindings } from '../src/modules/copilot/findings';
+import { InvestigationService } from '../src/modules/copilot/investigation.service';
+import { type InvestigationStrategy, PipelineStrategy } from '../src/modules/copilot/investigation.strategy';
 import { ModelProviderService, parseJsonObject } from '../src/modules/copilot/model-provider.service';
+import { RecordStore } from '../src/modules/copilot/record-store.service';
+import { SarService } from '../src/modules/copilot/sar.service';
 import { ALERT_DATA, KYC, SUBJECT, T0, TRIGGER_E2E, muleHistory } from './copilot.fixtures';
 
 const CALLER = { userId: '5fb927ab-d31b-46f7-87c9-0a069b8df9ee', tenantId: 'TAZAMA', name: 'cms investigator', email: 'inv@tazama.org' };
@@ -44,11 +48,12 @@ function prismaMock(): any {
         return row;
       }),
       findFirst: jest.fn(async ({ where }: any) => [...records].reverse().find((r) => r.case_id === where.case_id && r.kind === where.kind && r.tenant_id === where.tenant_id) ?? null),
+      findMany: jest.fn(async ({ where }: any) => records.filter((r) => r.case_id === where.case_id && r.kind === where.kind && r.tenant_id === where.tenant_id && r.parent_id === where.parent_id)),
     },
   };
 }
 
-function setup(env: Record<string, string>, reply?: (body: any) => unknown): { service: CopilotService; prisma: any; fetchMock: jest.Mock } {
+function setup(env: Record<string, string>, reply?: (body: any) => unknown): { service: InvestigationService; sar: SarService; prisma: any; fetchMock: jest.Mock } {
   for (const k of Object.keys(process.env).filter((k) => k.startsWith('COPILOT_'))) delete process.env[k];
   Object.assign(process.env, env);
   const fetchMock = jest.fn(async (url: string, init?: any) => {
@@ -61,11 +66,14 @@ function setup(env: Record<string, string>, reply?: (body: any) => unknown): { s
   });
   global.fetch = fetchMock as any;
   const prisma = prismaMock();
-  const service = new CopilotService(prisma, new CaseFactsService(prisma), new ModelProviderService());
-  return { service, prisma, fetchMock };
+  const models = new ModelProviderService();
+  const caseFacts = new CaseFactsService(prisma);
+  const service = new InvestigationService(new RecordStore(prisma), caseFacts, models, new PipelineStrategy(models));
+  const sar = new SarService(new RecordStore(prisma), caseFacts, models, service);
+  return { service, sar, prisma, fetchMock };
 }
 
-describe('CopilotService', () => {
+describe('InvestigationService and SarService', () => {
   it('runs with the model off: code-written findings, stored record with vectors', async () => {
     const { service, prisma } = setup({ COPILOT_MODE: 'off' });
     const r = await service.investigate(42, CALLER);
@@ -76,9 +84,9 @@ describe('CopilotService', () => {
     expect(Object.keys(r.vectors)).toHaveLength(r.facts.length);
     expect(r.notice).toMatch(/switched off/);
     expect(prisma.records[0].kind).toBe('INVESTIGATION');
-    expect((await service.latestInvestigation(42, 'TAZAMA'))?.id).toBe(r.id);
-    expect(await service.latestInvestigation(42, 'OTHER')).toBeNull();
-    expect(await service.status()).toMatchObject({ mode: 'off', reachable: false });
+    expect((await service.latest(42, 'TAZAMA'))?.id).toBe(r.id);
+    expect(await service.latest(42, 'OTHER')).toBeNull();
+    expect(await service.status()).toMatchObject({ mode: 'off', reachable: false, strategy: 'pipeline' });
   });
 
   it('keeps checked model sentences and removes the ones that fail', async () => {
@@ -128,10 +136,33 @@ describe('CopilotService', () => {
     expect(b.recordId).toBe(a.recordId);
   });
 
+  it('keeps every question and answer, linked to the investigation record, for audit', async () => {
+    const { service, prisma } = setup({ COPILOT_MODE: 'bundled' }, () => ({ answer: [{ text: 'The case data does not show this.', cites: [] }] }));
+    const a = await service.ask(42, CALLER, 'Who sent the money?');
+    const asks = prisma.records.filter((r: any) => r.kind === 'ASK');
+    expect(asks).toHaveLength(1);
+    expect(asks[0]).toMatchObject({ parent_id: a.recordId, created_by: CALLER.userId, provider: 'bundled', tenant_id: 'TAZAMA' });
+    expect(asks[0].payload).toMatchObject({ question: 'Who sent the money?', answer: { writtenBy: 'model' } });
+  });
+
+  it('returns the agent trace with an answer, so the chat can show how it was produced', async () => {
+    const { prisma } = setup({ COPILOT_MODE: 'off' });
+    const agent = { stopped: 'answered' as const, calls: [], factIds: [], fellBack: false };
+    const strategy: InvestigationStrategy = {
+      name: 'agent',
+      investigate: async (facts) => ({ reply: null, evidence: facts }),
+      answer: async (_question, facts) => ({ reply: { answer: ['The case data does not show this.'] }, evidence: facts, agent }),
+    };
+    const service = new InvestigationService(new RecordStore(prisma), new CaseFactsService(prisma), new ModelProviderService(), strategy);
+    const a = await service.ask(42, CALLER, 'Which device was used?');
+    expect(a.answer.writtenBy).toBe('model');
+    expect(a.agent).toEqual(agent);
+  });
+
   it('drafts a SAR from the stored record, linked to it, with goAML XML and checks', async () => {
-    const { service, prisma } = setup({ COPILOT_MODE: 'off', GOAML_RENTITY_ID: 'RE-123' });
+    const { service, sar, prisma } = setup({ COPILOT_MODE: 'off', GOAML_RENTITY_ID: 'RE-123' });
     const first = await service.investigate(42, CALLER);
-    const d = await service.draftSar(42, CALLER);
+    const d = await sar.draft(42, CALLER);
     expect(d.investigationRecordId).toBe(first.id);
     expect(d.sections.map((s) => s.key)).toEqual(['subject', 'activity', 'grounds', 'investigation', 'action']);
     expect(d.sections.every((s) => s.text.sentences.length > 0)).toBe(true);
@@ -139,19 +170,19 @@ describe('CopilotService', () => {
     expect(d.goamlXml).toContain(SUBJECT);
     expect(d.checks.every((c) => c.ok)).toBe(true);
     expect(prisma.records.at(-1)).toMatchObject({ kind: 'SAR_DRAFT', parent_id: first.id });
-    expect((await service.latestSar(42, 'TAZAMA'))?.id).toBe(d.id);
-    expect(await service.latestSar(1, 'TAZAMA')).toBeNull();
-    const refreshed = await service.draftSar(42, CALLER, true);
+    expect((await sar.latest(42, 'TAZAMA'))?.id).toBe(d.id);
+    expect(await sar.latest(1, 'TAZAMA')).toBeNull();
+    const refreshed = await sar.draft(42, CALLER, true);
     expect(refreshed.investigationRecordId).not.toBe(first.id);
   });
 
   it('uses model SAR sections when they pass the checks', async () => {
-    const { service } = setup({ COPILOT_MODE: 'bundled' }, (body) => {
+    const { sar } = setup({ COPILOT_MODE: 'bundled' }, (body) => {
       if (body.messages[0].content.includes('investigation copilot')) return 'not json';
       const id = /(F\d+) \[subject\]/.exec(body.messages[1].content)![1];
       return { subject: [{ text: 'Hamza Rafiq held the account.', cites: [id] }] };
     });
-    const d = await service.draftSar(42, CALLER);
+    const d = await sar.draft(42, CALLER);
     expect(d.sections[0].text.writtenBy).toBe('model');
     expect(d.sections[1].text.writtenBy).toBe('code');
   });

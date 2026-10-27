@@ -260,7 +260,7 @@ function counterpartyFacts(add: Add, c: Ctx): void {
   if (cps.length && seen.size) {
     add(
       'counterparty',
-      `${cps.filter((a) => !seen.has(a)).length} of the ${cps.length} counterparties in the window had not appeared in the account's earlier history.`,
+      `${cps.filter((a) => !seen.has(a)).length} of the ${cps.length} counterparty accounts in the window, not counting cash, card, bill and top-up payments, had not appeared in the account's earlier history.`,
       c.src,
     );
   }

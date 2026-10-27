@@ -12,7 +12,7 @@ Both are advisory. Nothing here changes a case, a task or its status.
 ```
 CMS case ──► facts (code) ──► embed ──► investigation record (copilot_records, kind INVESTIGATION)
                                          │  facts + vectors + summary, red flags, next steps
-                                         ├─► ask: question vector → nearest facts → answer
+                                         ├─► ask: question vector → nearest facts → answer → ASK record
                                          └─► SAR agent: for each STR section, nearest facts → narrative
                                               → checks → goAML XML → SAR_DRAFT record (parent_id = investigation)
 ```
@@ -33,16 +33,77 @@ CMS case ──► facts (code) ──► embed ──► investigation record (
 
 5. **SAR agent.** It reads the stored record, not the live case, so the draft can be traced to what the investigator saw. For each STR section (subject, activity, grounds, investigation, action) it ranks the stored fact vectors against the section's query and drafts from the top matches. `sar.ts` builds the goAML XML in the UNODC base structure and runs the filing checks: totals match the source transactions, the alert transaction is included, the case is closed confirmed, and the reporting entity id is set.
 
+## Audit
+
+Two records exist for every model use, and nothing is updated or deleted:
+
+- **`copilot_records`** holds what the model did. Each row records who asked and when, and the provider and model. Kinds:
+  - **INVESTIGATION**: the facts, the findings kept, and every removed sentence with the reason.
+  - **ASK**: each chat question with its answer.
+  - **SAR_DRAFT**: the draft, with its checks.
+  - **SAR_REVIEW**: each maker-checker step, with its comment.
+
+  With the agent strategy, the rows also hold every tool call. ASK and SAR_DRAFT rows point at the investigation record they were built from.
+- **The CMS audit log** (OpenSearch, `@Audit()`) holds each request that runs the model or changes a review. Each event records the user, role, tenant, case, endpoint, outcome and time, with a SHA-256 hash of the event. The resource types are `copilot-investigation` and `copilot-sar`.
+
 ## API
 
-| Method     | Path                                                   | Roles                                |
-| ---------- | ------------------------------------------------------ | ------------------------------------ |
-| GET        | `/api/v1/copilot/status`                               | investigator, supervisor, compliance |
-| GET / POST | `/api/v1/copilot/cases/:caseId/investigation`          | investigator, supervisor, compliance |
-| POST       | `/api/v1/copilot/cases/:caseId/ask` `{question}`       | investigator, supervisor, compliance |
-| GET / POST | `/api/v1/copilot/cases/:caseId/sar-draft` `{refresh?}` | compliance officer, supervisor       |
+| Method     | Path                                                   | Feature                          |
+| ---------- | ------------------------------------------------------ | -------------------------------- |
+| GET        | `/api/v1/features`                                     | always (tells the UI what is on) |
+| GET        | `/api/v1/copilot/status`                               | either feature                   |
+| GET / POST | `/api/v1/copilot/cases/:caseId/investigation`          | investigation                    |
+| POST       | `/api/v1/copilot/cases/:caseId/ask` `{question}`       | investigation                    |
+| GET / POST | `/api/v1/copilot/cases/:caseId/sar-draft` `{refresh?}` | SAR                              |
+| GET / POST | `/api/v1/copilot/cases/:caseId/sar-review`             | SAR                              |
 
-The UI has a **Copilot** tab in the task workspace (`frontend/src/features/copilot/CopilotTab.tsx`) and a **Draft SAR/STR** panel in the SAR/STR Filing modal (`SarDraftPanel.tsx`).
+Investigators, supervisors and compliance officers may call them, and every `:caseId` route also follows the case access rules (`CaseReadAccessGuard`): no access, or a revoked access, answers 404.
+
+The UI has a **Copilot** tab in the task workspace (`CopilotTab.tsx`) and a **Draft SAR/STR** panel in the SAR/STR Filing modal (`SarDraftPanel.tsx`). Each appears only when its own feature is on.
+
+## Two features, each with its own switch
+
+| Variable                        | On when        | What it adds                                                                   |
+| ------------------------------- | -------------- | ------------------------------------------------------------------------------ |
+| `COPILOT_INVESTIGATION_ENABLED` | exactly `true` | Copilot tab: summary, red flags, next steps, case chat                         |
+| `COPILOT_SAR_ENABLED`           | exactly `true` | SAR/STR drafting and its maker-checker review; works without the other feature |
+
+Both default to off. A feature that is off has no controller, so its routes return 404. The SAR agent drafts from the investigation record, so with only SAR on it runs the investigation internally and stores the record; the draft carries its own copy of the facts it cites.
+
+## Code layout
+
+| File                                              | Role                                                                      |
+| ------------------------------------------------- | ------------------------------------------------------------------------- |
+| `copilot.module.ts`, `copilot.config.ts`          | Dynamic module: registers only what is switched on; reads the flags       |
+| `investigation.service.ts`, `sar.service.ts`      | The two features. SAR depends on investigation, never the reverse         |
+| `investigation.strategy.ts`                       | Strategy pattern: how the model gets at the facts (`pipeline` or `agent`) |
+| `agent/`                                          | Tool registry, fact tools and the agent loop                              |
+| `record-store.service.ts`                         | The only reader and writer of `copilot_records` (append-only)             |
+| `facts.ts`, `history.ts`, `case-facts.service.ts` | Facts computed by code from CMS data                                      |
+| `verifier.ts`, `findings.ts`, `prompts.ts`        | Checks on every sentence, the code-written fallback, the prompts          |
+| `sar.ts`, `sar-review.ts`                         | STR sections and goAML XML; the review state machine                      |
+| `case-read-access.guard.ts`, `request-context.ts` | Case access check and who is asking                                       |
+
+## Strategy: pipeline or agent
+
+`COPILOT_STRATEGY` chooses how the model reads the facts. Everything around it is the same: the facts are computed by code, every sentence is checked, and code writes the text when the model fails.
+
+| Strategy             | How the model works                                                                                  | Calls                         |
+| -------------------- | ---------------------------------------------------------------------------------------------------- | ----------------------------- |
+| `pipeline` (default) | Sees all the facts in one prompt and writes                                                          | one                           |
+| `agent`              | Chooses which facts to read with read-only tools, then writes. It may cite only what a tool returned | several, within a hard budget |
+
+The agent is built to be auditable and safe:
+
+- **Read-only tools over code-computed facts.** `get_alert_and_rules`, `get_subject_profile`, `get_transaction_activity`, `get_counterparties`, `get_notes_and_comments`, `search_facts`. No tool writes anything, and the case is fixed by the server, never chosen by the model.
+- **Validated arguments.** Unknown arguments, wrong types and out-of-range values are refused before a tool runs, and the model is told why.
+- **Citations come from a ledger.** The facts a tool returned in this run are the only ones a sentence may cite; anything else is removed by the verifier.
+- **Hard limits.** `COPILOT_AGENT_MAX_STEPS` (6), `COPILOT_AGENT_MAX_TOOL_CALLS` (8) and `COPILOT_AGENT_TIMEOUT_MS` (240000). At a limit the model is asked once more with tools off. At most 4 calls run per turn and the budget holds inside a turn; a call that is not run is still answered ("Not run: ...") and shows in the trace, because OpenAI-compatible providers reject an unanswered call. A repeated identical call is answered from memory.
+- **Case text is data.** Notes written by people may contain instructions, so tool output is wrapped as untrusted data and the prompt says never to follow it.
+- **A trace in the record.** Every tool call, the facts it returned and why the run stopped are stored with the investigation record and shown in the Copilot tab ("How this was produced").
+- **A fallback.** If the model does not use the tools or fails, the pipeline writes the findings, and the trace says so.
+
+The agent needs a model that supports tool calling: llama.cpp with `--jinja` (set in `docker-compose-cms.yml`), or any provider through bring-your-own-key. A 4B model is not guaranteed to call tools reliably; it should be measured before the agent becomes a default.
 
 ## Model: bundled, bring your own key, or off
 
@@ -62,6 +123,7 @@ Other settings:
 | `COPILOT_BUNDLED_MODEL`     | `qwen3-4b-instruct-2507`   | bundled model name                                                        |
 | `COPILOT_BUNDLED_LICENSE`   | `Apache-2.0`               | must match the shipped weights                                            |
 | `COPILOT_EMBEDDINGS`        | `builtin`                  | or `provider` with `COPILOT_EMBEDDING_MODEL`                              |
+| `COPILOT_STRATEGY`          | `pipeline`                 | or `agent`                                                                |
 | `COPILOT_REPORTING_FSP`     | `fsp001`                   | the deployment's own FSP, used to tell the customer from the counterparty |
 | `COPILOT_CTR_THRESHOLD`     | `2000000`                  | cash threshold, local currency                                            |
 | `COPILOT_TZ_OFFSET_MINUTES` | `300`                      | local time for dates in facts                                             |
@@ -74,4 +136,4 @@ Other settings:
 - **KYC and screening.** These are read from comments and notes ("KYC extract", "Screening results"). Encrypted evidence documents are not read.
 - **The checks are mechanical.** They catch wrong figures, invented names, guilt and tipping-off language. They do not catch a sentence that pairs a true number with the wrong meaning. Investigators must read the text before using it.
 - **goAML codes.** Transmode and funds codes are placeholders. Each FIU publishes its own XSD and code lists.
-- **No MCP server.** Backlog P2-13 would expose the same case tools to other AI clients, with tenant scoping and audit.
+- **No MCP server yet.** Backlog P2-13 would expose the same tools to other AI clients. The tool registry in `agent/` is the layer to put it on, keeping the case access check and the call log.

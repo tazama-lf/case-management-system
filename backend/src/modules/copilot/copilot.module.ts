@@ -1,40 +1,66 @@
-import { Module, type DynamicModule } from '@nestjs/common';
+import { type DynamicModule, Module, type Provider, type Type } from '@nestjs/common';
 import { PrismaModule } from '../../../prisma/prisma.module';
 import { CaseInvestigatorModule } from '../case-investigator/case-investigator.module';
 import { CaseFactsService } from './case-facts.service';
-import { CopilotController } from './copilot.controller';
-import { CopilotService } from './copilot.service';
-import { FeaturesController } from './features.controller';
+import { CaseReadAccessGuard } from './case-read-access.guard';
+import { COPILOT_FEATURES, type CopilotFeatures, anyCopilotFeature, copilotFeatures, strategyName } from './copilot.config';
+import { CopilotStatusController, FeaturesController } from './copilot-status.controller';
+import { InvestigationController } from './investigation.controller';
+import { InvestigationService } from './investigation.service';
+import { AgentStrategy, INVESTIGATION_STRATEGY, PipelineStrategy } from './investigation.strategy';
 import { ModelProviderService } from './model-provider.service';
-
-/** The copilot is a feature toggle: COPILOT_ENABLED=true registers it, anything else leaves it out entirely. */
-export function copilotEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
-  return env.COPILOT_ENABLED === 'true';
-}
+import { RecordStore } from './record-store.service';
+import { SarController } from './sar.controller';
+import { SarService } from './sar.service';
 
 /**
- * Investigation copilot and SAR/STR drafting.
+ * Investigation copilot (COPILOT_INVESTIGATION_ENABLED) and SAR/STR drafting agent (COPILOT_SAR_ENABLED), each its own
+ * feature. Only what is switched on is registered: a feature that is off has no controller, so its routes answer 404.
+ * The parts both share (facts, model, record store, investigation service) load when either is on, because a SAR draft is
+ * written from the investigation record. Only the small features endpoint is always there, so the UI can ask what is on.
  *
  *   investigation  facts computed by code from CMS data -> embedded -> findings written and checked -> stored
- *   ask            question -> nearest stored facts -> answer written and checked
- *   sar-draft      stored record -> facts retrieved per STR section -> narrative written and checked -> goAML XML
+ *   ask            question -> the facts that answer it -> answer written and checked
+ *   sar-draft      stored record -> facts per STR section -> narrative written and checked -> goAML XML
  *   sar-review     maker-checker approval of the draft before it can be filed
- *
- * When disabled, no copilot controller, service or provider exists: its routes answer 404 and nothing is loaded.
- * Only the small features endpoint stays, so the UI can ask which optional features are on.
  */
 @Module({})
 export class CopilotModule {
-  static register(enabled: boolean = copilotEnabled()): DynamicModule {
-    if (!enabled) {
-      return { module: CopilotModule, controllers: [FeaturesController], providers: [{ provide: 'COPILOT_ENABLED', useValue: false }] };
-    }
+  static register(features: CopilotFeatures = copilotFeatures()): DynamicModule {
+    const always = {
+      module: CopilotModule,
+      controllers: [FeaturesController],
+      providers: [{ provide: COPILOT_FEATURES, useValue: features }],
+    };
+    if (!anyCopilotFeature(features)) return always;
+    const controllers: Array<Type<unknown>> = [
+      ...always.controllers,
+      CopilotStatusController,
+      ...(features.investigation ? [InvestigationController] : []),
+      ...(features.sar ? [SarController] : []),
+    ];
+    const providers: Provider[] = [
+      ...always.providers,
+      RecordStore,
+      CaseFactsService,
+      ModelProviderService,
+      CaseReadAccessGuard,
+      PipelineStrategy,
+      AgentStrategy,
+      {
+        provide: INVESTIGATION_STRATEGY,
+        useFactory: (pipeline: PipelineStrategy, agent: AgentStrategy) => (strategyName() === 'agent' ? agent : pipeline),
+        inject: [PipelineStrategy, AgentStrategy],
+      },
+      InvestigationService,
+      ...(features.sar ? [SarService] : []),
+    ];
     return {
       module: CopilotModule,
       imports: [PrismaModule, CaseInvestigatorModule],
-      controllers: [CopilotController, FeaturesController],
-      providers: [CopilotService, CaseFactsService, ModelProviderService, { provide: 'COPILOT_ENABLED', useValue: true }],
-      exports: [CopilotService],
+      controllers,
+      providers,
+      exports: [InvestigationService],
     };
   }
 }

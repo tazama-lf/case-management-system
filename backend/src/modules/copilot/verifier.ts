@@ -88,8 +88,33 @@ const ALLOWED = new Set(
   ].map((s) => s.toLowerCase()),
 );
 
+/** Counts written as words are checked like digits. "one" is left out: "no one" and "one of" are not counts. */
+const NUMBER_WORDS = [
+  'two',
+  'three',
+  'four',
+  'five',
+  'six',
+  'seven',
+  'eight',
+  'nine',
+  'ten',
+  'eleven',
+  'twelve',
+  'thirteen',
+  'fourteen',
+  'fifteen',
+  'sixteen',
+  'seventeen',
+  'eighteen',
+  'nineteen',
+  'twenty',
+];
+const FIRST_WORD_VALUE = 2;
+const NUMBER_WORD = new RegExp(`\\b(?:${NUMBER_WORDS.join('|')})\\b`, 'giv');
+
 export function numbersIn(text: string): string[] {
-  const clean = text.replace(FACT_REF, ' ');
+  const clean = text.replace(FACT_REF, ' ').replace(NUMBER_WORD, (w) => String(NUMBER_WORDS.indexOf(w.toLowerCase()) + FIRST_WORD_VALUE));
   return (clean.match(/\d[\d,]*(?:\.\d+)?/gv) ?? []).map((n) => {
     let v = n.replace(/,/gv, '');
     if (v.includes('.')) v = v.replace(/0+$/v, '').replace(/\.$/v, '');
