@@ -1,6 +1,7 @@
 import React from 'react';
 import { ArrowPathIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import CheckedTextView from './CheckedTextView';
+import AgentTracePanel from './AgentTracePanel';
 import CaseChat from './CaseChat';
 import {
   copilotService,
@@ -145,6 +146,8 @@ const CopilotTab: React.FC<Props> = ({ caseId }) => {
               asList
             />
           </section>
+
+          {record.agent && <AgentTracePanel agent={record.agent} />}
 
           <CaseChat caseId={caseId} facts={record.facts} recordId={record.id} />
 

@@ -30,6 +30,25 @@ export interface CopilotModelInfo {
   reachable?: boolean;
 }
 
+export interface AgentToolCall {
+  step: number;
+  tool: string;
+  arguments: unknown;
+  ok: boolean;
+  factIds: string[];
+  error?: string;
+  repeated?: boolean;
+  ms: number;
+}
+
+/** How the agent strategy produced the findings: every tool call, and why it stopped. */
+export interface AgentTrace {
+  stopped: 'answered' | 'step_limit' | 'tool_limit' | 'timeout' | 'model_failed';
+  calls: AgentToolCall[];
+  factIds: string[];
+  fellBack: boolean;
+}
+
 export interface InvestigationRecord {
   id: number;
   caseId: number;
@@ -41,6 +60,7 @@ export interface InvestigationRecord {
   redFlags: CheckedText;
   nextSteps: CheckedText;
   notice?: string;
+  agent?: AgentTrace;
 }
 
 export interface AskResult {
@@ -48,6 +68,7 @@ export interface AskResult {
   factIds: string[];
   answer: CheckedText;
   notice?: string;
+  agent?: AgentTrace;
 }
 
 export interface SarSection {
@@ -63,6 +84,8 @@ export interface SarDraft {
   investigationRecordId: number;
   createdAt: string;
   model: CopilotModelInfo;
+  /** The facts the draft cites; older drafts did not carry them. */
+  facts?: CopilotFact[];
   sections: SarSection[];
   indicators: string[];
   goamlXml: string;

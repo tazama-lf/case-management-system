@@ -1,5 +1,6 @@
 import React from 'react';
 import { ArrowUpIcon } from '@heroicons/react/24/solid';
+import AgentTracePanel from './AgentTracePanel';
 import CheckedTextView from './CheckedTextView';
 import {
   copilotService,
@@ -114,6 +115,11 @@ const CaseChat: React.FC<Props> = ({ caseId, facts, recordId }) => {
                       </div>
                     )}
                     <CheckedTextView text={t.a.answer} facts={facts} />
+                    {t.a.agent && (
+                      <div className="mt-2">
+                        <AgentTracePanel agent={t.a.agent} />
+                      </div>
+                    )}
                   </>
                 )}
                 {t.error && (

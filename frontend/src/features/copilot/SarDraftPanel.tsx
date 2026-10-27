@@ -12,7 +12,6 @@ import {
   copilotService,
   download,
   modelLabel,
-  type InvestigationRecord,
   type ReviewState,
   type SarDraft,
 } from './copilotService';
@@ -24,7 +23,6 @@ interface Props {
 /** SAR/STR drafting agent (backlog P3-2): narrative and goAML XML from the copilot's stored investigation record. */
 const SarDraftPanel: React.FC<Props> = ({ caseId }) => {
   const [draft, setDraft] = React.useState<SarDraft | null>(null);
-  const [record, setRecord] = React.useState<InvestigationRecord | null>(null);
   const [busy, setBusy] = React.useState(false);
   const [err, setErr] = React.useState<string | null>(null);
   const [showXml, setShowXml] = React.useState(false);
@@ -41,12 +39,6 @@ const SarDraftPanel: React.FC<Props> = ({ caseId }) => {
       .catch(() => {
         setDraft(null);
       });
-    copilotService
-      .latest(caseId)
-      .then(setRecord)
-      .catch(() => {
-        setRecord(null);
-      });
   }, [caseId]);
 
   const run = (refresh: boolean): void => {
@@ -54,9 +46,8 @@ const SarDraftPanel: React.FC<Props> = ({ caseId }) => {
     setErr(null);
     copilotService
       .draftSar(caseId, refresh)
-      .then(async (d) => {
+      .then((d) => {
         setDraft(d);
-        setRecord(await copilotService.latest(caseId));
       })
       .catch((e: unknown) => {
         setErr(
@@ -90,8 +81,8 @@ const SarDraftPanel: React.FC<Props> = ({ caseId }) => {
           </h4>
           <p className="text-[11px] text-gray-600">
             Built from the case's investigation record
-            {record
-              ? ` (record ${record.id}, ${record.facts.length} facts)`
+            {draft?.facts
+              ? ` (record ${draft.investigationRecordId}, ${draft.facts.length} facts)`
               : ''}
             . Review and edit before filing; the FIU portal remains the filing
             channel.
@@ -154,7 +145,7 @@ const SarDraftPanel: React.FC<Props> = ({ caseId }) => {
               <h5 className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-700">
                 {s.title}
               </h5>
-              <CheckedTextView text={s.text} facts={record?.facts ?? []} />
+              <CheckedTextView text={s.text} facts={draft.facts ?? []} />
             </section>
           ))}
           <section className="rounded-md bg-white p-2.5">

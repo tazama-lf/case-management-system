@@ -19,7 +19,7 @@ import { useAuth } from '@/features/auth';
 import { formatDate } from '@/shared/utils/dateUtils';
 import { useInvestigatorSupervisorList } from '../../hooks/useInvestigatorSupervisorList';
 import SarDraftPanel from '@/features/copilot/SarDraftPanel';
-import { useCopilotEnabled } from '@/features/copilot/useCopilotEnabled';
+import { useCopilotFeatures } from '@/features/copilot/useCopilotFeatures';
 
 const CompleteTaskModal = lazy(
   async () => await import('../modals/CompleteTaskModal'),
@@ -43,7 +43,7 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
   onTaskUpdate,
   task,
 }) => {
-  const copilotOn = useCopilotEnabled();
+  const copilot = useCopilotFeatures();
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [sarRemarks, setSarRemarks] = useState('');
@@ -317,7 +317,7 @@ const SarStrFilingModal: React.FC<SarStrFilingModalProps> = ({
             </div>
 
             {/* Copilot: draft the SAR/STR narrative and goAML XML from this case */}
-            {copilotOn && <SarDraftPanel caseId={caseId} />}
+            {copilot.sar && <SarDraftPanel caseId={caseId} />}
 
             {/* Upload Form */}
             <div className="space-y-3.5">

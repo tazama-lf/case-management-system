@@ -9,7 +9,7 @@ import TaskDetailsTab from './view/TaskDetailsTab';
 import VisualizationsTab from './view/VisualizationsTab';
 import { taskService, type TaskForSupervisor } from '../services/taskService';
 import CopilotTab from '@/features/copilot/CopilotTab';
-import { useCopilotEnabled } from '@/features/copilot/useCopilotEnabled';
+import { useCopilotFeatures } from '@/features/copilot/useCopilotFeatures';
 
 type ViewTabKey =
   | 'details'
@@ -46,7 +46,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   const [summaryRefreshKey, setSummaryRefreshKey] = React.useState(0);
   // The copilot mounts the first time its tab is opened, then stays mounted so its answers are kept.
   const [copilotOpened, setCopilotOpened] = React.useState(false);
-  const copilotOn = useCopilotEnabled();
+  const copilot = useCopilotFeatures();
   React.useEffect(() => {
     if (tab === 'copilot') setCopilotOpened(true);
   }, [tab]);
@@ -216,7 +216,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                   : ([
                       { key: 'summary', label: 'Investigation Summary' },
                     ] as const)),
-                ...(copilotOn && !isRestricted
+                ...(copilot.investigation && !isRestricted
                   ? [{ key: 'copilot' as const, label: 'Copilot' }]
                   : []),
               ] satisfies Array<{ key: ViewTabKey; label: string }>
@@ -289,7 +289,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                 />
               </div>
               <div style={{ display: tab === 'copilot' ? 'block' : 'none' }}>
-                {copilotOn && copilotOpened && <CopilotTab caseId={row.id} />}
+                {copilot.investigation && copilotOpened && <CopilotTab caseId={row.id} />}
               </div>
               <div style={{ display: tab === 'summary' ? 'block' : 'none' }}>
                 {row?.id && !isRestricted && (
