@@ -8,6 +8,8 @@ import InvestigationSummaryTab from './view/InvestigationsSummaryTab';
 import TaskDetailsTab from './view/TaskDetailsTab';
 import VisualizationsTab from './view/VisualizationsTab';
 import { taskService, type TaskForSupervisor } from '../services/taskService';
+import CopilotTab from '@/features/copilot/CopilotTab';
+import { useCopilotEnabled } from '@/features/copilot/useCopilotEnabled';
 
 type ViewTabKey =
   | 'details'
@@ -16,7 +18,8 @@ type ViewTabKey =
   | 'tasks'
   | 'notes'
   | 'customer'
-  | 'summary';
+  | 'summary'
+  | 'copilot';
 
 interface TaskDetailsModalProps {
   selectedTask: any;
@@ -41,6 +44,12 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   const [loadingTasks, setLoadingTasks] = React.useState(false);
 
   const [summaryRefreshKey, setSummaryRefreshKey] = React.useState(0);
+  // The copilot mounts the first time its tab is opened, then stays mounted so its answers are kept.
+  const [copilotOpened, setCopilotOpened] = React.useState(false);
+  const copilotOn = useCopilotEnabled();
+  React.useEffect(() => {
+    if (tab === 'copilot') setCopilotOpened(true);
+  }, [tab]);
   const initialCaseIdRef = React.useRef<number | undefined>(undefined);
 
   React.useEffect(() => {
@@ -207,6 +216,9 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                   : ([
                       { key: 'summary', label: 'Investigation Summary' },
                     ] as const)),
+                ...(copilotOn && !isRestricted
+                  ? [{ key: 'copilot' as const, label: 'Copilot' }]
+                  : []),
               ] satisfies Array<{ key: ViewTabKey; label: string }>
             ).map((t) => (
               <button
@@ -275,6 +287,9 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                     setSummaryRefreshKey((prev) => prev + 1);
                   }}
                 />
+              </div>
+              <div style={{ display: tab === 'copilot' ? 'block' : 'none' }}>
+                {copilotOn && copilotOpened && <CopilotTab caseId={row.id} />}
               </div>
               <div style={{ display: tab === 'summary' ? 'block' : 'none' }}>
                 {row?.id && !isRestricted && (
