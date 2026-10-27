@@ -499,7 +499,7 @@ export class TaskController {
     const userId = req.user.token.clientId;
     const { tenantId } = req.user.token;
     // Gated here, not inside updateTask: it also has internal callers (draft abandon/complete,
-    // triage, closure) that run on cases with no whitelist rows.
+    // triage, closure) that run on cases with no allowlist rows.
     await this.taskService.assertCanMutateTask(taskId, tenantId, userId, req.user.actorRole, dto.assignedUserId);
     return await this.taskService.updateTask(taskId, dto, userId, tenantId);
   }

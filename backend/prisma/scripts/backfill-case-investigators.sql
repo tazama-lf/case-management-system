@@ -1,23 +1,23 @@
--- Backfill CaseInvestigator (whitelist) rows from existing task assignment,
+-- Backfill CaseInvestigator (allowlist) rows from existing task assignment,
 -- so today's de facto access carries forward once the ACL becomes the
 -- enforced read gate.
 -- Prerequisites: migration 20260914000000_add_case_investigator_acl must
--- have run — creates case_investigators/case_investigators_blacklist and
+-- have run — creates case_investigators/case_investigators_blocklist and
 -- the partial unique indexes this script's ON CONFLICT clauses target.
 -- Run inside a single transaction so it is fully atomic. Idempotent — safe
 -- to re-run (e.g. after more cases/tasks have been created since the last
 -- run). It only ever adds rows or re-promotes an existing live row to LEAD
--- (Step 1's ON CONFLICT ... DO UPDATE) — it never creates a row, or
--- upgrades one, for a (case, user) pair that is currently blacklisted or
+-- (Step 1's ON CONFLICT ... DO UPDATE) - it never creates a row, or
+-- upgrades one, for a (case, user) pair that is currently blocklisted or
 -- was revoked and has no live row today; see Steps 1/2 below.
 --
 -- The ACL (and this backfill) has exactly one source of truth: current
 -- task assignment. Case.case_owner_user_id is never read.
 --
 -- What this script does (in order):
---   Step 1 — Task pass: LEAD row per (case, user) holding a non-completed
+--   Step 1 - Task pass: LEAD row per (case, user) holding a non-completed
 --            task
---   Step 2 — Observer pass: OBSERVER row per (case, user) that held a
+--   Step 2 - Observer pass: OBSERVER row per (case, user) that held a
 --            completed task, skipping anyone who already got a LEAD row
 --            in Step 1 (DO NOTHING never downgrades an existing LEAD)
 --
@@ -48,9 +48,9 @@ BEGIN;
 -- script after Step 2 seeded an OBSERVER row for the same pair, or after
 -- someone picked up a new active task, should re-promote them.
 --
--- Excludes any (case, user) pair that is currently blacklisted, or that has
+-- Excludes any (case, user) pair that is currently blocklisted, or that has
 -- a revoked case_investigators row and no live row today. Without this, a
--- task left pointing at such a user (e.g. the revoke/blacklist cascade's
+-- task left pointing at such a user (e.g. the revoke/blocklist cascade's
 -- best-effort task-unassignment failed and was only logged — see the ACL
 -- docs) would make the INSERT miss the live partial-unique-index conflict
 -- entirely and create a brand-new live row, silently restoring access a
@@ -68,7 +68,7 @@ FROM tasks t
 WHERE t.assigned_user_id IS NOT NULL
   AND t.status != 'STATUS_30_COMPLETED'
   AND NOT EXISTS (
-      SELECT 1 FROM case_investigators_blacklist cb
+      SELECT 1 FROM case_investigators_blocklist cb
       WHERE cb.case_id = t.case_id AND cb.tenant_id = t.tenant_id
         AND cb.user_id = t.assigned_user_id AND cb.unblocked_at IS NULL
   )
@@ -85,8 +85,8 @@ DO UPDATE SET membership = 'LEAD'::"CaseInvestigatorMembership";
 -- completed task. DO NOTHING preserves whatever Step 1 already set — never
 -- downgrades an existing LEAD.
 --
--- Same blacklist/revoked exclusion as Step 1, and for the same reason: a
--- completed task left pointing at a since-revoked or since-blacklisted user
+-- Same blocklist/revoked exclusion as Step 1, and for the same reason: a
+-- completed task left pointing at a since-revoked or since-blocklisted user
 -- must not seed them a fresh live OBSERVER row.
 -- ---------------------------------------------------------------------------
 INSERT INTO case_investigators (case_id, tenant_id, user_id, membership, granted_by, granted_at)
@@ -101,7 +101,7 @@ FROM tasks t
 WHERE t.assigned_user_id IS NOT NULL
   AND t.status = 'STATUS_30_COMPLETED'
   AND NOT EXISTS (
-      SELECT 1 FROM case_investigators_blacklist cb
+      SELECT 1 FROM case_investigators_blocklist cb
       WHERE cb.case_id = t.case_id AND cb.tenant_id = t.tenant_id
         AND cb.user_id = t.assigned_user_id AND cb.unblocked_at IS NULL
   )
@@ -116,7 +116,7 @@ ON CONFLICT (case_id, user_id) WHERE revoked_at IS NULL DO NOTHING;
 -- Post-Step-2 validation (inside the transaction — a failure here rolls
 -- back the whole backfill, matching backfill-investigation-groups.sql's
 -- pattern): every case with a current task assignee that Steps 1/2 were
--- actually allowed to seed (i.e. not blacklisted / not revoked-with-no-live-
+-- actually allowed to seed (i.e. not blocklisted / not revoked-with-no-live-
 -- row — see the exclusion on both INSERTs above) must now have at least one
 -- live case_investigators row. A case whose only assignee(s) were filtered
 -- out for that reason is expected to still have no live row and must not
@@ -133,7 +133,7 @@ BEGIN
         SELECT 1 FROM tasks t
         WHERE t.case_id = c.case_id AND t.assigned_user_id IS NOT NULL
           AND NOT EXISTS (
-              SELECT 1 FROM case_investigators_blacklist cb
+              SELECT 1 FROM case_investigators_blocklist cb
               WHERE cb.case_id = t.case_id AND cb.tenant_id = t.tenant_id
                 AND cb.user_id = t.assigned_user_id AND cb.unblocked_at IS NULL
           )

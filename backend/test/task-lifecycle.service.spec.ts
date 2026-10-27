@@ -37,11 +37,13 @@ describe('TaskLifecycleService', () => {
     task: {
       findUnique: jest.fn(),
       update: jest.fn(),
+      create: jest.fn(),
     },
     case: {
       findUnique: jest.fn(),
       findFirst: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn(),
     },
     $transaction: jest.fn(),
   };
@@ -103,8 +105,8 @@ describe('TaskLifecycleService', () => {
   };
 
   const mockCaseInvestigatorService = {
-    isBlacklisted: jest.fn().mockResolvedValue(null),
-    formatBlockedMessage: jest.fn().mockResolvedValue('User is blacklisted on this case (blocked by Sam Visor at 2026-01-01T00:00:00.000Z: conflict of interest) — unblock first.'),
+    isBlocklisted: jest.fn().mockResolvedValue(null),
+    formatBlockedMessage: jest.fn().mockResolvedValue('User is blocklisted on this case (blocked by Sam Visor at 2026-01-01T00:00:00.000Z: conflict of interest) — unblock first.'),
     assertReadAccess: jest.fn().mockResolvedValue(undefined),
     syncTaskAssignment: jest.fn().mockResolvedValue(undefined),
   };
@@ -215,11 +217,11 @@ describe('TaskLifecycleService', () => {
     caseInvestigatorService = module.get(CaseInvestigatorService);
 
     // jest.clearAllMocks() in afterEach clears call history but NOT
-    // mockResolvedValue overrides — a test that overrides isBlacklisted/
-    // syncTaskAssignment (e.g. to simulate a blacklist hit or a sync
+    // mockResolvedValue overrides — a test that overrides isBlocklisted/
+    // syncTaskAssignment (e.g. to simulate a blocklist hit or a sync
     // failure) would otherwise leak that override into every later test.
     // Restore the known-good defaults explicitly before each test.
-    mockCaseInvestigatorService.isBlacklisted.mockResolvedValue(null);
+    mockCaseInvestigatorService.isBlocklisted.mockResolvedValue(null);
     mockCaseInvestigatorService.assertReadAccess.mockResolvedValue(undefined);
     mockCaseInvestigatorService.syncTaskAssignment.mockResolvedValue(undefined);
   });
@@ -294,10 +296,10 @@ describe('TaskLifecycleService', () => {
       expect(mockCaseInvestigatorService.syncTaskAssignment).not.toHaveBeenCalled();
     });
 
-    it('should refuse to assign to a user blacklisted on this case, without writing anything', async () => {
+    it('should refuse to assign to a user blocklisted on this case, without writing anything', async () => {
       mockTaskRepository.findTaskById.mockResolvedValue(existingTask);
       mockCaseRepository.findCaseById.mockResolvedValue(existingCase);
-      mockCaseInvestigatorService.isBlacklisted.mockResolvedValue({
+      mockCaseInvestigatorService.isBlocklisted.mockResolvedValue({
         blocked_by: 'supervisor1',
         blocked_at: new Date('2026-01-01T00:00:00Z'),
         block_reason: 'conflict of interest',
@@ -569,10 +571,10 @@ describe('TaskLifecycleService', () => {
       expect(mockCaseInvestigatorService.syncTaskAssignment).not.toHaveBeenCalled();
     });
 
-    it('should refuse to reassign to a user blacklisted on this case, without writing anything', async () => {
+    it('should refuse to reassign to a user blocklisted on this case, without writing anything', async () => {
       mockTaskRepository.findTaskById.mockResolvedValue(existingTask);
       mockCaseRepository.findCaseById.mockResolvedValue(existingCase);
-      mockCaseInvestigatorService.isBlacklisted.mockResolvedValue({
+      mockCaseInvestigatorService.isBlocklisted.mockResolvedValue({
         blocked_by: 'supervisor1',
         blocked_at: new Date('2026-01-01T00:00:00Z'),
         block_reason: 'conflict of interest',
@@ -789,9 +791,9 @@ describe('TaskLifecycleService', () => {
   });
 
   describe('unassignTaskDueToAccessChange', () => {
-    // Called by CaseInvestigatorService.revoke/blacklist as a cascade -
+    // Called by CaseInvestigatorService.revoke/blocklist as a cascade -
     // no RBAC/AuthenticatedUser involved, and deliberately does not call
-    // syncCaseAcl (that would re-enter the in-progress revoke/blacklist).
+    // syncCaseAcl (that would re-enter the in-progress revoke/blocklist).
     const existingTask = {
       task_id: 1,
       case_id: 1,
@@ -818,9 +820,15 @@ describe('TaskLifecycleService', () => {
       expect(mockNotificationService.sendNotification).toHaveBeenCalledWith(
         expect.objectContaining({ userId: 'user1', type: 'TASK_UNASSIGNED' }),
       );
+      expect(mockLoggingService.logActionsWithHistory).toHaveBeenCalledWith(
+        expect.objectContaining({ userId: 'supervisor1', operation: 'unassignTask' }),
+        1,
+        'tenant1',
+        1,
+      );
     });
 
-    it('does not call syncCaseAcl / CaseInvestigatorService - that would re-enter the in-progress revoke/blacklist', async () => {
+    it('does not call syncCaseAcl / CaseInvestigatorService - that would re-enter the in-progress revoke/blocklist', async () => {
       mockTaskRepository.findTaskById.mockResolvedValue(existingTask);
       mockPrisma.task.update.mockResolvedValue({ ...existingTask, assigned_user_id: null, status: TaskStatus.STATUS_01_UNASSIGNED });
       mockPrisma.case.update.mockResolvedValue({ case_id: 1, status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT });
@@ -856,7 +864,7 @@ describe('TaskLifecycleService', () => {
 
   describe('handleAccessRemoved', () => {
     // The @OnEvent('case-investigator.access-removed') listener -
-    // CaseInvestigatorService.revoke()/blacklist() emit this rather than
+    // CaseInvestigatorService.revoke()/blocklist() emit this rather than
     // calling TaskLifecycleService directly (see the module-level comment
     // on case-investigator.module.ts for why). This is the other half of
     // that cascade: find every live task the target held on the case and
@@ -909,6 +917,156 @@ describe('TaskLifecycleService', () => {
         expect.any(Error),
         TaskLifecycleService.name,
       );
+    });
+
+    describe('re-queueing a case whose investigation was completed but not closed', () => {
+      const completedTask = {
+        task_id: 20,
+        name: 'Investigate Case',
+        status: TaskStatus.STATUS_30_COMPLETED,
+        assigned_user_id: 'user1',
+        created_at: new Date('2026-01-02'),
+      };
+
+      beforeEach(() => {
+        mockPrisma.task.create.mockReset().mockResolvedValue({ task_id: 21 });
+        mockPrisma.case.updateMany.mockReset().mockResolvedValue({ count: 1 });
+        mockCommentRepository.createComment.mockClear();
+        mockLoggingService.logActionsWithHistory.mockClear();
+        mockFlowableService.handleCaseStatusChanged.mockClear();
+        mockFlowableService.handleTaskUnassigned.mockReset().mockResolvedValue(undefined);
+        mockCaseRepository.findCaseById.mockResolvedValue({
+          case_id: 1,
+          status: CaseStatus.STATUS_20_IN_PROGRESS,
+          case_owner_user_id: 'user1',
+        });
+        mockTaskRepository.findTasks.mockImplementation(async (where) =>
+          where.name === 'Investigate Case' ? [completedTask] : [],
+        );
+      });
+
+      it('creates a fresh unassigned task and sends the case back to READY_FOR_ASSIGNMENT', async () => {
+        await service.handleAccessRemoved(event);
+
+        expect(mockPrisma.task.create).toHaveBeenCalledWith({
+          data: expect.objectContaining({
+            case_id: 1,
+            name: 'Investigate Case',
+            status: TaskStatus.STATUS_01_UNASSIGNED,
+            assigned_user_id: null,
+          }),
+        });
+        expect(mockPrisma.case.updateMany).toHaveBeenCalledWith({
+          where: { case_id: 1, tenant_id: 'tenant1', status: CaseStatus.STATUS_20_IN_PROGRESS, case_owner_user_id: 'user1' },
+          data: expect.objectContaining({ status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT, case_owner_user_id: null }),
+        });
+        expect(mockCommentRepository.createComment).toHaveBeenCalledWith(
+          'supervisor1',
+          expect.objectContaining({ caseId: 1, taskId: 21, note: event.reason }),
+          expect.anything(),
+        );
+        expect(mockLoggingService.logActionsWithHistory).toHaveBeenCalledWith(
+          expect.objectContaining({ userId: 'supervisor1' }),
+          1,
+          'tenant1',
+          20,
+        );
+        expect(mockFlowableService.handleCaseStatusChanged).toHaveBeenCalledWith({
+          caseId: 1,
+          newStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT,
+        });
+        // Flowable still has the previous investigator as assignee; release it so the next claim works.
+        expect(mockFlowableService.handleTaskUnassigned).toHaveBeenCalledWith({
+          taskId: 21,
+          caseId: 1,
+          taskName: 'Investigate Case',
+          assignedUser: null,
+        });
+      });
+
+      it('retries the Flowable unclaim after a transient failure, without warning', async () => {
+        mockLoggerService.warn.mockClear();
+        mockFlowableService.handleTaskUnassigned.mockRejectedValueOnce(new Error('flowable blip')).mockResolvedValueOnce(undefined);
+
+        await service.handleAccessRemoved(event);
+
+        expect(mockFlowableService.handleTaskUnassigned).toHaveBeenCalledTimes(2);
+        expect(mockLoggerService.warn).not.toHaveBeenCalledWith(
+          expect.stringContaining('Flowable unclaim failed'),
+          expect.anything(),
+        );
+      });
+
+      it('keeps the requeue and warns when Flowable still cannot unclaim the task after retrying', async () => {
+        mockFlowableService.handleTaskUnassigned.mockRejectedValue(new Error('flowable down'));
+
+        await expect(service.handleAccessRemoved(event)).resolves.toBeUndefined();
+
+        expect(mockFlowableService.handleTaskUnassigned).toHaveBeenCalledTimes(3);
+        expect(mockPrisma.case.updateMany).toHaveBeenCalled();
+        expect(mockLoggerService.warn).toHaveBeenCalledWith(
+          expect.stringContaining('Flowable unclaim failed after re-queueing case 1'),
+          TaskLifecycleService.name,
+        );
+      });
+
+      it('aborts the transaction when the case left IN_PROGRESS after the check, so no comment, history or Flowable sync follows', async () => {
+        mockPrisma.case.updateMany.mockResolvedValue({ count: 0 });
+
+        await expect(service.handleAccessRemoved(event)).resolves.toBeUndefined();
+
+        // The new task is created inside the transaction; throwing from it is what rolls that back.
+        expect(mockPrisma.task.create).toHaveBeenCalled();
+        expect(mockCommentRepository.createComment).not.toHaveBeenCalled();
+        expect(mockLoggingService.logActionsWithHistory).not.toHaveBeenCalled();
+        expect(mockFlowableService.handleCaseStatusChanged).not.toHaveBeenCalled();
+        expect(mockFlowableService.handleTaskUnassigned).not.toHaveBeenCalled();
+        expect(mockLoggerService.error).toHaveBeenCalledWith(
+          expect.stringContaining('Failed to re-queue case 1'),
+          expect.any(String),
+          TaskLifecycleService.name,
+        );
+      });
+
+      it('does nothing when the case is IN_PROGRESS but owned by someone else', async () => {
+        mockCaseRepository.findCaseById.mockResolvedValue({
+          case_id: 1,
+          status: CaseStatus.STATUS_20_IN_PROGRESS,
+          case_owner_user_id: 'user2',
+        });
+
+        await service.handleAccessRemoved(event);
+
+        expect(mockPrisma.task.create).not.toHaveBeenCalled();
+        expect(mockPrisma.case.updateMany).not.toHaveBeenCalled();
+      });
+
+      it('does nothing when the case is not IN_PROGRESS', async () => {
+        mockCaseRepository.findCaseById.mockResolvedValue({ case_id: 1, status: CaseStatus.STATUS_22_PENDING_FINAL_APPROVAL });
+
+        await service.handleAccessRemoved(event);
+
+        expect(mockPrisma.task.create).not.toHaveBeenCalled();
+      });
+
+      it('does nothing when the completed task belonged to someone else', async () => {
+        mockTaskRepository.findTasks.mockResolvedValue([{ ...completedTask, assigned_user_id: 'other' }]);
+
+        await service.handleAccessRemoved(event);
+
+        expect(mockPrisma.task.create).not.toHaveBeenCalled();
+      });
+
+      it('does nothing when a newer investigation task already exists', async () => {
+        mockTaskRepository.findTasks.mockResolvedValue([
+          completedTask,
+          { ...completedTask, task_id: 22, status: TaskStatus.STATUS_10_ASSIGNED, assigned_user_id: 'user2', created_at: new Date('2026-01-03') },
+        ]);
+
+        await service.handleAccessRemoved(event);
+
+        expect(mockPrisma.task.create).not.toHaveBeenCalled();
+      });
     });
   });
 

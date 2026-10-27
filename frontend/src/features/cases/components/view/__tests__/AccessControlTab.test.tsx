@@ -11,7 +11,7 @@ import type { CaseInvestigator } from '@/features/cases/types/investigator.types
 // This tab is only ever rendered for a supervisor+ caller — ViewCaseModal
 // doesn't include it in the tab list otherwise. So there's no
 // role branching to test here, unlike an earlier draft of this component;
-// every whitelist row always shows Revoke/Blacklist, every blacklist row
+// every allowlist row always shows Revoke/Blocklist, every blocklist row
 // always shows Unblock, and there is no add form of any kind.
 
 vi.mock('@/features/cases/services/investigatorService');
@@ -20,7 +20,7 @@ vi.mock('@/features/cases/hooks/useInvestigatorSupervisorList');
 const LEAD_USER_ID = 'user-lead';
 const OBSERVER_USER_ID = 'user-observer';
 
-const mockWhitelist: CaseInvestigator[] = [
+const mockAllowlist: CaseInvestigator[] = [
   {
     id: 1,
     case_id: 42,
@@ -56,8 +56,8 @@ function renderTab() {
   );
 }
 
-async function waitForWhitelistLoaded() {
-  // "Tier" only renders once the whitelist table has actually loaded.
+async function waitForAllowlistLoaded() {
+  // "Tier" only renders once the allowlist table has actually loaded.
   await screen.findByRole('columnheader', { name: 'Tier' });
 }
 
@@ -84,51 +84,51 @@ describe('AccessControlTab', () => {
     });
 
     (investigatorService.getCaseInvestigators as vi.Mock).mockResolvedValue(
-      mockWhitelist,
+      mockAllowlist,
     );
-    (investigatorService.getCaseBlacklist as vi.Mock).mockResolvedValue([]);
+    (investigatorService.getCaseBlocklist as vi.Mock).mockResolvedValue([]);
     (investigatorService.getCaseAccessHistory as vi.Mock).mockResolvedValue({
       revoked: [],
       unblocked: [],
     });
   });
 
-  it('renders the whitelist with names, tiers, and shows Revoke/Blacklist for investigator rows', async () => {
+  it('renders the allowlist with names, tiers, and shows Revoke/Blocklist for investigator rows', async () => {
     renderTab();
-    await waitForWhitelistLoaded();
+    await waitForAllowlistLoaded();
 
     expect(screen.getByText('Lee Adley')).toBeInTheDocument();
     expect(screen.getByText('Obi Server')).toBeInTheDocument();
     expect(screen.getByText('LEAD')).toBeInTheDocument();
     expect(screen.getByText('OBSERVER')).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: /Revoke/ })).toHaveLength(2);
-    expect(screen.getAllByRole('button', { name: /Blacklist/ })).toHaveLength(
+    expect(screen.getAllByRole('button', { name: /Blocklist/ })).toHaveLength(
       2,
     );
   });
 
-  it('offers no Revoke/Blacklist on supervisor or compliance-officer rows (the backend can never act on them), only on investigators', async () => {
+  it('offers no Revoke/Blocklist on supervisor or compliance-officer rows (the backend can never act on them), only on investigators', async () => {
     (investigatorService.getCaseInvestigators as vi.Mock).mockResolvedValue([
-      { ...mockWhitelist[0], user_role: 'CMS_INVESTIGATOR' },
+      { ...mockAllowlist[0], user_role: 'CMS_INVESTIGATOR' },
       {
-        ...mockWhitelist[1],
+        ...mockAllowlist[1],
         id: 3,
         user_id: 'user-sup',
         user_role: 'CMS_SUPERVISOR',
       },
       {
-        ...mockWhitelist[1],
+        ...mockAllowlist[1],
         id: 4,
         user_id: 'user-co',
         user_role: 'CMS_COMPLIANCE_OFFICER',
       },
     ]);
     renderTab();
-    await waitForWhitelistLoaded();
+    await waitForAllowlistLoaded();
 
     // one row of actions (the investigator), not three
     expect(screen.getAllByRole('button', { name: /Revoke/ })).toHaveLength(1);
-    expect(screen.getAllByRole('button', { name: /Blacklist/ })).toHaveLength(
+    expect(screen.getAllByRole('button', { name: /Blocklist/ })).toHaveLength(
       1,
     );
     expect(
@@ -141,20 +141,20 @@ describe('AccessControlTab', () => {
 
   it('keeps the actions when a row role is unknown (null) - the backend still guards it', async () => {
     (investigatorService.getCaseInvestigators as vi.Mock).mockResolvedValue([
-      { ...mockWhitelist[0], user_role: null },
+      { ...mockAllowlist[0], user_role: null },
     ]);
     renderTab();
-    await waitForWhitelistLoaded();
+    await waitForAllowlistLoaded();
 
     expect(screen.getByRole('button', { name: /Revoke/ })).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: /Blacklist/ }),
+      screen.getByRole('button', { name: /Blocklist/ }),
     ).toBeInTheDocument();
   });
 
   it('has no add-investigator form of any kind', async () => {
     renderTab();
-    await waitForWhitelistLoaded();
+    await waitForAllowlistLoaded();
 
     expect(screen.queryByLabelText('Add investigator')).not.toBeInTheDocument();
     expect(
@@ -179,7 +179,7 @@ describe('AccessControlTab', () => {
     });
   });
 
-  it('shows an error state with retry when the whitelist fails to load', async () => {
+  it('shows an error state with retry when the allowlist fails to load', async () => {
     (investigatorService.getCaseInvestigators as vi.Mock).mockRejectedValue(
       new Error('network error'),
     );
@@ -200,7 +200,7 @@ describe('AccessControlTab', () => {
     );
 
     renderTab();
-    await waitForWhitelistLoaded();
+    await waitForAllowlistLoaded();
 
     const [firstRevoke] = screen.getAllByRole('button', { name: /Revoke/ });
     await user.click(firstRevoke);
@@ -228,43 +228,43 @@ describe('AccessControlTab', () => {
     });
   });
 
-  it('blacklists an investigator with a mandatory reason', async () => {
+  it('blocklists an investigator with a mandatory reason', async () => {
     const user = userEvent.setup();
-    (investigatorService.blacklistInvestigator as vi.Mock).mockResolvedValue(
+    (investigatorService.blocklistInvestigator as vi.Mock).mockResolvedValue(
       {},
     );
 
     renderTab();
-    await waitForWhitelistLoaded();
+    await waitForAllowlistLoaded();
 
-    const [firstBlacklist] = screen.getAllByRole('button', {
-      name: /Blacklist/,
+    const [firstBlocklist] = screen.getAllByRole('button', {
+      name: /Blocklist/,
     });
-    await user.click(firstBlacklist);
+    await user.click(firstBlocklist);
 
     await user.type(
-      screen.getByLabelText(/Reason for blacklisting/),
+      screen.getByLabelText(/Reason for blocklisting/),
       'Conflict of interest',
     );
 
     // Both the row actions and the modal's confirm button can be named
-    // "Blacklist" — the confirm button is the modal's, rendered last.
-    const blacklistButtons = screen.getAllByRole('button', {
-      name: 'Blacklist',
+    // "Blocklist" — the confirm button is the modal's, rendered last.
+    const blocklistButtons = screen.getAllByRole('button', {
+      name: 'Blocklist',
     });
-    await user.click(blacklistButtons[blacklistButtons.length - 1]);
+    await user.click(blocklistButtons[blocklistButtons.length - 1]);
 
     await waitFor(() => {
-      expect(investigatorService.blacklistInvestigator).toHaveBeenCalledWith(
+      expect(investigatorService.blocklistInvestigator).toHaveBeenCalledWith(
         42,
         { userId: LEAD_USER_ID, reason: 'Conflict of interest' },
       );
     });
   });
 
-  it('renders the blacklist and unblocks with a mandatory reason', async () => {
+  it('renders the blocklist and unblocks with a mandatory reason', async () => {
     const user = userEvent.setup();
-    (investigatorService.getCaseBlacklist as vi.Mock).mockResolvedValue([
+    (investigatorService.getCaseBlocklist as vi.Mock).mockResolvedValue([
       {
         id: 1,
         case_id: 42,
@@ -295,7 +295,7 @@ describe('AccessControlTab', () => {
 
     // Both the row action and the modal's confirm button are labeled
     // "Unblock" — the confirm button is the modal's, rendered last in the
-    // DOM (after the whitelist/blacklist sections).
+    // DOM (after the allowlist/blocklist sections).
     const unblockButtons = screen.getAllByRole('button', { name: 'Unblock' });
     await user.click(unblockButtons[unblockButtons.length - 1]);
 
@@ -308,12 +308,12 @@ describe('AccessControlTab', () => {
     });
   });
 
-  it('shows an empty state when nobody is blacklisted', async () => {
+  it('shows an empty state when nobody is blocklisted', async () => {
     renderTab();
 
     await waitFor(() => {
       expect(
-        screen.getByText('Nobody is blacklisted on this case'),
+        screen.getByText('Nobody is blocklisted on this case'),
       ).toBeInTheDocument();
     });
   });
@@ -382,7 +382,7 @@ describe('AccessControlTab', () => {
       expect(
         await screen.findByText('Failed to load access history'),
       ).toBeInTheDocument();
-      await waitForWhitelistLoaded();
+      await waitForAllowlistLoaded();
       expect(screen.getByText('Lee Adley')).toBeInTheDocument();
     });
   });

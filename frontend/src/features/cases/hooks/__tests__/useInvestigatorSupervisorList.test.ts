@@ -19,7 +19,7 @@ const mockInvestigators = [{ value: 'u1', label: 'Alice' }];
 const mockSupervisors = [{ value: 'u2', label: 'Bob' }];
 const mockCompliance = [{ value: 'u3', label: 'Carol' }];
 
-// Hook auto-fetches all three lists on mount — always set up default empty mocks
+// Hook auto-fetches all three lists on mount - always set up default empty mocks
 const setupDefaultMocks = () => {
   mockGetInvestigators.mockResolvedValue([] as any);
   mockGetSupervisors.mockResolvedValue([] as any);

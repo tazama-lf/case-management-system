@@ -3,7 +3,7 @@ import { ApiProperty } from '@nestjs/swagger';
 
 export class RevokeCaseInvestigatorDto {
   @ApiProperty({
-    description: 'Reason for revoking this investigator’s whitelist access (minimum 4 characters).',
+    description: 'Reason for revoking this investigator’s allowlist access (minimum 4 characters).',
     example: 'No longer needed on this case; workload redistribution.',
     minLength: 4,
     maxLength: 1000,

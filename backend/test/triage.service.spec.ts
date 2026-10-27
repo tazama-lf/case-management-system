@@ -1152,12 +1152,12 @@ describe('TriageService', () => {
         expect(caseInvestigatorService.grant).not.toHaveBeenCalled();
       });
 
-      it('still auto-closes, and only warns, when the ACL grant fails (e.g. the user is blacklisted)', async () => {
+      it('still auto-closes, and only warns, when the ACL grant fails (e.g. the user is blocklisted)', async () => {
         caseRepository.findCaseById.mockResolvedValue(mockCase as any);
         taskRepository.updateTask.mockResolvedValue({ ...mockTask, assigned_user_id: 'investigator-9' } as any);
         caseRepository.updateCase.mockResolvedValue(mockCase as any);
         loggingOrchestrationService.logActionsWithHistory.mockResolvedValue(undefined);
-        caseInvestigatorService.grant.mockRejectedValueOnce(new Error('blacklisted'));
+        caseInvestigatorService.grant.mockRejectedValueOnce(new Error('blocklisted'));
 
         const result = await (service as any).autoCloseCase(1, CaseStatus.STATUS_71_AUTOCLOSED_CONFIRMED, 'user-123', 1, 'tenant-123');
 

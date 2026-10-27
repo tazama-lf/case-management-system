@@ -611,7 +611,7 @@ export class CaseQueryService {
           andConditions.push(sarStrFilterCondition);
         }
         const accessibleCaseIds = await this.caseInvestigatorService.getAccessibleCaseIds(investigatorUserId, tenantId);
-        const blacklistedCaseIds = await this.caseInvestigatorService.getBlacklistedCaseIds(investigatorUserId, tenantId);
+        const blocklistedCaseIds = await this.caseInvestigatorService.getBlocklistedCaseIds(investigatorUserId, tenantId);
         const restrictedCaseIds = await this.caseInvestigatorService.getRestrictedCaseIds(investigatorUserId, tenantId);
         const fullAccessCaseIds = new Set(accessibleCaseIds);
         restrictedRowIds = new Set(restrictedCaseIds.filter((id) => !fullAccessCaseIds.has(id)));
@@ -628,7 +628,7 @@ export class CaseQueryService {
           // a bare `case_owner_user_id: null` also matched in-progress cases hasAccess then 404s on.
           { status: { in: [CaseStatus.STATUS_00_DRAFT, CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT] } },
           { case_id: { in: accessibleCaseIds } },
-          // Revoked from the case: it stays in their queue (restricted view). A blacklist is different - it is excluded below.
+          // Revoked from the case: it stays in their queue (restricted view). A blocklist is different - it is excluded below.
           { case_id: { in: restrictedCaseIds } },
         ];
 
@@ -646,13 +646,13 @@ export class CaseQueryService {
           andConditions.push({ OR: visibilityOr });
         }
 
-        // Exclude any case this investigator is currently blacklisted on, regardless of which
+        // Exclude any case this investigator is currently blocklisted on, regardless of which
         // visibility branch above would otherwise match (stale case_owner_user_id, a past
         // completed task assignment, or the unclaimed-case browsing branches) — keeps this list
-        // consistent with hasAccess/assertViewAccess, which deny a blacklisted user. A revoked
+        // consistent with hasAccess/assertViewAccess, which deny a blocklisted user. A revoked
         // investigator is NOT excluded: they keep the case in their queue with a restricted view.
-        if (blacklistedCaseIds.length > 0) {
-          andConditions.push({ NOT: { case_id: { in: blacklistedCaseIds } } });
+        if (blocklistedCaseIds.length > 0) {
+          andConditions.push({ NOT: { case_id: { in: blocklistedCaseIds } } });
         }
 
         whereClause.AND = andConditions;
@@ -720,7 +720,7 @@ export class CaseQueryService {
       const processedCases = cases.map((caseItem) => {
         const taskCounts = this.taskValidationUtil.getTaskStatusCounts(caseItem.tasks);
         const assignedUsers = [...new Set(caseItem.tasks.map((t) => t.assigned_user_id).filter(Boolean))];
-        // Open-for-claim cases are full access for everyone not blacklisted, revoked or not.
+        // Open-for-claim cases are full access for everyone not blocklisted, revoked or not.
         const isRestricted = restrictedRowIds.has(caseItem.case_id) && !openForClaim.includes(caseItem.status);
         return {
           case_id: caseItem.case_id,
@@ -949,10 +949,10 @@ export class CaseQueryService {
         return false;
       }
 
-      // A blacklisted investigator must be denied regardless of which OR branch below would
+      // A blocklisted investigator must be denied regardless of which OR branch below would
       // otherwise match (stale case_owner_user_id, a past completed task, or the unclaimed-case
       // browsing branches) — mirrors hasAccess/assertReadAccess, which already deny this case.
-      const blocked = await this.caseInvestigatorService.isBlacklisted(caseId, investigatorUserId, tenantId);
+      const blocked = await this.caseInvestigatorService.isBlocklisted(caseId, investigatorUserId, tenantId);
       if (blocked) {
         return false;
       }

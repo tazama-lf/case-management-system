@@ -2,35 +2,35 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { investigatorService } from '../services/investigatorService';
-import type { BlacklistCaseInvestigatorDto } from '../types/investigator.types';
+import type { BlocklistCaseInvestigatorDto } from '../types/investigator.types';
 
 export const investigatorKeys = {
   all: ['case-investigators'] as const,
-  whitelist: (caseId: number) =>
-    [...investigatorKeys.all, 'whitelist', caseId] as const,
-  blacklist: (caseId: number) =>
-    [...investigatorKeys.all, 'blacklist', caseId] as const,
+  allowlist: (caseId: number) =>
+    [...investigatorKeys.all, 'allowlist', caseId] as const,
+  blocklist: (caseId: number) =>
+    [...investigatorKeys.all, 'blocklist', caseId] as const,
   history: (caseId: number) =>
     [...investigatorKeys.all, 'history', caseId] as const,
 };
 
 /**
- * Hook to fetch a case's live whitelist (CaseInvestigator rows). Supervisor+
+ * Hook to fetch a case's live allowlist (CaseInvestigator rows). Supervisor+
  * there is no viewer tier below supervisor for this endpoint at all.
  */
 export const useCaseInvestigators = (caseId: number, enabled = true) =>
   useQuery({
-    queryKey: investigatorKeys.whitelist(caseId),
+    queryKey: investigatorKeys.allowlist(caseId),
     queryFn: async () => await investigatorService.getCaseInvestigators(caseId),
     enabled: enabled && !!caseId,
     staleTime: 30 * 1000,
   });
 
-/** Hook to fetch a case's blacklist. */
-export const useCaseBlacklist = (caseId: number, enabled = true) =>
+/** Hook to fetch a case's blocklist. */
+export const useCaseBlocklist = (caseId: number, enabled = true) =>
   useQuery({
-    queryKey: investigatorKeys.blacklist(caseId),
-    queryFn: async () => await investigatorService.getCaseBlacklist(caseId),
+    queryKey: investigatorKeys.blocklist(caseId),
+    queryFn: async () => await investigatorService.getCaseBlocklist(caseId),
     enabled: enabled && !!caseId,
     staleTime: 30 * 1000,
   });
@@ -47,10 +47,10 @@ export const useCaseAccessHistory = (caseId: number, enabled = true) =>
     staleTime: 30 * 1000,
   });
 
-// No useAddInvestigator — there is no whitelist add endpoint. The
-// whitelist is populated exclusively by task assignment; nobody, including a supervisor, adds to it by hand.
+// No useAddInvestigator — there is no allowlist add endpoint. The
+// allowlist is populated exclusively by task assignment; nobody, including a supervisor, adds to it by hand.
 
-/** Revoke from the whitelist. Supervisor+ only, mandatory reason. */
+/** Revoke from the allowlist. Supervisor+ only, mandatory reason. */
 export const useRevokeInvestigator = (caseId: number) => {
   const queryClient = useQueryClient();
 
@@ -66,7 +66,7 @@ export const useRevokeInvestigator = (caseId: number) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: investigatorKeys.whitelist(caseId),
+        queryKey: investigatorKeys.allowlist(caseId),
       });
       queryClient.invalidateQueries({
         queryKey: investigatorKeys.history(caseId),
@@ -80,37 +80,37 @@ export const useRevokeInvestigator = (caseId: number) => {
 };
 
 /**
- * Blacklist. Supervisor+ only, mandatory reason. Auto-revokes any live
- * whitelist row server-side, so invalidate both query keys.
+ * Blocklist. Supervisor+ only, mandatory reason. Auto-revokes any live
+ * allowlist row server-side, so invalidate both query keys.
  */
-export const useBlacklistInvestigator = (caseId: number) => {
+export const useBlocklistInvestigator = (caseId: number) => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (dto: BlacklistCaseInvestigatorDto) =>
-      await investigatorService.blacklistInvestigator(caseId, dto),
+    mutationFn: async (dto: BlocklistCaseInvestigatorDto) =>
+      await investigatorService.blocklistInvestigator(caseId, dto),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: investigatorKeys.whitelist(caseId),
+        queryKey: investigatorKeys.allowlist(caseId),
       });
       queryClient.invalidateQueries({
-        queryKey: investigatorKeys.blacklist(caseId),
+        queryKey: investigatorKeys.blocklist(caseId),
       });
       queryClient.invalidateQueries({
         queryKey: investigatorKeys.history(caseId),
       });
-      toast.success('Investigator blacklisted');
+      toast.success('Investigator blocklisted');
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Failed to blacklist investigator');
+      toast.error(error.message || 'Failed to blocklist investigator');
     },
   });
 };
 
 /**
  * Unblock. Supervisor+ only, mandatory reason. Does NOT grant access back
- * — a subsequent add-to-whitelist is still required, so this
- * only invalidates the blacklist list, not the whitelist one.
+ * - a subsequent add-to-allowlist is still required, so this
+ * only invalidates the blocklist list, not the allowlist one.
  */
 export const useUnblockInvestigator = (caseId: number) => {
   const queryClient = useQueryClient();
@@ -127,7 +127,7 @@ export const useUnblockInvestigator = (caseId: number) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: investigatorKeys.blacklist(caseId),
+        queryKey: investigatorKeys.blocklist(caseId),
       });
       queryClient.invalidateQueries({
         queryKey: investigatorKeys.history(caseId),

@@ -135,7 +135,7 @@ model Case {
   investigationGroup        InvestigationGroup?         @relation(fields: [group_id], references: [id])
   slaEscalationRecords      SlaEscalationRecord[]
   caseInvestigators         CaseInvestigator[]
-  caseInvestigatorBlacklist CaseInvestigatorBlacklist[]
+  caseInvestigatorBlocklist CaseInvestigatorBlocklist[]
 
   @@index([group_id])
   @@map("cases")
@@ -168,7 +168,7 @@ model CaseInvestigator {
   @@map("case_investigators")
 }
 
-model CaseInvestigatorBlacklist {
+model CaseInvestigatorBlocklist {
   id             Int       @id @default(autoincrement())
   case_id        Int
   tenant_id      String
@@ -187,7 +187,7 @@ model CaseInvestigatorBlacklist {
   @@index([case_id, user_id])
   @@index([user_id])
   @@index([tenant_id])
-  @@map("case_investigators_blacklist")
+  @@map("case_investigators_blocklist")
 }
 
 model SlaPolicy {

@@ -437,7 +437,7 @@ export class TriageService {
       });
 
       // The triage task was assigned to and completed by the triaging user through a direct repository
-      // write (no syncTaskAssignment), so give them the whitelist row a completed task normally leaves.
+      // write (no syncTaskAssignment), so give them the allowlist row a completed task normally leaves.
       await this.grantObserverAccess(transactionResult.existingCase.case_id, userId, userId, tenantId);
 
       if (transactionResult.amlCase) {
@@ -872,7 +872,7 @@ export class TriageService {
   /**
    * Auto-close and manual triage complete the triage task with a direct repository write, bypassing
    * the task service (and so syncTaskAssignment). The person who held it would otherwise never reach
-   * the case-investigator whitelist and lose access to a case they worked, so grant the permanent
+   * the case-investigator allowlist and lose access to a case they worked, so grant the permanent
    * OBSERVER tier that completing a task normally leaves them with. Best-effort, like the other
    * ACL syncs: the triage/auto-close itself has already succeeded.
    */

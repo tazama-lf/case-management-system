@@ -15,7 +15,7 @@ export interface CaseInvestigator {
   user_role?: string | null;
 }
 
-export interface CaseInvestigatorBlacklistEntry {
+export interface CaseInvestigatorBlocklistEntry {
   id: number;
   case_id: number;
   tenant_id: string;
@@ -29,17 +29,17 @@ export interface CaseInvestigatorBlacklistEntry {
 }
 
 /**
- * Who used to have access to a case and lost it (revoked whitelist rows, manual and automatic),
- * and who was blacklisted and later unblocked. Most recent first. Supervisor+ only.
+ * Who used to have access to a case and lost it (revoked allowlist rows, manual and automatic),
+ * and who was blocklisted and later unblocked. Most recent first. Supervisor+ only.
  */
 export interface CaseAccessHistory {
   revoked: CaseInvestigator[];
-  unblocked: CaseInvestigatorBlacklistEntry[];
+  unblocked: CaseInvestigatorBlocklistEntry[];
 }
 
-// No AddCaseInvestigatorDto — there is no whitelist add endpoint at all
-// The whitelist is populated exclusively by task assignment
-// nobody,including a supervisor, adds to it by hand. "Refuses on blacklist hit"
+// No AddCaseInvestigatorDto - there is no allowlist add endpoint at all
+// The allowlist is populated exclusively by task assignment
+// nobody,including a supervisor, adds to it by hand. "Refuses on blocklist hit"
 // now only ever surfaces indirectly, via a refused task assignment, not
 // through this file.
 
@@ -47,7 +47,7 @@ export interface RevokeCaseInvestigatorDto {
   reason: string;
 }
 
-export interface BlacklistCaseInvestigatorDto {
+export interface BlocklistCaseInvestigatorDto {
   userId: string;
   reason: string;
 }
@@ -56,10 +56,10 @@ export interface UnblockCaseInvestigatorDto {
   reason: string;
 }
 
-// Refusal shape when adding a blacklisted user — names who blocked them and
-// when, per the design doc's "Refuses on live blacklist hit, naming who
+// Refusal shape when adding a blocklisted user - names who blocked them and
+// when, per the design doc's "Refuses on live blocklist hit, naming who
 // blocked and when."
-export interface BlacklistRefusalError {
+export interface BlocklistRefusalError {
   message: string;
   blockedBy?: string;
   blockedAt?: string;

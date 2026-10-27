@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, BadRequestException, ConflictException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { NotificationService } from 'src/modules/notification/notification.service';
@@ -17,6 +17,9 @@ import { UserService } from 'src/modules/user/user.service';
 import { CaseInvestigatorService, SyncTaskAssignmentParams } from 'src/modules/case-investigator/case-investigator.service';
 import { syncCaseAcl } from '../utils/sync-case-acl';
 import type { CaseInvestigatorAccessRemovedEvent } from 'src/modules/case-investigator/case-investigator.service';
+
+// Kept small: the access-removal cascade is awaited by the block/revoke request, and retry backs off 1s, 2s, ...
+const FLOWABLE_UNCLAIM_ATTEMPTS = 3;
 
 @Injectable()
 export class TaskLifecycleService {
@@ -40,12 +43,12 @@ export class TaskLifecycleService {
 
   /**
    *the one place a task mutation must actually be
-   * BLOCKED by the ACL — a blacklisted user must not get back onto a case
+   * BLOCKED by the ACL - a blocklisted user must not get back onto a case
    * merely by being (re)assigned a task on it. Checked before the write, so
    * there's nothing to roll back when it throws.
    */
-  private async assertNotBlacklisted(caseId: number, userId: string, tenantId: string): Promise<void> {
-    const blocked = await this.caseInvestigatorService.isBlacklisted(caseId, userId, tenantId);
+  private async assertNotBlocklisted(caseId: number, userId: string, tenantId: string): Promise<void> {
+    const blocked = await this.caseInvestigatorService.isBlocklisted(caseId, userId, tenantId);
     if (blocked) {
       throw new ForbiddenException(await this.caseInvestigatorService.formatBlockedMessage(blocked));
     }
@@ -66,14 +69,14 @@ export class TaskLifecycleService {
     const t2 = this.rbacService.checkTier2({ role: rbacRole, endpointKey, currentStatus: existingCase.status });
     if (!t2.allowed) throw new ForbiddenException(t2.reason);
     // Assignment grants case ACL membership, so the caller must already have access to the case
-    // (live whitelist row, or the case is still open for claiming). Supervisors/compliance bypass.
+    // (live allowlist row, or the case is still open for claiming). Supervisors/compliance bypass.
     await this.caseInvestigatorService.assertReadAccess(existingTask.case_id, userId, tenantId, rbacRole);
     // assign is for unassigned tasks (claim / first assignment); taking over a held task goes through
     // reassign. Refusing here keeps self-assign open without letting assign act as an ungated reassign.
     if (existingTask.assigned_user_id) {
       throw new BadRequestException(`Task ${taskId} is already assigned. Use reassign to change its assignee.`);
     }
-    await this.assertNotBlacklisted(existingTask.case_id, assignedUserId, tenantId);
+    await this.assertNotBlocklisted(existingTask.case_id, assignedUserId, tenantId);
 
     const result = await this.taskRepository.transaction(async (tx) => {
       const updatedTask = await tx.task.update({
@@ -169,7 +172,7 @@ export class TaskLifecycleService {
     // Same gate as assign: the caller must have full access to the case (revoked/no access is refused),
     // not just be free of a block. Supervisors/compliance bypass.
     await this.caseInvestigatorService.assertReadAccess(existingTask.case_id, actorUserId, tenantId, rbacRole);
-    await this.assertNotBlacklisted(existingTask.case_id, assignedUserId, tenantId);
+    await this.assertNotBlocklisted(existingTask.case_id, assignedUserId, tenantId);
 
     const result = await this.taskRepository.transaction(async (tx) => {
       const updatedTask = await tx.task.update({
@@ -308,8 +311,8 @@ export class TaskLifecycleService {
 
   /**
    * Unassigns a task because its assignee lost case access (revoke/
-   * blacklist), not via the guarded unassign API. Skips syncCaseAcl (would
-   * re-enter the in-progress revoke/blacklist) and RBAC (no
+   * blocklist), not via the guarded unassign API. Skips syncCaseAcl (would
+   * re-enter the in-progress revoke/blocklist) and RBAC (no
    * AuthenticatedUser here). No-ops if the task is gone, unassigned, or completed.
    */
   async unassignTaskDueToAccessChange(taskId: number, actorUserId: string, tenantId: string, reason: string): Promise<void> {
@@ -320,11 +323,48 @@ export class TaskLifecycleService {
 
     const previousAssigneeId = existingTask.assigned_user_id;
     await this.performUnassignEffects(existingTask, actorUserId, tenantId, reason);
+    await this.logTaskHistory(
+      existingTask.case_id,
+      taskId,
+      actorUserId,
+      tenantId,
+      `Unassigned task ${taskId} from user ${previousAssigneeId}: ${reason}`,
+    );
     await this.sendUnassignNotification(existingTask, previousAssigneeId, actorUserId, reason);
   }
 
+  /** Task-log entry for a change made by the access-removal cascade; never fails the change itself. */
+  private async logTaskHistory(
+    caseId: number,
+    taskId: number,
+    actorUserId: string,
+    tenantId: string,
+    actionPerformed: string,
+  ): Promise<void> {
+    try {
+      await this.loggingOrchestrationService.logActionsWithHistory(
+        {
+          userId: actorUserId,
+          actionPerformed,
+          entityName: 'TaskService',
+          operation: 'unassignTask',
+          outcome: Outcome.SUCCESS,
+          tenantId,
+        },
+        caseId,
+        tenantId,
+        taskId,
+      );
+    } catch (error) {
+      this.logger.warn(
+        `Failed to write task history for task ${taskId}: ${error instanceof Error ? error.message : String(error)}`,
+        TaskLifecycleService.name,
+      );
+    }
+  }
+
   /**
-   * Reacts to CaseInvestigatorService.revoke()/blacklist() via an event
+   * Reacts to CaseInvestigatorService.revoke()/blocklist() via an event
    * (a direct injection would create a circular module dependency).
    * Unassigns every live task the user held on the case.
    */
@@ -353,6 +393,113 @@ export class TaskLifecycleService {
         );
       }
     });
+
+    try {
+      await this.requeueCompletedInvestigation(caseId, userId, actorUserId, tenantId, reason);
+    } catch (error) {
+      this.logger.error(
+        `Failed to re-queue case ${caseId} after case-investigator access change for ${userId}`,
+        error instanceof Error ? error.stack : String(error),
+        TaskLifecycleService.name,
+      );
+    }
+  }
+
+  /**
+   * "Complete Investigation" completes only the Investigate Case task - the case stays IN_PROGRESS until
+   * the investigator closes it. If that investigator loses access in between, no live task is left to
+   * unassign, and neither they nor a supervisor can close the case. Put it back in the queue: a fresh
+   * unassigned Investigate Case task, no owner, READY_FOR_ASSIGNMENT. Does nothing unless the case is
+   * IN_PROGRESS, owned by this user, and the user's task is its latest Investigate Case task.
+   */
+  private async requeueCompletedInvestigation(
+    caseId: number,
+    userId: string,
+    actorUserId: string,
+    tenantId: string,
+    reason: string,
+  ): Promise<void> {
+    const existingCase = await this.caseRepository.findCaseById(caseId, tenantId);
+    if (existingCase.status !== CaseStatus.STATUS_20_IN_PROGRESS || existingCase.case_owner_user_id !== userId) {
+      return;
+    }
+
+    const investigationTasks = await this.taskRepository.findTasks({ case_id: caseId, name: TASK_NAMES.INVESTIGATE_CASE }, tenantId, false);
+    const latest = [...investigationTasks].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).at(0);
+    if (latest?.status !== TaskStatus.STATUS_30_COMPLETED || latest.assigned_user_id !== userId) {
+      return;
+    }
+
+    const newTaskId = await this.taskRepository.transaction(async (tx) => {
+      const newTask = await tx.task.create({
+        data: {
+          case_id: caseId,
+          tenant_id: tenantId,
+          name: TASK_NAMES.INVESTIGATE_CASE,
+          description: 'Continue investigation. The previous investigator lost access to this case before closing it.',
+          status: TaskStatus.STATUS_01_UNASSIGNED,
+          assigned_user_id: null,
+        },
+      });
+
+      // The status and owner were checked above, outside this transaction: only move the case if it is
+      // still IN_PROGRESS and still owned by this user (in this tenant), otherwise throw so the new task
+      // and comment roll back.
+      const { count } = await tx.case.updateMany({
+        where: { case_id: caseId, tenant_id: tenantId, status: CaseStatus.STATUS_20_IN_PROGRESS, case_owner_user_id: userId },
+        data: { status: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT, case_owner_user_id: null, updated_at: new Date() },
+      });
+      if (count === 0) {
+        throw new ConflictException(`Case ${caseId} is no longer IN_PROGRESS under ${userId}; not re-queuing it`);
+      }
+
+      await this.commentRepository.createComment(actorUserId, { caseId, taskId: newTask.task_id, note: reason, tenantId }, tx);
+      return newTask.task_id;
+    });
+
+    await this.logTaskHistory(
+      caseId,
+      latest.task_id,
+      actorUserId,
+      tenantId,
+      `Case re-queued: task ${latest.task_id} was completed by ${userId}, who lost access: ${reason}`,
+    );
+
+    try {
+      await this.flowableService.handleCaseStatusChanged({ caseId, newStatus: CaseStatus.STATUS_02_READY_FOR_ASSIGNMENT });
+    } catch (error) {
+      this.logger.warn(
+        `Flowable sync failed after re-queueing case ${caseId}: ${error instanceof Error ? error.message : String(error)}`,
+        TaskLifecycleService.name,
+      );
+    }
+
+    // "Complete Investigation" only completes the DB task, so Flowable's Investigate Case task is still
+    // claimed by the investigator who lost access. Release it, or the next investigator's claim fails
+    // ("Failed to claim task") because Flowable refuses to claim a task someone else holds.
+    // Retried a few times (the DB requeue is already committed, so a transient Flowable error must not
+    // leave the stale claim behind); `retry` itself swallows the final failure, so track it here.
+    const unclaim: { done: boolean; error?: unknown } = { done: false };
+    await this.retry(async () => {
+      try {
+        await this.flowableService.handleTaskUnassigned({
+          taskId: newTaskId,
+          caseId,
+          taskName: TASK_NAMES.INVESTIGATE_CASE,
+          assignedUser: null,
+        });
+        unclaim.done = true;
+      } catch (error) {
+        unclaim.error = error;
+        throw error;
+      }
+    }, FLOWABLE_UNCLAIM_ATTEMPTS);
+    if (!unclaim.done) {
+      this.logger.warn(
+        `Flowable unclaim failed after re-queueing case ${caseId}: ${unclaim.error instanceof Error ? unclaim.error.message : String(unclaim.error)}`,
+        TaskLifecycleService.name,
+      );
+    }
   }
 
   /** Shared DB transaction + Flowable/BPMN sync + audit comment behind both unassignTask and unassignTaskDueToAccessChange. */

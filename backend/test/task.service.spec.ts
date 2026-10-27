@@ -97,8 +97,8 @@ describe('TaskService', () => {
         {
           provide: CaseInvestigatorService,
           useValue: {
-            isBlacklisted: jest.fn().mockResolvedValue(null),
-            formatBlockedMessage: jest.fn().mockResolvedValue('User is blacklisted on this case (blocked by Sam Visor at 2026-01-01T00:00:00.000Z: conflict of interest) — unblock first.'),
+            isBlocklisted: jest.fn().mockResolvedValue(null),
+            formatBlockedMessage: jest.fn().mockResolvedValue('User is blocklisted on this case (blocked by Sam Visor at 2026-01-01T00:00:00.000Z: conflict of interest) — unblock first.'),
             syncTaskAssignment: jest.fn().mockResolvedValue(undefined),
             assertReadAccess: jest.fn().mockResolvedValue(undefined),
             assertViewAccess: jest.fn().mockResolvedValue('FULL'),
@@ -398,14 +398,14 @@ describe('TaskService', () => {
       });
     });
 
-    it('should refuse to reassign to a user blacklisted on this case, without writing anything', async () => {
+    it('should refuse to reassign to a user blocklisted on this case, without writing anything', async () => {
       const updateData = { assignedUserId: 'user2' };
 
       taskRepository.transaction.mockImplementation(async (callback) => {
         taskRepository.findTaskWithCase.mockResolvedValue(existingTask);
         return callback(taskRepository as any);
       });
-      caseInvestigatorService.isBlacklisted.mockResolvedValue({
+      caseInvestigatorService.isBlocklisted.mockResolvedValue({
         blocked_by: 'supervisor1',
         blocked_at: new Date('2026-01-01T00:00:00Z'),
         block_reason: 'conflict of interest',
@@ -848,7 +848,7 @@ describe('TaskService', () => {
       );
     });
 
-    it('should return no tasks for an investigator with no whitelisted cases', async () => {
+    it('should return no tasks for an investigator with no allowlisted cases', async () => {
       caseInvestigatorService.getCaseIdScope.mockResolvedValueOnce([]);
       taskRepository.findTasks.mockResolvedValue([]);
 
@@ -938,7 +938,7 @@ describe('TaskService', () => {
     });
 
     it('should reject a case member who is not the holder from mutating a task held by someone else', async () => {
-      // Case access (e.g. a live whitelist row from a different task, or a past OBSERVER
+      // Case access (e.g. a live allowlist row from a different task, or a past OBSERVER
       // row) is not the same as being allowed to mutate someone else's active task.
       taskRepository.findTaskById.mockResolvedValue(baseTask);
 
@@ -1109,7 +1109,7 @@ describe('TaskService', () => {
       await expect(service.claimTask(999, 'user1', 'tenant1')).rejects.toThrow(new NotFoundException('Task 999 not found'));
     });
 
-    it('should refuse to claim a task on a case the claimant is blacklisted on, without writing anything', async () => {
+    it('should refuse to claim a task on a case the claimant is blocklisted on, without writing anything', async () => {
       const existingTask = {
         task_id: 1,
         case_id: 1,
@@ -1118,7 +1118,7 @@ describe('TaskService', () => {
         tenant_id: 'tenant1',
       } as any;
       taskRepository.findTaskById.mockResolvedValue(existingTask);
-      caseInvestigatorService.isBlacklisted.mockResolvedValue({
+      caseInvestigatorService.isBlocklisted.mockResolvedValue({
         blocked_by: 'supervisor1',
         blocked_at: new Date('2026-01-01T00:00:00Z'),
         block_reason: 'conflict of interest',

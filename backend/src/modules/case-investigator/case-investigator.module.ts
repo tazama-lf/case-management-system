@@ -8,7 +8,7 @@ import { CaseInvestigatorController } from './case-investigator.controller';
 // Every other module that needs to know "can this investigator see this case", or that needs to
 // react to task assignment for ACL purposes, imports this module and uses
 // CaseInvestigatorService rather than querying case_investigators /
-// case_investigators_blacklist directly.
+// case_investigators_blocklist directly.
 @Module({
   imports: [PrismaModule, LoggerModule, LoggingOrchestrationModule],
   providers: [CaseInvestigatorService],
