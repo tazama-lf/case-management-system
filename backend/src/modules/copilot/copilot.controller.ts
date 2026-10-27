@@ -4,6 +4,7 @@ import { TazamaAuthGuard } from 'src/guards/tazama-auth.guard';
 import { RequireInvestigatorOrSupervisorRoleOrComplianceRole, TazamaClaims } from 'src/decorators/auth.decorator';
 import type { AuthenticatedRequest } from 'src/utils/types/auth.types';
 import { Audit } from '../audit/decorators/audit-log.decorator';
+import { CaseInvestigatorService } from '../case-investigator/case-investigator.service';
 import { CopilotService, ReviewRefused, type Caller } from './copilot.service';
 import type { ReviewAction, ReviewRole } from './sar-review';
 
@@ -29,7 +30,15 @@ function callerOf(req: AuthenticatedRequest): Caller {
 @Controller('api/v1/copilot')
 @UseGuards(TazamaAuthGuard)
 export class CopilotController {
-  constructor(private readonly copilot: CopilotService) {}
+  constructor(
+    private readonly copilot: CopilotService,
+    private readonly access: CaseInvestigatorService,
+  ) {}
+
+  /** The copilot reads the investigation material, so it follows the case ACL: no access, or revoked, means 404. */
+  private async gate(caseId: number, req: AuthenticatedRequest): Promise<void> {
+    await this.access.assertReadAccess(caseId, callerOf(req).userId, callerOf(req).tenantId, req.user.actorRole);
+  }
 
   @Get('status')
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
@@ -42,6 +51,7 @@ export class CopilotController {
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({ summary: 'The latest stored investigation record for the case, or null' })
   async latest(@Param('caseId', ParseIntPipe) caseId: number, @Req() req: AuthenticatedRequest): Promise<unknown> {
+    await this.gate(caseId, req);
     return await this.copilot.latestInvestigation(caseId, callerOf(req).tenantId);
   }
 
@@ -52,6 +62,7 @@ export class CopilotController {
     summary: 'Run the copilot: compute and embed the case facts, write the summary, red flags and next steps, and store the record',
   })
   async investigate(@Param('caseId', ParseIntPipe) caseId: number, @Req() req: AuthenticatedRequest): Promise<unknown> {
+    await this.gate(caseId, req);
     return await this.copilot.investigate(caseId, callerOf(req));
   }
 
@@ -64,6 +75,7 @@ export class CopilotController {
     @Body() body: { question?: string },
     @Req() req: AuthenticatedRequest,
   ): Promise<unknown> {
+    await this.gate(caseId, req);
     const question = body.question?.trim();
     if (!question) throw new BadRequestException('question is required');
     return await this.copilot.ask(caseId, callerOf(req), question.slice(0, 500));
@@ -73,6 +85,7 @@ export class CopilotController {
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({ summary: 'The latest SAR/STR draft for the case, or null' })
   async latestSar(@Param('caseId', ParseIntPipe) caseId: number, @Req() req: AuthenticatedRequest): Promise<unknown> {
+    await this.gate(caseId, req);
     return await this.copilot.latestSar(caseId, callerOf(req).tenantId);
   }
 
@@ -87,6 +100,7 @@ export class CopilotController {
     @Body() body: { refresh?: boolean },
     @Req() req: AuthenticatedRequest,
   ): Promise<unknown> {
+    await this.gate(caseId, req);
     return await this.copilot.draftSar(caseId, callerOf(req), body.refresh === true);
   }
 
@@ -94,6 +108,7 @@ export class CopilotController {
   @RequireInvestigatorOrSupervisorRoleOrComplianceRole()
   @ApiOperation({ summary: 'Where the latest SAR/STR draft stands in the review workflow, with its history' })
   async review(@Param('caseId', ParseIntPipe) caseId: number, @Req() req: AuthenticatedRequest): Promise<unknown> {
+    await this.gate(caseId, req);
     return { ...(await this.copilot.reviewState(caseId, callerOf(req).tenantId)), yourRole: roleOf(req) };
   }
 
@@ -106,6 +121,7 @@ export class CopilotController {
     @Body() body: { action?: string; comment?: string; reference?: string },
     @Req() req: AuthenticatedRequest,
   ): Promise<unknown> {
+    await this.gate(caseId, req);
     const action = ACTIONS.find((a) => a === body.action);
     if (!action) throw new BadRequestException(`action must be one of ${ACTIONS.join(', ')}`);
     try {

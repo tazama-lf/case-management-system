@@ -1,5 +1,6 @@
 import { Module, type DynamicModule } from '@nestjs/common';
 import { PrismaModule } from '../../../prisma/prisma.module';
+import { CaseInvestigatorModule } from '../case-investigator/case-investigator.module';
 import { CaseFactsService } from './case-facts.service';
 import { CopilotController } from './copilot.controller';
 import { CopilotService } from './copilot.service';
@@ -30,7 +31,7 @@ export class CopilotModule {
     }
     return {
       module: CopilotModule,
-      imports: [PrismaModule],
+      imports: [PrismaModule, CaseInvestigatorModule],
       controllers: [CopilotController, FeaturesController],
       providers: [CopilotService, CaseFactsService, ModelProviderService, { provide: 'COPILOT_ENABLED', useValue: true }],
       exports: [CopilotService],

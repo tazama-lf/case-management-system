@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { CopilotController } from '../src/modules/copilot/copilot.controller';
 
 describe('CopilotController', () => {
@@ -10,8 +10,9 @@ describe('CopilotController', () => {
     latestSar: jest.fn(async () => null),
     draftSar: jest.fn(async () => ({ id: 2 })),
   };
-  const controller = new CopilotController(service as any);
-  const req = (tenantId?: string): any => ({ user: { token: { clientId: 'u1', tenantId }, actorName: 'Ayesha', actorEmail: 'a@x.org' } });
+  const access = { assertReadAccess: jest.fn(async () => undefined) };
+  const controller = new CopilotController(service as any, access as any);
+  const req = (tenantId?: string): any => ({ user: { token: { clientId: 'u1', tenantId }, actorRole: 'CMS_INVESTIGATOR', actorName: 'Ayesha', actorEmail: 'a@x.org' } });
 
   it('passes the caller and tenant from the token', async () => {
     await controller.investigate(5, req('TAZAMA'));
@@ -29,5 +30,28 @@ describe('CopilotController', () => {
     expect((service.ask.mock.calls[0] as any[])[2]).toHaveLength(500);
     await expect(controller.ask(5, { question: '  ' }, req('TAZAMA'))).rejects.toBeInstanceOf(BadRequestException);
     await expect(controller.investigate(5, req())).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('checks the case ACL first, with the caller, tenant and role', async () => {
+    await controller.latest(5, req('TAZAMA'));
+    expect(access.assertReadAccess).toHaveBeenCalledWith(5, 'u1', 'TAZAMA', 'CMS_INVESTIGATOR');
+  });
+
+  it('refuses every case endpoint, and reads nothing, when the caller has no access to the case', async () => {
+    access.assertReadAccess.mockRejectedValue(new NotFoundException('Case not found or access denied'));
+    service.latestInvestigation.mockClear();
+    service.investigate.mockClear();
+    service.draftSar.mockClear();
+    await expect(controller.latest(9, req('TAZAMA'))).rejects.toBeInstanceOf(NotFoundException);
+    await expect(controller.investigate(9, req('TAZAMA'))).rejects.toBeInstanceOf(NotFoundException);
+    await expect(controller.ask(9, { question: 'why?' }, req('TAZAMA'))).rejects.toBeInstanceOf(NotFoundException);
+    await expect(controller.latestSar(9, req('TAZAMA'))).rejects.toBeInstanceOf(NotFoundException);
+    await expect(controller.draftSar(9, {}, req('TAZAMA'))).rejects.toBeInstanceOf(NotFoundException);
+    await expect(controller.review(9, req('TAZAMA'))).rejects.toBeInstanceOf(NotFoundException);
+    await expect(controller.reviewAction(9, { action: 'SUBMIT' }, req('TAZAMA'))).rejects.toBeInstanceOf(NotFoundException);
+    expect(service.latestInvestigation).not.toHaveBeenCalled();
+    expect(service.investigate).not.toHaveBeenCalled();
+    expect(service.draftSar).not.toHaveBeenCalled();
+    access.assertReadAccess.mockResolvedValue(undefined);
   });
 });
