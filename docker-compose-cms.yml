@@ -81,6 +81,21 @@ services:
     networks:
       - tazama_default
 
+  # Bundled model for the investigation copilot (COPILOT_MODE=bundled). llama.cpp (MIT) serving an
+  # Apache-2.0 open-weight model; fetch the weights once with docker/copilot/fetch-model.sh.
+  copilot-llm:
+    image: ghcr.io/ggml-org/llama.cpp:server-b11459
+    container_name: tazama-cms-copilot-llm
+    restart: unless-stopped
+    # On a GPU host add '-ngl', '99' and pass the GPU through; COPILOT_MODEL_FILE=qwen2.5-1.5b-instruct-q4_k_m.gguf for small machines.
+    command: ['-m', '/models/${COPILOT_MODEL_FILE:-Qwen3-4B-Instruct-2507-Q4_K_M.gguf}', '--alias', 'qwen3-4b-instruct-2507', '--host', '0.0.0.0', '--port', '8091', '-c', '8192', '--parallel', '1', '--cache-ram', '0']
+    volumes:
+      - ./docker/copilot/models:/models:ro
+    expose:
+      - '8091'
+    networks:
+      - tazama_default
+
 volumes:
   couchdb_data:
 

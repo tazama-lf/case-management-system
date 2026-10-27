@@ -158,6 +158,20 @@ class EnvironmentVariables {
 
   @IsBooleanString()
   OPENSEARCH_REFRESH!: string;
+
+  // Copilot feature toggle: only 'true' switches the copilot on (default off)
+  @IsOptional()
+  @IsBooleanString()
+  COPILOT_ENABLED?: string;
+
+  // Investigation copilot: bundled open-weight model, bring-your-own-key endpoint, or off
+  @IsOptional()
+  @IsIn(['bundled', 'byok', 'off'])
+  COPILOT_MODE?: string;
+
+  @IsOptional()
+  @IsIn(['builtin', 'provider'])
+  COPILOT_EMBEDDINGS?: string;
 }
 
 export const validate = (config: Record<string, unknown>): EnvironmentVariables => {
