@@ -5,9 +5,12 @@ import { CaseFactsService } from './case-facts.service';
 import { CaseReadAccessGuard } from './case-read-access.guard';
 import { COPILOT_FEATURES, type CopilotFeatures, anyCopilotFeature, copilotFeatures, strategyName } from './copilot.config';
 import { CopilotStatusController, FeaturesController } from './copilot-status.controller';
+import { FeedbackController, GovernanceController } from './governance.controller';
+import { GovernanceService } from './governance.service';
 import { InvestigationController } from './investigation.controller';
 import { InvestigationService } from './investigation.service';
 import { AgentStrategy, INVESTIGATION_STRATEGY, PipelineStrategy } from './investigation.strategy';
+import { MeaningCheck } from './meaning-check';
 import { ModelProviderService } from './model-provider.service';
 import { RecordStore } from './record-store.service';
 import { SarController } from './sar.controller';
@@ -23,6 +26,7 @@ import { SarService } from './sar.service';
  *   ask            question -> the facts that answer it -> answer written and checked
  *   sar-draft      stored record -> facts per STR section -> narrative written and checked -> goAML XML
  *   sar-review     maker-checker approval of the draft before it can be filed
+ *   feedback       users rate an output; governance: the oversight report and record-chain check
  */
 @Module({})
 export class CopilotModule {
@@ -36,6 +40,8 @@ export class CopilotModule {
     const controllers: Array<Type<unknown>> = [
       ...always.controllers,
       CopilotStatusController,
+      FeedbackController,
+      GovernanceController,
       ...(features.investigation ? [InvestigationController] : []),
       ...(features.sar ? [SarController] : []),
     ];
@@ -44,6 +50,8 @@ export class CopilotModule {
       RecordStore,
       CaseFactsService,
       ModelProviderService,
+      MeaningCheck,
+      GovernanceService,
       CaseReadAccessGuard,
       PipelineStrategy,
       AgentStrategy,

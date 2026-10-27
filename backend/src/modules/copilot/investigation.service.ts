@@ -1,10 +1,12 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { CaseFactsService } from './case-facts.service';
-import type { AgentTrace, CaseFacts, Caller, CheckedText, InvestigationRecord, ModelInfo, Sentence } from './copilot.types';
+import type { AgentTrace, CaseFacts, Caller, CheckedText, InvestigationRecord, ModelInfo, Provenance, Sentence } from './copilot.types';
 import { topK } from './embeddings';
 import { codeFindings, noticeFor, preferModel } from './findings';
+import { MeaningCheck } from './meaning-check';
 import { ModelProviderService } from './model-provider.service';
 import { INVESTIGATION_STRATEGY, type InvestigationStrategy } from './investigation.strategy';
+import { provenanceOf } from './provenance';
 import { RecordStore, type StoredRecord } from './record-store.service';
 import { checkAll, toSentences } from './verifier';
 
@@ -15,6 +17,8 @@ const FALLBACK_CANDIDATES = 6;
 const FALLBACK_FACTS = 3;
 
 export interface AskResult {
+  /** The stored ASK record for this question and answer; feedback on the answer points at it. */
+  askId: number;
   recordId: number;
   factIds: string[];
   answer: CheckedText;
@@ -23,6 +27,7 @@ export interface AskResult {
   agent?: AgentTrace;
 }
 
+type Answered = Omit<AskResult, 'askId'>;
 type Stored = Omit<InvestigationRecord, 'id' | 'caseId' | 'createdAt' | 'createdBy' | 'model'>;
 
 /** Investigation copilot (backlog P4-2): the case facts, the findings written from them, and the case chat. */
@@ -33,6 +38,7 @@ export class InvestigationService {
     private readonly caseFacts: CaseFactsService,
     private readonly models: ModelProviderService,
     @Inject(INVESTIGATION_STRATEGY) private readonly strategy: InvestigationStrategy,
+    private readonly meaning: MeaningCheck,
   ) {}
 
   async status(): Promise<ModelInfo & { reachable: boolean; strategy: string }> {
@@ -46,7 +52,7 @@ export class InvestigationService {
     const byId = Object.fromEntries(cf.facts.map((f, i) => [f.id, vectors[i]]));
     const written = await this.strategy.investigate(cf.facts);
 
-    const findings = this.findings(cf, written.reply, written.evidence);
+    const findings = await this.findings(cf, written.reply, written.evidence);
     const info = { ...this.models.info(), embeddings: embeddingModel };
     const payload: Stored = {
       facts: cf.facts,
@@ -54,6 +60,8 @@ export class InvestigationService {
       ...findings,
       notice: written.reply ? undefined : noticeFor(info),
       agent: written.agent,
+      provenance: await this.provenance(),
+      raw: written.raw,
     };
     const row = await this.store.create({
       caseId,
@@ -89,8 +97,10 @@ export class InvestigationService {
       record.facts,
       record.facts.filter((f) => ids.includes(f.id)),
     );
-    const answer = written.reply ? checkAll(toSentences(written.reply.answer), written.evidence, 'model') : null;
-    const result: AskResult = answer?.sentences.length
+    const answer = written.reply
+      ? await this.meaning.review(checkAll(toSentences(written.reply.answer), written.evidence, 'model'), written.evidence)
+      : null;
+    const result: Answered = answer?.sentences.length
       ? { recordId: record.id, factIds: ids, answer, agent: written.agent }
       : {
           recordId: record.id,
@@ -99,14 +109,20 @@ export class InvestigationService {
           notice: written.reply ? 'The model answer did not pass the checks; these are the closest facts.' : noticeFor(this.models.info()),
           agent: written.agent,
         };
-    await this.keep(caseId, caller, question, result);
-    return result;
+    const askId = await this.keep(caseId, caller, question, result, written.raw);
+    return { askId, ...result };
   }
 
   /** Every question and its answer is kept, linked to the investigation record it was answered from, for audit. */
-  private async keep(caseId: number, caller: Caller, question: string, { recordId, ...answered }: AskResult): Promise<void> {
+  private async keep(
+    caseId: number,
+    caller: Caller,
+    question: string,
+    { recordId, ...answered }: Answered,
+    raw: string | null,
+  ): Promise<number> {
     const info = this.models.info();
-    await this.store.create({
+    const row = await this.store.create({
       caseId,
       tenantId: caller.tenantId,
       kind: ASK_KIND,
@@ -114,8 +130,13 @@ export class InvestigationService {
       provider: info.mode,
       model: info.model,
       parentId: recordId,
-      payload: { question, ...answered },
+      payload: { question, ...answered, provenance: await this.provenance(), raw },
     });
+    return row.id;
+  }
+
+  private async provenance(): Promise<Provenance> {
+    return await provenanceOf(this.models, this.strategy.name, this.meaning.enabled);
   }
 
   /** The closest facts that pass the checks (a fact holding an account number would not), at most three. */
@@ -126,18 +147,18 @@ export class InvestigationService {
   }
 
   /** Summary, red flags and next steps: the model's text where it passed the checks, otherwise code's. */
-  private findings(
+  private async findings(
     cf: CaseFacts,
     reply: Record<string, unknown> | null,
     evidence: CaseFacts['facts'],
-  ): Pick<Stored, 'summary' | 'redFlags' | 'nextSteps'> {
-    const fromModel = (key: string, citesRequired: boolean): CheckedText | null =>
-      reply ? checkAll(toSentences(reply[key]), evidence, 'model', citesRequired) : null;
+  ): Promise<Pick<Stored, 'summary' | 'redFlags' | 'nextSteps'>> {
+    const fromModel = async (key: string, citesRequired: boolean): Promise<CheckedText | null> =>
+      reply ? await this.meaning.review(checkAll(toSentences(reply[key]), evidence, 'model', citesRequired), evidence) : null;
     const code = codeFindings(cf);
     return {
-      summary: preferModel(fromModel('summary', true), checkAll(code.summary, cf.facts, 'code', true)),
-      redFlags: preferModel(fromModel('red_flags', true), checkAll(code.redFlags, cf.facts, 'code', true)),
-      nextSteps: preferModel(fromModel('next_steps', false), checkAll(code.nextSteps, cf.facts, 'code')),
+      summary: preferModel(await fromModel('summary', true), checkAll(code.summary, cf.facts, 'code', true)),
+      redFlags: preferModel(await fromModel('red_flags', true), checkAll(code.redFlags, cf.facts, 'code', true)),
+      nextSteps: preferModel(await fromModel('next_steps', false), checkAll(code.nextSteps, cf.facts, 'code')),
     };
   }
 

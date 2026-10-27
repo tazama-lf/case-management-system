@@ -3,6 +3,7 @@ import { CaseFactsService, htmlToText } from '../src/modules/copilot/case-facts.
 import { codeFindings } from '../src/modules/copilot/findings';
 import { InvestigationService } from '../src/modules/copilot/investigation.service';
 import { type InvestigationStrategy, PipelineStrategy } from '../src/modules/copilot/investigation.strategy';
+import { MeaningCheck } from '../src/modules/copilot/meaning-check';
 import { ModelProviderService, parseJsonObject } from '../src/modules/copilot/model-provider.service';
 import { RecordStore } from '../src/modules/copilot/record-store.service';
 import { SarService } from '../src/modules/copilot/sar.service';
@@ -10,10 +11,18 @@ import { ALERT_DATA, KYC, SUBJECT, T0, TRIGGER_E2E, muleHistory } from './copilo
 
 const CALLER = { userId: '5fb927ab-d31b-46f7-87c9-0a069b8df9ee', tenantId: 'TAZAMA', name: 'cms investigator', email: 'inv@tazama.org' };
 
+/** Prisma-style where: plain values must be equal; { not: null } and { gt: n } are supported. */
+const matches = (row: any, where: Record<string, any>): boolean =>
+  Object.entries(where).every(([k, v]) => {
+    if (v !== null && typeof v === 'object' && 'not' in v) return row[k] !== v.not;
+    if (v !== null && typeof v === 'object' && 'gt' in v) return row[k] > v.gt;
+    return row[k] === v;
+  });
+
 function prismaMock(): any {
   const history = muleHistory();
   const records: any[] = [];
-  return {
+  const mock: any = {
     records,
     case: {
       findFirst: jest.fn(async ({ where }: any) =>
@@ -43,14 +52,17 @@ function prismaMock(): any {
     cms_usernames: { findMany: jest.fn(async () => [{ user_id: 'u1', name: 'cms investigator' }]) },
     copilotRecord: {
       create: jest.fn(async ({ data }: any) => {
-        const row = { ...data, id: records.length + 1, created_at: new Date() };
+        const row = { ...data, id: records.length + 1, created_at: data.created_at ?? new Date() };
         records.push(row);
         return row;
       }),
-      findFirst: jest.fn(async ({ where }: any) => [...records].reverse().find((r) => r.case_id === where.case_id && r.kind === where.kind && r.tenant_id === where.tenant_id) ?? null),
-      findMany: jest.fn(async ({ where }: any) => records.filter((r) => r.case_id === where.case_id && r.kind === where.kind && r.tenant_id === where.tenant_id && r.parent_id === where.parent_id)),
+      update: jest.fn(async ({ where, data }: any) => Object.assign(records.find((r) => r.id === where.id), data)),
+      findFirst: jest.fn(async ({ where }: any) => [...records].reverse().find((r) => matches(r, where)) ?? null),
+      findMany: jest.fn(async ({ where }: any) => records.filter((r) => matches(r, where))),
     },
+    $transaction: jest.fn(async (work: (tx: unknown) => Promise<unknown>) => await work(mock)),
   };
+  return mock;
 }
 
 function setup(env: Record<string, string>, reply?: (body: any) => unknown): { service: InvestigationService; sar: SarService; prisma: any; fetchMock: jest.Mock } {
@@ -68,8 +80,9 @@ function setup(env: Record<string, string>, reply?: (body: any) => unknown): { s
   const prisma = prismaMock();
   const models = new ModelProviderService();
   const caseFacts = new CaseFactsService(prisma);
-  const service = new InvestigationService(new RecordStore(prisma), caseFacts, models, new PipelineStrategy(models));
-  const sar = new SarService(new RecordStore(prisma), caseFacts, models, service);
+  const meaning = new MeaningCheck(models);
+  const service = new InvestigationService(new RecordStore(prisma), caseFacts, models, new PipelineStrategy(models), meaning);
+  const sar = new SarService(new RecordStore(prisma), caseFacts, models, service, meaning);
   return { service, sar, prisma, fetchMock };
 }
 
@@ -150,10 +163,11 @@ describe('InvestigationService and SarService', () => {
     const agent = { stopped: 'answered' as const, calls: [], factIds: [], fellBack: false };
     const strategy: InvestigationStrategy = {
       name: 'agent',
-      investigate: async (facts) => ({ reply: null, evidence: facts }),
-      answer: async (_question, facts) => ({ reply: { answer: ['The case data does not show this.'] }, evidence: facts, agent }),
+      investigate: async (facts) => ({ reply: null, raw: null, evidence: facts }),
+      answer: async (_question, facts) => ({ reply: { answer: ['The case data does not show this.'] }, raw: null, evidence: facts, agent }),
     };
-    const service = new InvestigationService(new RecordStore(prisma), new CaseFactsService(prisma), new ModelProviderService(), strategy);
+    const models = new ModelProviderService();
+    const service = new InvestigationService(new RecordStore(prisma), new CaseFactsService(prisma), models, strategy, new MeaningCheck(models));
     const a = await service.ask(42, CALLER, 'Which device was used?');
     expect(a.answer.writtenBy).toBe('model');
     expect(a.agent).toEqual(agent);
@@ -214,7 +228,7 @@ describe('ModelProviderService', () => {
     }) as any;
     expect((await p.embed(['x'])).model).toBe('builtin-hash-512');
     expect(await p.reachable()).toBe(false);
-    expect(await p.chatJson('s', 'u')).toBeNull();
+    expect(await p.chatJson('s', 'u')).toEqual({ value: null, raw: null });
   });
 
   it('parses fenced and wrapped JSON', () => {

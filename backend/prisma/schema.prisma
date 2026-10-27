@@ -638,6 +638,9 @@ model CopilotRecord {
   embedding_model String?  @db.VarChar(200)
   payload         Json
   created_at      DateTime @default(now()) @db.Timestamp(6)
+  /// Hash of the tenant's previous record, and of this record with it: a chain that shows any change or removal.
+  prev_hash       String?  @db.VarChar(64)
+  hash            String?  @db.VarChar(64)
 
   @@index([case_id, kind])
   @@index([tenant_id])

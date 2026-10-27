@@ -182,7 +182,7 @@ describe('runAgent', () => {
 describe('strategies', () => {
   const models = (turns: Array<AssistantTurn | null>, json: unknown = { summary: ['pipeline [F2]'] }): any => ({
     chatTurn: scripted(turns).chat,
-    chatJson: jest.fn(async () => json),
+    chatJson: jest.fn(async () => ({ value: json, raw: JSON.stringify(json) })),
   });
 
   it('the pipeline gives the model all the facts and lets it cite any of them', async () => {

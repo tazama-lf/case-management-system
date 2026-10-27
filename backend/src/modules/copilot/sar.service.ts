@@ -4,8 +4,10 @@ import type { CaseFacts, Caller, Fact, InvestigationRecord, ModelInfo, SarDraft,
 import { topK } from './embeddings';
 import { noticeFor, preferModel } from './findings';
 import { InvestigationService } from './investigation.service';
+import { MeaningCheck } from './meaning-check';
 import { ModelProviderService } from './model-provider.service';
 import { SAR_PROMPT, factLines } from './prompts';
+import { provenanceOf } from './provenance';
 import { RecordStore, type StoredRecord } from './record-store.service';
 import { SECTIONS, codeSection, goamlXml, indicators, reportTransactions, sarChecks } from './sar';
 import {
@@ -25,6 +27,12 @@ const KIND_REVIEW = 'SAR_REVIEW' as const;
 const FACTS_PER_SECTION = 8;
 const MAX_COMMENT = 2000;
 const MAX_REFERENCE = 200;
+
+/** The disclosure carried in the goAML file: who drafted the narrative and from which record. */
+const aiNote = (info: ModelInfo, recordId: number): string =>
+  `Narrative drafted with AI assistance by the Tazama CMS copilot (${info.model ? `${info.mode} model ${info.model}` : 'model off, written by code'}) ` +
+  `from investigation record ${recordId}. Every sentence cites case facts and passed automated checks; ` +
+  'the reporting entity reviewed and approved it under the maker-checker workflow before filing.';
 
 /** A review step the workflow does not allow; the message says why. */
 export class ReviewRefused extends Error {}
@@ -47,6 +55,7 @@ export class SarService {
     private readonly caseFacts: CaseFactsService,
     private readonly models: ModelProviderService,
     private readonly investigation: InvestigationService,
+    private readonly meaning: MeaningCheck,
   ) {}
 
   /** Drafts the STR/SAR from the stored investigation record: retrieval per section, drafting, checks, goAML XML. */
@@ -56,11 +65,16 @@ export class SarService {
       : await this.investigation.latestOrInvestigate(caseId, caller);
     const cf = await this.caseFacts.load(caseId, caller.tenantId);
     const picked = await this.pickFactsPerSection(record);
-    const reply = await this.models.chatJson<Record<string, unknown>>(SAR_PROMPT, this.sectionPrompt(record.facts, picked));
-    const sections = this.sections(cf, record.facts, picked, reply);
-    const report = this.report(cf, sections, record, caller);
+    const { value: reply, raw } = await this.models.chatJson<Record<string, unknown>>(SAR_PROMPT, this.sectionPrompt(record.facts, picked));
+    const sections = await this.sections(cf, record.facts, picked, reply);
     const info = this.models.info();
-    const payload: DraftPayload = { ...report, notice: reply ? undefined : noticeFor(info) };
+    const report = this.report(cf, sections, record, caller, info);
+    const payload: DraftPayload = {
+      ...report,
+      notice: reply ? undefined : noticeFor(info),
+      provenance: await provenanceOf(this.models, 'pipeline', this.meaning.enabled),
+      raw,
+    };
     const row = await this.store.create({
       caseId,
       tenantId: caller.tenantId,
@@ -144,21 +158,29 @@ export class SarService {
     ).join('\n\n');
   }
 
-  private sections(cf: CaseFacts, facts: Fact[], picked: string[][], reply: Record<string, unknown> | null): SarSection[] {
-    return SECTIONS.map((s, i) => {
-      const own = facts.filter((f) => picked[i].includes(f.id));
-      const modelText = reply ? checkAll(toSentences(reply[s.key]), facts, 'model', true) : null;
-      return {
-        key: s.key,
-        title: s.title,
-        factIds: picked[i],
-        text: preferModel(modelText, checkAll(codeSection(s.key, own, cf), facts, 'code', true)),
-      };
-    });
+  private async sections(cf: CaseFacts, facts: Fact[], picked: string[][], reply: Record<string, unknown> | null): Promise<SarSection[]> {
+    return await Promise.all(
+      SECTIONS.map(async (s, i) => {
+        const own = facts.filter((f) => picked[i].includes(f.id));
+        const modelText = reply ? await this.meaning.review(checkAll(toSentences(reply[s.key]), facts, 'model', true), facts) : null;
+        return {
+          key: s.key,
+          title: s.title,
+          factIds: picked[i],
+          text: preferModel(modelText, checkAll(codeSection(s.key, own, cf), facts, 'code', true)),
+        };
+      }),
+    );
   }
 
   /** The narrative, indicators and goAML XML, with the checks to pass before filing. */
-  private report(cf: CaseFacts, sections: SarSection[], record: InvestigationRecord, caller: Caller): Omit<DraftPayload, 'notice'> {
+  private report(
+    cf: CaseFacts,
+    sections: SarSection[],
+    record: InvestigationRecord,
+    caller: Caller,
+    info: ModelInfo,
+  ): Omit<DraftPayload, 'notice' | 'provenance' | 'raw'> {
     const text = (key: string): string =>
       sections
         .find((s) => s.key === key)!
@@ -179,6 +201,7 @@ export class SarService {
       rentityId,
       submissionDate: new Date(),
       transactions,
+      aiNote: aiNote(info, record.id),
     });
     return {
       facts: record.facts,

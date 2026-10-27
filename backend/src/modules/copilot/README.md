@@ -33,29 +33,39 @@ CMS case ──► facts (code) ──► embed ──► investigation record (
 
 5. **SAR agent.** It reads the stored record, not the live case, so the draft can be traced to what the investigator saw. For each STR section (subject, activity, grounds, investigation, action) it ranks the stored fact vectors against the section's query and drafts from the top matches. `sar.ts` builds the goAML XML in the UNODC base structure and runs the filing checks: totals match the source transactions, the alert transaction is included, the case is closed confirmed, and the reporting entity id is set.
 
-## Audit
+## Audit and governance
 
-Two records exist for every model use, and nothing is updated or deleted:
+Every use of the model is recorded twice, and nothing is updated or deleted. How it is overseen (controls, roles, changes, incidents, risks) is in [GOVERNANCE.md](GOVERNANCE.md).
 
 - **`copilot_records`** holds what the model did. Each row records who asked and when, and the provider and model. Kinds:
   - **INVESTIGATION**: the facts, the findings kept, and every removed sentence with the reason.
   - **ASK**: each chat question with its answer.
   - **SAR_DRAFT**: the draft, with its checks.
   - **SAR_REVIEW**: each maker-checker step, with its comment.
+  - **FEEDBACK**: a user's rating of an output.
 
-  With the agent strategy, the rows also hold every tool call. ASK and SAR_DRAFT rows point at the investigation record they were built from.
-- **The CMS audit log** (OpenSearch, `@Audit()`) holds each request that runs the model or changes a review. Each event records the user, role, tenant, case, endpoint, outcome and time, with a SHA-256 hash of the event. The resource types are `copilot-investigation` and `copilot-sar`.
+  What the rows also hold:
+  - **Provenance:** the prompt version, strategy, settings, and the model served (file, quantisation and build from llama.cpp).
+  - **The raw model reply.**
+  - **With the agent strategy,** every tool call.
+
+  The other kinds point at the record they belong to.
+
+- **Hash chain.** Each record's hash covers the record as stored together with the previous hash, per tenant, so a changed or removed record breaks the chain at that point. `RecordStore.verifyChain` walks it. Each new hash is also written to the audit log, which shows the removal of the newest records too.
+- **The CMS audit log** (OpenSearch, `@Audit()`) holds each request that runs the model, rates an output, changes a review or reads the governance report. Each event records the user, role, tenant, case, endpoint, outcome and time, with a SHA-256 hash of the event. The resource types are `copilot-investigation`, `copilot-sar`, `copilot-feedback`, `copilot-governance` and `copilot-record`.
 
 ## API
 
-| Method     | Path                                                   | Feature                          |
-| ---------- | ------------------------------------------------------ | -------------------------------- |
-| GET        | `/api/v1/features`                                     | always (tells the UI what is on) |
-| GET        | `/api/v1/copilot/status`                               | either feature                   |
-| GET / POST | `/api/v1/copilot/cases/:caseId/investigation`          | investigation                    |
-| POST       | `/api/v1/copilot/cases/:caseId/ask` `{question}`       | investigation                    |
-| GET / POST | `/api/v1/copilot/cases/:caseId/sar-draft` `{refresh?}` | SAR                              |
-| GET / POST | `/api/v1/copilot/cases/:caseId/sar-review`             | SAR                              |
+| Method     | Path                                                                    | Feature                          |
+| ---------- | ----------------------------------------------------------------------- | -------------------------------- |
+| GET        | `/api/v1/features`                                                      | always (tells the UI what is on) |
+| GET        | `/api/v1/copilot/status`                                                | either feature                   |
+| GET / POST | `/api/v1/copilot/cases/:caseId/investigation`                           | investigation                    |
+| POST       | `/api/v1/copilot/cases/:caseId/ask` `{question}`                        | investigation                    |
+| GET / POST | `/api/v1/copilot/cases/:caseId/sar-draft` `{refresh?}`                  | SAR                              |
+| GET / POST | `/api/v1/copilot/cases/:caseId/sar-review`                              | SAR                              |
+| POST       | `/api/v1/copilot/cases/:caseId/feedback` `{recordId, rating, comment?}` | either feature                   |
+| GET        | `/api/v1/copilot/governance?days=30` (supervisors, compliance officers) | either feature                   |
 
 Investigators, supervisors and compliance officers may call them, and every `:caseId` route also follows the case access rules (`CaseReadAccessGuard`): no access, or a revoked access, answers 404.
 
@@ -72,17 +82,19 @@ Both default to off. A feature that is off has no controller, so its routes retu
 
 ## Code layout
 
-| File                                              | Role                                                                      |
-| ------------------------------------------------- | ------------------------------------------------------------------------- |
-| `copilot.module.ts`, `copilot.config.ts`          | Dynamic module: registers only what is switched on; reads the flags       |
-| `investigation.service.ts`, `sar.service.ts`      | The two features. SAR depends on investigation, never the reverse         |
-| `investigation.strategy.ts`                       | Strategy pattern: how the model gets at the facts (`pipeline` or `agent`) |
-| `agent/`                                          | Tool registry, fact tools and the agent loop                              |
-| `record-store.service.ts`                         | The only reader and writer of `copilot_records` (append-only)             |
-| `facts.ts`, `history.ts`, `case-facts.service.ts` | Facts computed by code from CMS data                                      |
-| `verifier.ts`, `findings.ts`, `prompts.ts`        | Checks on every sentence, the code-written fallback, the prompts          |
-| `sar.ts`, `sar-review.ts`                         | STR sections and goAML XML; the review state machine                      |
-| `case-read-access.guard.ts`, `request-context.ts` | Case access check and who is asking                                       |
+| File                                                   | Role                                                                      |
+| ------------------------------------------------------ | ------------------------------------------------------------------------- |
+| `copilot.module.ts`, `copilot.config.ts`               | Dynamic module: registers only what is switched on; reads the flags       |
+| `investigation.service.ts`, `sar.service.ts`           | The two features. SAR depends on investigation, never the reverse         |
+| `investigation.strategy.ts`                            | Strategy pattern: how the model gets at the facts (`pipeline` or `agent`) |
+| `agent/`                                               | Tool registry, fact tools and the agent loop                              |
+| `record-store.service.ts`                              | The only reader and writer of `copilot_records` (append-only)             |
+| `facts.ts`, `history.ts`, `case-facts.service.ts`      | Facts computed by code from CMS data                                      |
+| `verifier.ts`, `findings.ts`, `prompts.ts`             | Checks on every sentence, the code-written fallback, the prompts          |
+| `sar.ts`, `sar-review.ts`                              | STR sections and goAML XML; the review state machine                      |
+| `case-read-access.guard.ts`, `request-context.ts`      | Case access check and who is asking                                       |
+| `meaning-check.ts`, `provenance.ts`, `record-chain.ts` | Optional meaning check, what produced a record, the hash chain            |
+| `governance.service.ts`, `governance.controller.ts`    | Ratings, the governance report and the chain check                        |
 
 ## Strategy: pipeline or agent
 
@@ -117,18 +129,19 @@ The status endpoint and the UI always show the mode, the model, its licence, and
 
 Other settings:
 
-| Variable                    | Default                    | Purpose                                                                   |
-| --------------------------- | -------------------------- | ------------------------------------------------------------------------- |
-| `COPILOT_BUNDLED_URL`       | `http://localhost:8091/v1` | bundled model endpoint                                                    |
-| `COPILOT_BUNDLED_MODEL`     | `qwen3-4b-instruct-2507`   | bundled model name                                                        |
-| `COPILOT_BUNDLED_LICENSE`   | `Apache-2.0`               | must match the shipped weights                                            |
-| `COPILOT_EMBEDDINGS`        | `builtin`                  | or `provider` with `COPILOT_EMBEDDING_MODEL`                              |
-| `COPILOT_STRATEGY`          | `pipeline`                 | or `agent`                                                                |
-| `COPILOT_REPORTING_FSP`     | `fsp001`                   | the deployment's own FSP, used to tell the customer from the counterparty |
-| `COPILOT_CTR_THRESHOLD`     | `2000000`                  | cash threshold, local currency                                            |
-| `COPILOT_TZ_OFFSET_MINUTES` | `300`                      | local time for dates in facts                                             |
-| `COPILOT_PROMPT_NOTE_CHARS` | `500`                      | long notes are shortened in prompts for small models                      |
-| `GOAML_RENTITY_ID`          | unset                      | reporting entity id issued by the FIU                                     |
+| Variable                    | Default                    | Purpose                                                                     |
+| --------------------------- | -------------------------- | --------------------------------------------------------------------------- |
+| `COPILOT_BUNDLED_URL`       | `http://localhost:8091/v1` | bundled model endpoint                                                      |
+| `COPILOT_BUNDLED_MODEL`     | `qwen3-4b-instruct-2507`   | bundled model name                                                          |
+| `COPILOT_BUNDLED_LICENSE`   | `Apache-2.0`               | must match the shipped weights                                              |
+| `COPILOT_EMBEDDINGS`        | `builtin`                  | or `provider` with `COPILOT_EMBEDDING_MODEL`                                |
+| `COPILOT_STRATEGY`          | `pipeline`                 | or `agent`                                                                  |
+| `COPILOT_MEANING_CHECK`     | `false`                    | `true`: a second model reading removes sentences their facts do not support |
+| `COPILOT_REPORTING_FSP`     | `fsp001`                   | the deployment's own FSP, used to tell the customer from the counterparty   |
+| `COPILOT_CTR_THRESHOLD`     | `2000000`                  | cash threshold, local currency                                              |
+| `COPILOT_TZ_OFFSET_MINUTES` | `300`                      | local time for dates in facts                                               |
+| `COPILOT_PROMPT_NOTE_CHARS` | `500`                      | long notes are shortened in prompts for small models                        |
+| `GOAML_RENTITY_ID`          | unset                      | reporting entity id issued by the FIU                                       |
 
 ## Limits of this POC
 

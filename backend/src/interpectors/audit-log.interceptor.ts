@@ -155,6 +155,8 @@ export class AuditInterceptor implements NestInterceptor {
       ProcessAlertController: 'process-alert',
       InvestigationController: 'copilot-investigation',
       SarController: 'copilot-sar',
+      FeedbackController: 'copilot-feedback',
+      GovernanceController: 'copilot-governance',
     };
 
     return resourceMapping[controllerName] ?? 'unknown';

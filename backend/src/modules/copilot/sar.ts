@@ -158,7 +158,12 @@ export interface GoamlInput {
   rentityId: string | null;
   submissionDate: Date;
   transactions: Txn[];
+  /** Says the narrative was drafted with AI assistance; written as an XML comment, which the schema ignores. */
+  aiNote?: string;
 }
+
+/** An XML comment may not contain "--". */
+const xmlComment = (text: string): string => `<!-- ${text.replace(/-{2,}/gv, '-')} -->\n`;
 
 /** goAML report in the UNODC base structure. Codes and element order must be checked against the FIU's own XSD. */
 export function goamlXml(g: GoamlInput): string {
@@ -195,7 +200,7 @@ export function goamlXml(g: GoamlInput): string {
     })
     .join('\n');
   return `<?xml version="1.0" encoding="UTF-8"?>
-<report>
+${g.aiNote ? xmlComment(g.aiNote) : ''}<report>
   <rentity_id>${esc(g.rentityId ?? 'NOT-CONFIGURED')}</rentity_id>
   <submission_code>E</submission_code>
   <report_code>STR</report_code>

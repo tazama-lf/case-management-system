@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type { Fact } from './copilot.types';
 
 export const RULES_OF_WRITING = `Use only the numbered facts you are given. End every sentence with the ids of the facts it relies on in square brackets, for example: The account received PKR 450,000 from 3 senders [F10].
@@ -51,3 +52,13 @@ ${RULES_OF_WRITING}
 ${AGENT_RULES}
 If the facts do not answer the question, reply with one sentence saying the case data does not show it, with no citations.
 Reply with JSON only: {"answer":["sentence [F2]","sentence [F5]"]}`;
+
+export const MEANING_PROMPT = `You check sentences written about a financial crime case against the facts each one cites.
+For every numbered sentence, decide whether its cited facts say what the sentence says. A sentence is not supported when it changes the meaning of a fact: a different direction, period, comparison or cause, a claim the facts do not make, or a conclusion stated as certain.
+Reply with JSON only: {"verdicts":[{"n":1,"supported":true},{"n":2,"supported":false,"reason":"the fact says 1.0 times, which is no increase"}]}`;
+
+/** Changes whenever any copilot prompt changes; stored with every record so an output can be traced to its exact instructions. */
+export const PROMPT_VERSION = createHash('sha256')
+  .update([INVESTIGATE_PROMPT, ASK_PROMPT, SAR_PROMPT, agentInvestigatePrompt(0), agentAskPrompt(0), MEANING_PROMPT].join('\n'))
+  .digest('hex')
+  .slice(0, 12);

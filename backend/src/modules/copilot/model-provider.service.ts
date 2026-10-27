@@ -1,7 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { AssistantTurn, ChatMessage, ToolChoice, ToolSpec } from './agent/agent.types';
-import type { ModelInfo } from './copilot.types';
+import type { ModelInfo, ServedModel } from './copilot.types';
 import { BUILTIN_EMBEDDING, embedBuiltin, normalise } from './embeddings';
+
+const TEMPERATURE = 0.1;
+
+/** A model's reply: the parsed JSON (null when there is none) and the text exactly as it came back. */
+export interface ModelReply<T> {
+  value: T | null;
+  raw: string | null;
+}
 
 /**
  * Where the copilot's language model comes from. Three modes, set per deployment:
@@ -31,6 +39,9 @@ export class ModelProviderService {
   private readonly embeddingModel: string | null;
   private readonly timeoutMs: number;
   private readonly maxTokens: number;
+  /** The model id the endpoint reported on its last answer. */
+  private lastServed: string | null = null;
+  private props: Promise<ServedModel | null> | null = null;
 
   constructor() {
     const { env } = process;
@@ -68,13 +79,47 @@ export class ModelProviderService {
     }
   }
 
-  /** Ask for a JSON object. Returns null when there is no model, it fails, or it does not return JSON. */
-  async chatJson<T>(system: string, user: string): Promise<T | null> {
+  /** The generation settings every call uses, recorded with each record. */
+  settings(): { temperature: number; maxTokens: number } {
+    return { temperature: TEMPERATURE, maxTokens: this.maxTokens };
+  }
+
+  /**
+   * The model the endpoint actually serves. llama.cpp reports the weights file, quantisation and build at /props;
+   * a provider reports the resolved model id with each answer. Null with no model.
+   */
+  async served(): Promise<ServedModel | null> {
     if (!this.url || !this.model) return null;
+    if (this.mode === 'bundled') {
+      this.props ??= this.readProps();
+      const props = await this.props;
+      if (props) return props;
+      this.props = null; // not answering yet; ask again next time
+    }
+    return { model: this.lastServed ?? this.model };
+  }
+
+  private async readProps(): Promise<ServedModel | null> {
+    try {
+      const r = await fetch(`${this.url!.replace(/\/v1$/v, '')}/props`, { signal: AbortSignal.timeout(3000) });
+      if (!r.ok) return null;
+      const p = (await r.json()) as { model_alias?: string; model_path?: string; model_ftype?: string; build_info?: string };
+      return { model: p.model_alias ?? this.model, file: p.model_path?.split('/').pop(), quantisation: p.model_ftype, build: p.build_info };
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Ask for a JSON object. `value` is null when there is no model, it fails, or it does not return JSON; `raw` is
+   * the reply exactly as it came back, kept with the record for audit.
+   */
+  async chatJson<T>(system: string, user: string): Promise<ModelReply<T>> {
+    if (!this.url || !this.model) return { value: null, raw: null };
     const started = Date.now();
     const body = {
       model: this.model,
-      temperature: 0.1,
+      temperature: TEMPERATURE,
       max_tokens: this.maxTokens,
       response_format: { type: 'json_object' },
       messages: [
@@ -91,15 +136,16 @@ export class ModelProviderService {
       });
       if (!r.ok) {
         this.logger.warn(`model returned HTTP ${r.status}: ${(await r.text()).slice(0, 200)}`);
-        return null;
+        return { value: null, raw: null };
       }
-      const json = (await r.json()) as { choices?: Array<{ message?: { content?: string } }> };
+      const json = (await r.json()) as { model?: string; choices?: Array<{ message?: { content?: string } }> };
+      this.lastServed = json.model ?? this.lastServed;
       const content = json.choices?.[0]?.message?.content ?? '';
       this.logger.log(`${this.mode} model ${this.model} answered in ${Date.now() - started} ms`);
-      return parseJsonObject(content) as T | null;
+      return { value: parseJsonObject(content) as T | null, raw: content };
     } catch (e) {
       this.logger.warn(`model call failed after ${Date.now() - started} ms: ${e instanceof Error ? e.message : String(e)}`);
-      return null;
+      return { value: null, raw: null };
     }
   }
 
@@ -112,7 +158,7 @@ export class ModelProviderService {
     const started = Date.now();
     const body = {
       model: this.model,
-      temperature: 0.1,
+      temperature: TEMPERATURE,
       max_tokens: this.maxTokens,
       messages,
       ...(tools.length ? { tools, tool_choice: toolChoice } : {}),
@@ -128,7 +174,8 @@ export class ModelProviderService {
         this.logger.warn(`model returned HTTP ${r.status}: ${(await r.text()).slice(0, 200)}`);
         return null;
       }
-      const json = (await r.json()) as { choices?: Array<{ message?: ChatMessage }> };
+      const json = (await r.json()) as { model?: string; choices?: Array<{ message?: ChatMessage }> };
+      this.lastServed = json.model ?? this.lastServed;
       const message = json.choices?.[0]?.message;
       if (!message) return null;
       this.logger.log(`${this.mode} model ${this.model} took a turn in ${Date.now() - started} ms`);

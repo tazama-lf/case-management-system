@@ -82,6 +82,25 @@ export interface ModelInfo {
   embeddings: string;
 }
 
+/** The model the endpoint actually served: file, quantisation and build from llama.cpp, the resolved model id from a provider. */
+export interface ServedModel {
+  model: string | null;
+  file?: string;
+  quantisation?: string;
+  build?: string;
+}
+
+/** Exactly what produced a record: the prompts, the settings and the model served. Stored with every record. */
+export interface Provenance {
+  /** Changes whenever any copilot prompt changes. */
+  promptVersion: string;
+  strategy: 'pipeline' | 'agent';
+  temperature: number;
+  maxTokens: number;
+  meaningCheck: boolean;
+  served: ServedModel | null;
+}
+
 /** How an agent run produced the findings: every tool call, and why it stopped. Stored with the record as the audit trail. */
 export interface AgentTrace {
   stopped: StopReason;
@@ -107,6 +126,9 @@ export interface InvestigationRecord {
   notice?: string;
   /** Present when the findings were produced by the agent strategy. */
   agent?: AgentTrace;
+  provenance?: Provenance;
+  /** The model's reply exactly as it came back, before the checks; null when no model answered. */
+  raw?: string | null;
 }
 
 export interface SarSection {
@@ -135,6 +157,62 @@ export interface SarDraft {
   goamlXml: string;
   checks: SarCheck[];
   notice?: string;
+  provenance?: Provenance;
+  raw?: string | null;
+}
+
+export type FeedbackRating = 'up' | 'down';
+
+/** A user's rating of a copilot output (investigation findings, a chat answer or a SAR draft). */
+export interface Feedback {
+  id: number;
+  recordId: number;
+  rating: FeedbackRating;
+  comment: string;
+  createdAt: string;
+}
+
+/** Result of walking a tenant's copilot records and recomputing each hash. */
+export interface ChainReport {
+  ok: boolean;
+  /** Records whose hash was recomputed and matched. */
+  checked: number;
+  /** Records written before the chain existed; they have no hash. */
+  unchained: number;
+  /** Hash of the newest record; compare it with the audit log to detect removal of the newest records. */
+  head: string | null;
+  brokenAt?: number;
+  reason?: string;
+}
+
+/** What the copilot did in a period, for the people who oversee it. */
+export interface GovernanceReport {
+  tenantId: string;
+  from: string;
+  to: string;
+  records: Record<string, number>;
+  models: Array<{
+    provider: string;
+    model: string | null;
+    file?: string;
+    build?: string;
+    promptVersion: string;
+    strategy: string;
+    records: number;
+  }>;
+  writing: {
+    /** Parts (summary, red flags, next steps, answers, SAR sections) the model wrote and that passed the checks. */
+    modelParts: number;
+    /** Parts written by code because there was no model or most of its text failed. */
+    codeParts: number;
+    sentencesKept: number;
+    sentencesRemoved: number;
+    removalReasons: Array<{ reason: string; count: number }>;
+  };
+  agent: { runs: number; fellBack: number };
+  feedback: { up: number; down: number; recent: Array<{ recordId: number; rating: FeedbackRating; comment: string; at: string }> };
+  review: Record<string, number>;
+  chain: ChainReport;
 }
 
 /** Who is asking, taken from the verified token. */

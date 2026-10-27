@@ -9,6 +9,8 @@ import { ASK_PROMPT, INVESTIGATE_PROMPT, agentAskPrompt, agentInvestigatePrompt,
 /** What a strategy hands back: the model's reply (or null), the facts its sentences may cite, and how it got there. */
 export interface Written {
   reply: Record<string, unknown> | null;
+  /** The model's final reply exactly as it came back, kept with the record for audit. */
+  raw: string | null;
   /** The facts the verifier checks the model's sentences against. */
   evidence: Fact[];
   agent?: AgentTrace;
@@ -32,18 +34,16 @@ export class PipelineStrategy implements InvestigationStrategy {
   constructor(private readonly models: ModelProviderService) {}
 
   async investigate(facts: Fact[]): Promise<Written> {
-    return {
-      reply: await this.models.chatJson<Record<string, unknown>>(INVESTIGATE_PROMPT, `Case facts:\n${factLines(facts)}`),
-      evidence: facts,
-    };
+    const { value, raw } = await this.models.chatJson<Record<string, unknown>>(INVESTIGATE_PROMPT, `Case facts:\n${factLines(facts)}`);
+    return { reply: value, raw, evidence: facts };
   }
 
   async answer(question: string, facts: Fact[], closest: Fact[]): Promise<Written> {
-    const reply = await this.models.chatJson<Record<string, unknown>>(
+    const { value, raw } = await this.models.chatJson<Record<string, unknown>>(
       ASK_PROMPT,
       `Question: ${question}\n\nCase facts:\n${factLines(closest)}`,
     );
-    return { reply, evidence: facts };
+    return { reply: value, raw, evidence: facts };
   }
 }
 
@@ -84,7 +84,9 @@ export class AgentStrategy implements InvestigationStrategy {
     const result = await runAgent(async (m, t, c) => await this.models.chatTurn(m, t, c), registry, { system, user, limits: this.limits });
     const reply = result.final ? (parseJsonObject(result.final) as Record<string, unknown> | null) : null;
     const trace = { stopped: result.stopped, calls: result.trace, factIds: result.ledger };
-    if (reply && result.ledger.length) return { reply, evidence: registry.ledger(), agent: { ...trace, fellBack: false } };
+    if (reply && result.ledger.length) {
+      return { reply, raw: result.final, evidence: registry.ledger(), agent: { ...trace, fellBack: false } };
+    }
     const written = await fallback();
     return { ...written, agent: { ...trace, fellBack: true } };
   }

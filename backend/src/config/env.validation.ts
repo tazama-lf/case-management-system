@@ -185,6 +185,11 @@ class EnvironmentVariables {
   @IsNumberString()
   COPILOT_AGENT_TIMEOUT_MS?: string;
 
+  // A second model reading that removes sentences whose cited facts do not say what they say (default off)
+  @IsOptional()
+  @IsBooleanString()
+  COPILOT_MEANING_CHECK?: string;
+
   // Investigation copilot: bundled open-weight model, bring-your-own-key endpoint, or off
   @IsOptional()
   @IsIn(['bundled', 'byok', 'off'])
