@@ -97,7 +97,14 @@ describe('EvidenceService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         EvidenceService,
-        { provide: PrismaService, useValue: { task: { findUnique: jest.fn() }, case: { findUnique: jest.fn() } } },
+        {
+          provide: PrismaService,
+          useValue: {
+            task: { findUnique: jest.fn() },
+            case: { findUnique: jest.fn() },
+            $transaction: jest.fn().mockImplementation(async (callback) => await callback({ tx: true })),
+          },
+        },
         {
           provide: CouchdbService,
           useValue: {
@@ -105,6 +112,7 @@ describe('EvidenceService', () => {
             insertAttachment: jest.fn(),
             updateDocument: jest.fn(),
             getDocument: jest.fn(),
+            deleteDocument: jest.fn(),
             deleteEvidence: jest.fn(),
             queryDocuments: jest.fn(),
             getAttachment: jest.fn(),
@@ -216,7 +224,116 @@ describe('EvidenceService', () => {
       const result = await service.uploadEvidence(files, uploadDto, userId, tenantId, mockUser, uploadEndpointKey);
 
       expect(result).toBeDefined();
+      // One evidence document and one Postgres row per file, each with its own evidence_id (as when the UI sends
+      // one file per request), all written with the same transaction client.
+      expect(couchdbService.insertDocument).toHaveBeenCalledTimes(2);
       expect(evidenceRepository.createEvidence).toHaveBeenCalledTimes(2);
+      const [first, second] = evidenceRepository.createEvidence.mock.calls.map((call: any[]) => call[1]);
+      expect(first).toEqual(expect.objectContaining({ id: expect.stringMatching(/^ev_1_/), fileName: 'test.pdf', file_path: '/path/to/file1' }));
+      expect(second).toEqual(expect.objectContaining({ id: expect.stringMatching(/^ev_1_/), fileName: 'test2.pdf', file_path: '/path/to/file2' }));
+      expect(first.id).not.toBe(second.id);
+      expect(evidenceRepository.createEvidence).toHaveBeenCalledWith(userId, expect.anything(), expect.anything());
+      // Each CouchDB document lists only its own file; the first document is returned.
+      expect((result as any).metadata).toHaveLength(1);
+      expect((result as any).evidenceId).toBe(first.id);
+    });
+
+    it('gives files from one request distinct ids even when the clock does not advance', async () => {
+      jest.spyOn(Date, 'now').mockReturnValue(1_700_000_000_000);
+      try {
+        const files = [mockFile, { ...mockFile, originalname: 'b.pdf' }, { ...mockFile, originalname: 'c.pdf' }];
+
+        await service.uploadEvidence(files, uploadDto, userId, tenantId, mockUser, uploadEndpointKey);
+
+        const ids = couchdbService.insertDocument.mock.calls.map((call: any[]) => call[0]);
+        expect(new Set(ids).size).toBe(3);
+      } finally {
+        jest.restoreAllMocks();
+      }
+    });
+
+    it('stores files that share a name as separate documents and rows, with no renaming', async () => {
+      const files = [mockFile, { ...mockFile }];
+
+      await service.uploadEvidence(files, uploadDto, userId, tenantId, mockUser, uploadEndpointKey);
+
+      const attachmentNames = couchdbService.insertAttachment.mock.calls.map((call: any[]) => call[2]);
+      expect(attachmentNames).toEqual(['test.pdf', 'test.pdf']);
+      const rowIds = evidenceRepository.createEvidence.mock.calls.map((call: any[]) => call[1].id);
+      expect(new Set(rowIds).size).toBe(2);
+    });
+
+    it('rolls back and removes every document created by the request when a later file row fails', async () => {
+      couchdbService.getDocument.mockResolvedValue({ _id: 'doc', _rev: 'rev-9' });
+      couchdbService.deleteDocument.mockResolvedValue({ ok: true });
+      evidenceRepository.createEvidence.mockResolvedValueOnce({}).mockRejectedValueOnce(new Error('second row failed'));
+      const files = [mockFile, { ...mockFile, originalname: 'test2.pdf' }];
+
+      await expect(service.uploadEvidence(files, uploadDto, userId, tenantId, mockUser, uploadEndpointKey)).rejects.toThrow(
+        'second row failed',
+      );
+
+      // The transaction rolls the first row back; here it is the thrown error that stands in for that.
+      // Both CouchDB documents are removed, including the one whose row had already been written.
+      expect(couchdbService.deleteDocument).toHaveBeenCalledTimes(2);
+      expect(eventLogService.logEventAction).not.toHaveBeenCalled();
+    });
+
+    describe('when a write fails partway', () => {
+      beforeEach(() => {
+        couchdbService.getDocument.mockResolvedValue({ _id: 'doc', _rev: 'rev-9' });
+        couchdbService.deleteDocument.mockResolvedValue({ ok: true });
+      });
+
+      it('surfaces a Postgres failure, removes the CouchDB document and logs no success', async () => {
+        evidenceRepository.createEvidence.mockRejectedValueOnce(new Error('insert failed'));
+
+        await expect(service.uploadEvidence([mockFile], uploadDto, userId, tenantId, mockUser, uploadEndpointKey)).rejects.toThrow(
+          'insert failed',
+        );
+
+        expect(couchdbService.deleteDocument).toHaveBeenCalledWith(expect.stringMatching(/^ev_1_/), 'rev-9');
+        expect(eventLogService.logEventAction).not.toHaveBeenCalled();
+        expect(taskHistoryService.logTaskHistoryAction).not.toHaveBeenCalled();
+      });
+
+      it('does not update the CouchDB metadata as a success when Postgres failed', async () => {
+        evidenceRepository.createEvidence.mockRejectedValueOnce(new Error('insert failed'));
+
+        await expect(service.uploadEvidence([mockFile], uploadDto, userId, tenantId, mockUser, uploadEndpointKey)).rejects.toThrow();
+
+        expect(couchdbService.updateDocument).not.toHaveBeenCalled();
+      });
+
+      it('removes the CouchDB document when an attachment upload fails', async () => {
+        couchdbService.insertAttachment.mockRejectedValueOnce(new Error('couch down'));
+
+        await expect(service.uploadEvidence([mockFile], uploadDto, userId, tenantId, mockUser, uploadEndpointKey)).rejects.toThrow(
+          'couch down',
+        );
+
+        expect(evidenceRepository.createEvidence).not.toHaveBeenCalled();
+        expect(couchdbService.deleteDocument).toHaveBeenCalled();
+      });
+
+      it('removes the CouchDB document when the metadata update fails (the Postgres row rolls back with the transaction)', async () => {
+        couchdbService.updateDocument.mockRejectedValueOnce(new Error('update failed'));
+
+        await expect(service.uploadEvidence([mockFile], uploadDto, userId, tenantId, mockUser, uploadEndpointKey)).rejects.toThrow(
+          'update failed',
+        );
+
+        expect(couchdbService.deleteDocument).toHaveBeenCalled();
+      });
+
+      it('still reports the original error when the cleanup itself fails', async () => {
+        evidenceRepository.createEvidence.mockRejectedValueOnce(new Error('insert failed'));
+        couchdbService.deleteDocument.mockRejectedValueOnce(new Error('cleanup failed'));
+
+        await expect(service.uploadEvidence([mockFile], uploadDto, userId, tenantId, mockUser, uploadEndpointKey)).rejects.toThrow(
+          'insert failed',
+        );
+      });
     });
 
     it('should throw BadRequestException when uploading too many files for KYC', async () => {

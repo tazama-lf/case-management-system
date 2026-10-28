@@ -193,78 +193,110 @@ export class EvidenceService {
     if (!t2.allowed) throw new ForbiddenException(t2.reason);
     await this.caseInvestigatorService.assertReadAccess(task.case_id, userId, tenantId, rbacRole);
 
-    const evidenceId = `ev_${dto.taskId}_${Date.now()}`;
+    // Two files with the same name therefore never collide: each has its own document.
+    const documents: any[] = [];
 
-    const metadata: any = {
-      _id: evidenceId,
-      evidenceId,
-      tenantId,
-      taskId: dto.taskId,
-      caseId: task.case_id,
-      uploadedBy: userId,
-      uploadedAt: new Date(),
-      evidenceType: dto.evidenceType,
-      tags: dto.tags,
-      description: dto.description,
-      comments: dto.comments,
-      archive: false,
-      metadata: [],
-    };
+    // Everything from here on must land in both stores or in neither: a failure removes every CouchDB document
+    // created by this request and rolls the Postgres rows back, then the error reaches the client.
+    try {
+      for (const file of files) {
+        // ev_<task>_<ms>_<random>: the random part keeps ids unique when several files (or parallel requests for
+        // the same task) land in the same millisecond. Nothing reads the parts of an id back.
+        const evidenceId = `ev_${dto.taskId}_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
 
-    if (dto.evidenceType === EvidenceType.ADVERSE_MEDIA) {
-      metadata.aggregator = dto.aggregator;
-      metadata.dateSearched = dto.dateSearched;
-      metadata.keywords = dto.keywords;
-      metadata.findings = dto.findings;
+        const metadata: any = {
+          _id: evidenceId,
+          evidenceId,
+          tenantId,
+          taskId: dto.taskId,
+          caseId: task.case_id,
+          uploadedBy: userId,
+          uploadedAt: new Date(),
+          evidenceType: dto.evidenceType,
+          tags: dto.tags,
+          description: dto.description,
+          comments: dto.comments,
+          archive: false,
+          metadata: [],
+        };
+
+        if (dto.evidenceType === EvidenceType.ADVERSE_MEDIA) {
+          metadata.aggregator = dto.aggregator;
+          metadata.dateSearched = dto.dateSearched;
+          metadata.keywords = dto.keywords;
+          metadata.findings = dto.findings;
+        }
+
+        if (dto.evidenceType === EvidenceType.SANCTIONS) {
+          metadata.screeningDate = dto.screeningDate;
+          metadata.tool = dto.tool;
+          metadata.summaryDisposition = dto.summaryDisposition;
+        }
+
+        const { encrypted, key, iv, authTag } = this.encrypt(file.buffer);
+        const hash = this.sha256(encrypted);
+
+        // eslint-disable-next-line no-await-in-loop -- documents are created one at a time so a failure can undo exactly what exists
+        const insertResult = await this.couchdb.insertDocument(evidenceId, metadata);
+        documents.push(metadata);
+
+        // eslint-disable-next-line no-await-in-loop -- the attachment needs the revision returned by the insert above
+        const attachmentResult = await this.couchdb.insertAttachment(
+          evidenceId,
+          insertResult.rev,
+          file.originalname,
+          encrypted,
+          file.mimetype,
+        );
+
+        metadata.metadata.push({
+          fileName: file.originalname,
+          fileSize: file.size,
+          filePath: attachmentResult.filePath,
+          mimeType: file.mimetype,
+          hash,
+          encryption: { key, iv, authTag },
+        });
+      }
+
+      // All rows go in one transaction and each CouchDB metadata update follows its row inside it, so if any step
+      // fails every row is rolled back with it.
+      await this.prisma.$transaction(
+        async (tx) => {
+          for (const metadata of documents) {
+            const [file] = metadata.metadata;
+            const createEvidenceDto: CreateEvidenceDto = {
+              id: metadata.evidenceId,
+              taskId: dto.taskId,
+              fileName: file.fileName,
+              description: dto.description,
+              evidenceType: dto.evidenceType,
+              file_path: file.filePath,
+              hash: file.hash,
+              fileSize: file.fileSize,
+              mimeType: file.mimeType,
+              uploadedAt: metadata.uploadedAt,
+              uploadedBy: userId,
+              caseId: task.case_id,
+              tenant_id: tenantId,
+              metadata,
+            };
+            // eslint-disable-next-line no-await-in-loop -- rows are written sequentially inside one transaction
+            await this.evidenceRepository.createEvidence(userId, createEvidenceDto, tx);
+            // eslint-disable-next-line no-await-in-loop -- last step per document, so a failure rolls the row back
+            await this.couchdb.updateDocument(metadata.evidenceId, metadata);
+          }
+        },
+        { timeout: 30_000 },
+      );
+    } catch (error) {
+      await Promise.all(
+        documents.map(async (doc) => {
+          await this.removeCouchDocument(doc.evidenceId);
+        }),
+      );
+      throw error;
     }
-
-    if (dto.evidenceType === EvidenceType.SANCTIONS) {
-      metadata.screeningDate = dto.screeningDate;
-      metadata.tool = dto.tool;
-      metadata.summaryDisposition = dto.summaryDisposition;
-    }
-
-    const insertResult = await this.couchdb.insertDocument(evidenceId, metadata);
-    let currentRev = insertResult.rev;
-
-    for (const file of files) {
-      const { encrypted, key, iv, authTag } = this.encrypt(file.buffer);
-      const hash = this.sha256(encrypted);
-
-      // eslint-disable-next-line no-await-in-loop -- CouchDB requires sequential attachment uploads with updated revision
-      const attachmentResult = await this.couchdb.insertAttachment(evidenceId, currentRev, file.originalname, encrypted, file.mimetype);
-
-      metadata.metadata.push({
-        fileName: file.originalname,
-        fileSize: file.size,
-        filePath: attachmentResult.filePath,
-        mimeType: file.mimetype,
-        hash,
-        encryption: { key, iv, authTag },
-      });
-
-      currentRev = attachmentResult.rev;
-
-      const createEvidenceDto: CreateEvidenceDto = {
-        id: evidenceId,
-        taskId: dto.taskId,
-        fileName: file.originalname,
-        description: dto.description,
-        evidenceType: dto.evidenceType,
-        file_path: attachmentResult.filePath,
-        hash,
-        fileSize: file.size,
-        mimeType: file.mimetype,
-        uploadedAt: metadata.uploadedAt,
-        uploadedBy: userId,
-        caseId: task.case_id,
-        tenant_id: tenantId,
-        metadata,
-      };
-
-      this.evidenceRepository.createEvidence(userId, createEvidenceDto);
-    }
-    await this.couchdb.updateDocument(evidenceId, metadata);
 
     await this.eventLogSerice.logEventAction({
       userId,
@@ -285,7 +317,20 @@ export class EvidenceService {
       tenant_id: tenantId,
     });
 
-    return metadata;
+    // The UI sends one file per request; for several files the first document is returned.
+    return documents[0];
+  }
+
+  /** Best-effort removal of a half-written CouchDB evidence document; never masks the error being handled. */
+  private async removeCouchDocument(evidenceId: string): Promise<void> {
+    try {
+      const doc = await this.couchdb.getDocument(evidenceId);
+      await this.couchdb.deleteDocument(evidenceId, doc._rev);
+    } catch (cleanupError) {
+      this.logger.error(
+        `Failed to clean up CouchDB document ${evidenceId} after a failed upload; it may be orphaned: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`,
+      );
+    }
   }
 
   async deleteEvidence(
