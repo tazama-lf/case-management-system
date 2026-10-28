@@ -13,6 +13,7 @@ describe('NotificationService', () => {
   beforeEach(async () => {
     const mockConfigService = {
       get: jest.fn(),
+      getOrThrow: jest.fn().mockReturnValue('true'),
     };
 
     const mockCacheService = {
@@ -97,6 +98,21 @@ describe('NotificationService', () => {
     });
   });
 
+  describe('sendNotification without metadata', () => {
+    it('should send the notification with empty template data', async () => {
+      (cacheService.getUserEmailFromCache as jest.Mock).mockResolvedValue('user@example.com');
+
+      await service.sendNotification({ userId: 'user-123', type: 'GENERIC', message: 'Test notification' });
+
+      expect(asyncTaskService.createEmailTask).toHaveBeenCalledWith(
+        'user@example.com',
+        expect.any(String),
+        expect.any(String),
+        expect.objectContaining({ notificationType: 'GENERIC', userId: 'user-123' }),
+      );
+    });
+  });
+
   describe('sendGroupNotification', () => {
     it('should send notification to multiple users', async () => {
       const groupEmails = ['user1@example.com', 'user2@example.com', 'user3@example.com'];
@@ -134,6 +150,16 @@ describe('NotificationService', () => {
         type: 'WORK_QUEUE',
         message: 'Test',
         metadata: {},
+      });
+
+      expect(asyncTaskService.createEmailTask).not.toHaveBeenCalled();
+    });
+
+    it('should handle a group notification without metadata', async () => {
+      await service.sendGroupNotification({
+        candidateGroup: 'investigators',
+        type: 'WORK_QUEUE',
+        message: 'Test',
       });
 
       expect(asyncTaskService.createEmailTask).not.toHaveBeenCalled();
@@ -484,6 +510,7 @@ describe('NotificationService', () => {
         'TASK_ASSIGNED',
         'TASK_UNASSIGNED',
         'TASK_REASSIGNED',
+        'TASK_AVAILABLE',
         'CASE_SUSPENDED',
         'CASE_RESUMED',
         'CASE_CLOSURE_PENDING',
@@ -495,6 +522,9 @@ describe('NotificationService', () => {
         'TASK_SLA_WARNING',
         'TASK_SLA_BREACH',
         'TASK_OVERDUE',
+        'CASE_CLAIM_CHASE',
+        'CASE_SUPPORT_CHASE',
+        'CASE_SLA_BREACHED',
         'GENERIC',
       ];
 
@@ -557,6 +587,70 @@ describe('NotificationService', () => {
       await Promise.all(notifications);
 
       expect(asyncTaskService.createEmailTask).toHaveBeenCalledTimes(3);
+    });
+  });
+
+  describe('when SMTP_NOTIFICATIONS is false', () => {
+    let disabledService: NotificationService;
+
+    beforeEach(async () => {
+      const module: TestingModule = await Test.createTestingModule({
+        providers: [
+          NotificationService,
+          {
+            provide: ConfigService,
+            useValue: {
+              get: jest.fn().mockReturnValue('supervisor@example.com'),
+              getOrThrow: jest.fn().mockReturnValue('false'),
+            },
+          },
+          { provide: CacheService, useValue: cacheService },
+          { provide: AsyncTaskService, useValue: asyncTaskService },
+        ],
+      }).compile();
+
+      disabledService = module.get<NotificationService>(NotificationService);
+      (cacheService.getUserEmailFromCache as jest.Mock).mockResolvedValue('user@example.com');
+    });
+
+    it('should not queue a single-recipient email', async () => {
+      await disabledService.sendNotification({
+        userId: 'user-123',
+        type: 'TASK_ASSIGNED',
+        message: 'Task has been assigned to you',
+        metadata: { taskTitle: 'Test Task' },
+      });
+
+      expect(asyncTaskService.createEmailTask).not.toHaveBeenCalled();
+    });
+
+    it('should not queue group emails', async () => {
+      await disabledService.sendGroupNotification({
+        candidateGroup: 'investigators',
+        type: 'WORK_QUEUE',
+        message: 'New task available',
+        metadata: { groupEmails: ['user1@example.com', 'user2@example.com'] },
+      });
+
+      expect(asyncTaskService.createEmailTask).not.toHaveBeenCalled();
+    });
+
+    it('should not queue SLA breach emails to the supervisor, assignee or management', async () => {
+      await disabledService.handleSlaBreach({
+        taskId: 'task-123',
+        taskName: 'Critical Task',
+        caseId: 'case-456',
+        casePriority: 'CRITICAL',
+        workQueueId: 'queue-1',
+        workQueueName: 'Fraud',
+        tenantId: 'tenant-123',
+        assignedUserId: 'user-123',
+        deadline: '2026-02-20',
+        severity: 'CRITICAL',
+        breachDuration: 10,
+      });
+
+      expect(asyncTaskService.createEmailTask).not.toHaveBeenCalled();
     });
   });
 });

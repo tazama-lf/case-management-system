@@ -3,10 +3,12 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import { EmailPayload } from 'src/utils/interfaces/AsyncTask.interface';
+import { normalizeSmtpSetting, parseSmtpNotificationsFlag } from '../../config/smtp.config';
 import { AsyncTaskService } from './async-task.service';
 @Injectable()
 export class EmailWorkerService {
   private readonly logger = new Logger(EmailWorkerService.name);
+  private readonly enabled: boolean;
   private readonly fromEmail: string;
   private readonly transporter: nodemailer.Transporter;
   private isProcessing = false;
@@ -15,16 +17,12 @@ export class EmailWorkerService {
     private readonly asyncTaskService: AsyncTaskService,
     private readonly config: ConfigService,
   ) {
-    this.fromEmail = this.config.get<string>('MAIL_FROM') ?? '"CMS Notifications" <no-reply@cms.local>';
+    this.enabled = parseSmtpNotificationsFlag(this.config.getOrThrow<string>('SMTP_NOTIFICATIONS'));
+    this.fromEmail = normalizeSmtpSetting(this.config.get<string>('MAIL_FROM')) ?? '"CMS Notifications" <no-reply@cms.local>';
 
-    const smtpHost = this.config.get<string>('SMTP_HOST');
+    const smtpHost = normalizeSmtpSetting(this.config.get<string>('SMTP_HOST'));
     const smtpPort = this.config.get<string>('SMTP_PORT', '587');
-    const smtpUser = this.config.get<string>('SMTP_USER');
-
-    if (!smtpHost) {
-      this.logger.warn('SMTP_HOST not configured - emails will fail to send!');
-      this.logger.warn('Please configure SMTP settings in .env file');
-    }
+    const smtpUser = normalizeSmtpSetting(this.config.get<string>('SMTP_USER'));
 
     this.transporter = nodemailer.createTransport({
       host: smtpHost ?? 'localhost',
@@ -38,7 +36,11 @@ export class EmailWorkerService {
         : undefined,
     });
 
-    this.logger.log(`Email Worker Service initialized - SMTP: ${smtpHost ?? 'NOT CONFIGURED'}:${smtpPort}`);
+    if (this.enabled) {
+      this.logger.log(`Email Worker Service initialized - SMTP: ${smtpHost ?? 'NOT CONFIGURED'}:${smtpPort}`);
+    } else {
+      this.logger.warn('SMTP_NOTIFICATIONS=false - email notifications are disabled, the email queue will not be processed');
+    }
   }
 
   /**
@@ -46,8 +48,8 @@ export class EmailWorkerService {
    */
   @Cron(CronExpression.EVERY_5_SECONDS)
   async processEmailQueue(): Promise<void> {
-    if (this.isProcessing) {
-      return; // Skip if already processing
+    if (!this.enabled || this.isProcessing) {
+      return; // Skip if email is switched off or already processing
     }
 
     this.isProcessing = true;

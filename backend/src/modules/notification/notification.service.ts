@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { CacheService } from '../shared/cache.service';
 import { AsyncTaskService } from '../async-task/async-task.service';
 import { EMAIL_TEMPLATES } from '../../constants/notification.constants';
+import { parseSmtpNotificationsFlag } from '../../config/smtp.config';
 import {
   NotificationPayload,
   GroupNotificationPayload,
@@ -20,6 +21,7 @@ import {
 @Injectable()
 export class NotificationService {
   private readonly logger = new Logger(NotificationService.name);
+  private readonly emailEnabled: boolean;
 
   // Template mapping configuration
   private readonly templateMap: Record<NotificationType, (data: Record<string, any>) => EmailTemplate> = {
@@ -109,7 +111,9 @@ export class NotificationService {
     @Inject(ConfigService) private readonly config: ConfigService,
     private readonly asyncTaskService: AsyncTaskService,
     @Optional() private readonly cacheService: CacheService,
-  ) {}
+  ) {
+    this.emailEnabled = parseSmtpNotificationsFlag(this.config.getOrThrow<string>('SMTP_NOTIFICATIONS'));
+  }
 
   async sendNotification(payload: NotificationPayload): Promise<void> {
     this.logger.log(`Dispatching ${payload.type} notification for user ${payload.userId}`);
@@ -304,6 +308,11 @@ export class NotificationService {
     templateData: Record<string, any>,
     metadata: Record<string, any>,
   ): Promise<void> {
+    if (!this.emailEnabled) {
+      this.logger.debug(`SMTP_NOTIFICATIONS=false - not queueing ${type} email`);
+      return;
+    }
+
     const template = this.getTemplate(type, templateData);
     await this.asyncTaskService.createEmailTask(email, template.subject, template.html, { ...templateData, ...metadata });
   }
@@ -317,6 +326,11 @@ export class NotificationService {
     templateData: Record<string, any>,
     metadata: Record<string, any>,
   ): Promise<void> {
+    if (!this.emailEnabled) {
+      this.logger.debug(`SMTP_NOTIFICATIONS=false - not queueing ${type} email to ${emails.length} recipient(s)`);
+      return;
+    }
+
     const template = this.getTemplate(type, templateData);
 
     const promises = emails.map(
