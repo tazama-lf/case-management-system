@@ -298,27 +298,47 @@ export class EvidenceService {
       throw error;
     }
 
-    await this.eventLogSerice.logEventAction({
-      userId,
-      tenantId,
-      operation: 'upload',
-      entityName: 'Evidence',
-      actionPerformed: `EVIDENCE_UPLOADED for Case ${task.case_id} and Task ${dto.taskId}`,
-      outcome: 'SUCCESS',
-    });
-
-    await this.taskHistoryService.logTaskHistoryAction({
-      userId,
-      operation: 'upload Evidence',
-      entityName: 'Evidence',
-      actionPerformed: `EVIDENCE_UPLOADED for Case ${task.case_id} and Task ${dto.taskId}`,
-      case_id: task.case_id,
-      task_id: dto.taskId,
-      tenant_id: tenantId,
-    });
+    await this.recordUploadAudit(userId, tenantId, task.case_id, dto.taskId);
 
     // The UI sends one file per request; for several files the first document is returned.
     return documents[0];
+  }
+
+  /**
+   * Event-log and task-history entries for a finished upload. Best effort: the evidence is already stored in both
+   * databases, so a failure to write either entry is logged and must not turn the upload into an error.
+   */
+  private async recordUploadAudit(userId: string, tenantId: string, caseId: number, taskId: number): Promise<void> {
+    const actionPerformed = `EVIDENCE_UPLOADED for Case ${caseId} and Task ${taskId}`;
+
+    const results = await Promise.allSettled([
+      this.eventLogSerice.logEventAction({
+        userId,
+        tenantId,
+        operation: 'upload',
+        entityName: 'Evidence',
+        actionPerformed,
+        outcome: 'SUCCESS',
+      }),
+      this.taskHistoryService.logTaskHistoryAction({
+        userId,
+        operation: 'upload Evidence',
+        entityName: 'Evidence',
+        actionPerformed,
+        case_id: caseId,
+        task_id: taskId,
+        tenant_id: tenantId,
+      }),
+    ]);
+
+    const entries = ['event log', 'task history'];
+    results.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        this.logger.warn(
+          `Failed to write ${entries[index]} entry for evidence upload on task ${taskId}: ${result.reason instanceof Error ? result.reason.message : String(result.reason)}`,
+        );
+      }
+    });
   }
 
   /** Best-effort removal of a half-written CouchDB evidence document; never masks the error being handled. */

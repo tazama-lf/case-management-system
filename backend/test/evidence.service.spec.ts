@@ -279,6 +279,33 @@ describe('EvidenceService', () => {
       expect(eventLogService.logEventAction).not.toHaveBeenCalled();
     });
 
+    describe('when writing the audit entries fails after the evidence is stored', () => {
+      it('still succeeds and warns when the event log write fails, and still writes the task history', async () => {
+        const warn = jest.spyOn((service as any).logger, 'warn').mockImplementation(() => undefined);
+        eventLogService.logEventAction.mockRejectedValueOnce(new Error('event log down'));
+
+        const result = await service.uploadEvidence([mockFile], uploadDto, userId, tenantId, mockUser, uploadEndpointKey);
+
+        expect(result).toBeDefined();
+        expect(taskHistoryService.logTaskHistoryAction).toHaveBeenCalled();
+        expect(warn).toHaveBeenCalledWith(expect.stringContaining('event log entry for evidence upload on task 1: event log down'));
+        // The evidence itself was kept: nothing was cleaned up.
+        expect(couchdbService.deleteDocument).not.toHaveBeenCalled();
+      });
+
+      it('still succeeds and warns when the task history write fails, and still writes the event log', async () => {
+        const warn = jest.spyOn((service as any).logger, 'warn').mockImplementation(() => undefined);
+        taskHistoryService.logTaskHistoryAction.mockRejectedValueOnce(new Error('history down'));
+
+        const result = await service.uploadEvidence([mockFile], uploadDto, userId, tenantId, mockUser, uploadEndpointKey);
+
+        expect(result).toBeDefined();
+        expect(eventLogService.logEventAction).toHaveBeenCalled();
+        expect(warn).toHaveBeenCalledWith(expect.stringContaining('task history entry for evidence upload on task 1: history down'));
+        expect(couchdbService.deleteDocument).not.toHaveBeenCalled();
+      });
+    });
+
     describe('when a write fails partway', () => {
       beforeEach(() => {
         couchdbService.getDocument.mockResolvedValue({ _id: 'doc', _rev: 'rev-9' });
