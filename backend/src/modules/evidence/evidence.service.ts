@@ -8,9 +8,10 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import * as crypto from 'node:crypto';
+import { setTimeout as sleep } from 'node:timers/promises';
 import { UploadEvidenceDto, EvidenceResponseDto, EvidenceListResponseDto, VerifyEvidenceDto, EvidenceType, CreateEvidenceDto } from './dto';
 import { PrismaService } from 'prisma/prisma.service';
-import { CouchdbService, QueryDocumentsParams } from '../couchdb/couchdb.service';
+import { CouchdbService, EVIDENCE_STATUS, QueryDocumentsParams } from '../couchdb/couchdb.service';
 import { EvidenceRepository } from '../repository/evidence.repository';
 import { TaskRepository } from '../repository/task.repository';
 import { EventLogService } from 'src/modules/event_log/eventLog.service';
@@ -18,6 +19,9 @@ import { TaskHistoryService } from '../task_history/taskHistory.service';
 import { RbacService, EndpointKey } from 'src/utils/rbac/rbacHelper';
 import type { AuthenticatedUser } from 'src/utils/types/auth.types';
 import { CaseInvestigatorService } from '../case-investigator/case-investigator.service';
+
+// How many times removing a half-written CouchDB document is tried; retries back off 1s, 2s, ...
+const CLEANUP_ATTEMPTS = 3;
 
 @Injectable()
 export class EvidenceService {
@@ -217,6 +221,8 @@ export class EvidenceService {
           description: dto.description,
           comments: dto.comments,
           archive: false,
+          // Invisible to readers until the Postgres rows are written; see EVIDENCE_STATUS.
+          status: EVIDENCE_STATUS.PENDING,
           metadata: [],
         };
 
@@ -264,6 +270,8 @@ export class EvidenceService {
       await this.prisma.$transaction(
         async (tx) => {
           for (const metadata of documents) {
+            // Flipped with the Postgres row, in this transaction: both stores say committed, or neither does.
+            metadata.status = EVIDENCE_STATUS.COMMITTED;
             const [file] = metadata.metadata;
             const createEvidenceDto: CreateEvidenceDto = {
               id: metadata.evidenceId,
@@ -292,7 +300,7 @@ export class EvidenceService {
     } catch (error) {
       await Promise.all(
         documents.map(async (doc) => {
-          await this.removeCouchDocument(doc.evidenceId);
+          await this.removeCouchDocument(doc);
         }),
       );
       throw error;
@@ -300,8 +308,9 @@ export class EvidenceService {
 
     await this.recordUploadAudit(userId, tenantId, task.case_id, dto.taskId);
 
-    // The UI sends one file per request; for several files the first document is returned.
-    return documents[0];
+    // The first document keeps the response shape the UI relies on (it sends one file per request); `documents` lists
+    // every document this request created, for callers that send several files at once.
+    return { ...documents[0], documents };
   }
 
   /**
@@ -341,14 +350,49 @@ export class EvidenceService {
     });
   }
 
-  /** Best-effort removal of a half-written CouchDB evidence document; never masks the error being handled. */
-  private async removeCouchDocument(evidenceId: string): Promise<void> {
+  /**
+   * Removes a half-written CouchDB evidence document, retrying a few times; never masks the error being handled.
+   * If it still can't be removed, the document may be orphaned, so that is logged and also recorded as a FAILURE
+   * event-log entry, where someone can find it.
+   */
+  private async removeCouchDocument(doc: any): Promise<void> {
+    const evidenceId: string = doc.evidenceId;
+    let lastError: unknown;
+
+    for (let attempt = 1; attempt <= CLEANUP_ATTEMPTS; attempt += 1) {
+      try {
+        // eslint-disable-next-line no-await-in-loop -- each attempt depends on the previous one failing
+        const current = await this.couchdb.getDocument(evidenceId);
+        // eslint-disable-next-line no-await-in-loop -- needs the revision fetched above
+        await this.couchdb.deleteDocument(evidenceId, current._rev);
+        return;
+      } catch (error) {
+        // Already gone: nothing left to clean up.
+        if ((error as { statusCode?: number }).statusCode === 404) return;
+        lastError = error;
+        if (attempt < CLEANUP_ATTEMPTS) {
+          // eslint-disable-next-line no-await-in-loop -- back off before the next attempt
+          await sleep(1000 * attempt);
+        }
+      }
+    }
+
+    const reason = lastError instanceof Error ? lastError.message : String(lastError);
+    this.logger.error(
+      `Failed to clean up CouchDB document ${evidenceId} after ${CLEANUP_ATTEMPTS} attempts after a failed upload; it may be orphaned: ${reason}`,
+    );
     try {
-      const doc = await this.couchdb.getDocument(evidenceId);
-      await this.couchdb.deleteDocument(evidenceId, doc._rev);
-    } catch (cleanupError) {
+      await this.eventLogSerice.logEventAction({
+        userId: doc.uploadedBy,
+        tenantId: doc.tenantId,
+        operation: 'upload cleanup',
+        entityName: 'Evidence',
+        actionPerformed: `Orphaned CouchDB evidence document ${evidenceId} (Case ${doc.caseId}, Task ${doc.taskId}) could not be removed after a failed upload: ${reason}`,
+        outcome: 'FAILURE',
+      });
+    } catch (auditError) {
       this.logger.error(
-        `Failed to clean up CouchDB document ${evidenceId} after a failed upload; it may be orphaned: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`,
+        `Could not record orphaned evidence document ${evidenceId} in the event log: ${auditError instanceof Error ? auditError.message : String(auditError)}`,
       );
     }
   }
@@ -371,7 +415,7 @@ export class EvidenceService {
     const doc = await this.couchdb.getDocument(evidenceId);
     this.logger.log(`Fetched document for evidence ${evidenceId}: ${JSON.stringify(doc)}`);
 
-    if (!doc) {
+    if (!doc || doc.status === EVIDENCE_STATUS.PENDING) {
       this.logger.error(`Evidence ${evidenceId} not found`);
       throw new NotFoundException(`Evidence ${evidenceId} not found`);
     }

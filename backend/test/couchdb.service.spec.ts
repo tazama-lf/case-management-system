@@ -669,4 +669,84 @@ describe('CouchdbService', () => {
       }
     });
   });
+
+  describe('pending evidence', () => {
+    beforeEach(async () => {
+      mockNanoInstance.db.list.mockResolvedValue(['cms-evidence']);
+      mockDb.get.mockResolvedValue({ _id: '_design/evidence', _rev: '1-abc', views: {} });
+      await service.onModuleInit();
+    });
+
+    it('queryDocuments hides documents of unfinished uploads but keeps committed ones and ones with no status', async () => {
+      const committed = { _id: 'a', status: 'committed' };
+      const legacy = { _id: 'b' };
+      const pending = { _id: 'c', status: 'pending' };
+      mockDb.find.mockResolvedValueOnce({ docs: [committed, pending, legacy] }).mockResolvedValueOnce({ docs: [] });
+
+      const result = await service.queryDocuments({ tenantId: 'tenant-123', page: 1, limit: 10 });
+
+      expect(result.data).toEqual([committed, legacy]);
+    });
+
+    describe('purgeStalePendingEvidence', () => {
+      const now = new Date('2026-10-30T12:00:00.000Z').getTime();
+
+      beforeEach(() => {
+        jest.spyOn(Date, 'now').mockReturnValue(now);
+      });
+
+      afterEach(() => {
+        jest.restoreAllMocks();
+      });
+
+      it('queries only pending documents older than 30 minutes and destroys each one at its revision', async () => {
+        mockDb.find.mockResolvedValue({
+          docs: [
+            { _id: 'ev_1_1', _rev: '1-a' },
+            { _id: 'ev_1_2', _rev: '2-b' },
+          ],
+        });
+        mockDb.destroy.mockResolvedValue({ ok: true });
+
+        await service.purgeStalePendingEvidence();
+
+        expect(mockDb.find).toHaveBeenCalledWith({
+          selector: { status: 'pending', uploadedAt: { $lt: '2026-10-30T11:30:00.000Z' } },
+          limit: 200,
+        });
+        expect(mockDb.destroy).toHaveBeenCalledWith('ev_1_1', '1-a');
+        expect(mockDb.destroy).toHaveBeenCalledWith('ev_1_2', '2-b');
+      });
+
+      it('does nothing when no abandoned upload exists', async () => {
+        mockDb.find.mockResolvedValue({ docs: [] });
+
+        await service.purgeStalePendingEvidence();
+
+        expect(mockDb.destroy).not.toHaveBeenCalled();
+      });
+
+      it('keeps going when one document cannot be removed', async () => {
+        mockDb.find.mockResolvedValue({
+          docs: [
+            { _id: 'ev_1_1', _rev: '1-a' },
+            { _id: 'ev_1_2', _rev: '2-b' },
+          ],
+        });
+        mockDb.destroy.mockRejectedValueOnce(new Error('conflict')).mockResolvedValueOnce({ ok: true });
+
+        await expect(service.purgeStalePendingEvidence()).resolves.toBeUndefined();
+
+        expect(mockDb.destroy).toHaveBeenCalledTimes(2);
+      });
+
+      it('does not throw when the query itself fails', async () => {
+        mockDb.find.mockRejectedValue(new Error('couch down'));
+
+        await expect(service.purgeStalePendingEvidence()).resolves.toBeUndefined();
+
+        expect(mockDb.destroy).not.toHaveBeenCalled();
+      });
+    });
+  });
 });

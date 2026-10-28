@@ -18,6 +18,8 @@ import { RbacService, EndpointKey } from '../src/utils/rbac/rbacHelper';
 import { AuthenticatedUser } from '../src/utils/types/auth.types';
 import { CaseInvestigatorService } from '../src/modules/case-investigator/case-investigator.service';
 
+jest.mock('node:timers/promises', () => ({ setTimeout: jest.fn().mockResolvedValue(undefined) }));
+
 describe('EvidenceService', () => {
   let service: EvidenceService;
   let prismaService: any;
@@ -175,6 +177,15 @@ describe('EvidenceService', () => {
       couchdbService.updateDocument.mockResolvedValue({ rev: 'rev-3' });
     });
 
+    it('keeps the single-document response for one file and adds a documents list holding that document', async () => {
+      const result: any = await service.uploadEvidence([mockFile], uploadDto, userId, tenantId, mockUser, uploadEndpointKey);
+
+      expect(result.evidenceId).toMatch(/^ev_1_/);
+      expect(result.metadata).toHaveLength(1);
+      expect(result.documents).toHaveLength(1);
+      expect(result.documents[0].evidenceId).toBe(result.evidenceId);
+    });
+
     it('should successfully upload KYC evidence', async () => {
       const result = await service.uploadEvidence([mockFile], uploadDto, userId, tenantId, mockUser, uploadEndpointKey);
 
@@ -236,6 +247,10 @@ describe('EvidenceService', () => {
       // Each CouchDB document lists only its own file; the first document is returned.
       expect((result as any).metadata).toHaveLength(1);
       expect((result as any).evidenceId).toBe(first.id);
+      // `documents` lists every document the request created, first one included.
+      expect((result as any).documents).toHaveLength(2);
+      expect((result as any).documents.map((doc: any) => doc.evidenceId)).toEqual([first.id, second.id]);
+      expect((result as any).documents[1].metadata[0].fileName).toBe('test2.pdf');
     });
 
     it('gives files from one request distinct ids even when the clock does not advance', async () => {
@@ -277,6 +292,46 @@ describe('EvidenceService', () => {
       // Both CouchDB documents are removed, including the one whose row had already been written.
       expect(couchdbService.deleteDocument).toHaveBeenCalledTimes(2);
       expect(eventLogService.logEventAction).not.toHaveBeenCalled();
+    });
+
+    describe('pending marker', () => {
+      it('creates the CouchDB document pending and flips it to committed with the Postgres row, in the same step', async () => {
+        const insertedAs: any[] = [];
+        couchdbService.insertDocument.mockImplementation(async (_id: string, doc: any) => {
+          insertedAs.push({ ...doc });
+          return { rev: 'rev-1' };
+        });
+        const updatedAs: any[] = [];
+        couchdbService.updateDocument.mockImplementation(async (_id: string, doc: any) => {
+          updatedAs.push({ ...doc });
+          return { rev: 'rev-3' };
+        });
+        const rowStatuses: string[] = [];
+        evidenceRepository.createEvidence.mockImplementation(async (_user: string, dto: any) => {
+          rowStatuses.push(dto.metadata.status);
+          return {};
+        });
+
+        const result: any = await service.uploadEvidence([mockFile], uploadDto, userId, tenantId, mockUser, uploadEndpointKey);
+
+        expect(insertedAs[0].status).toBe('pending');
+        expect(rowStatuses).toEqual(['committed']);
+        expect(updatedAs[0].status).toBe('committed');
+        expect(result.status).toBe('committed');
+      });
+
+      it('never commits the CouchDB document when the Postgres row failed', async () => {
+        couchdbService.getDocument.mockResolvedValue({ _id: 'doc', _rev: 'rev-9' });
+        couchdbService.deleteDocument.mockResolvedValue({ ok: true });
+        evidenceRepository.createEvidence.mockRejectedValueOnce(new Error('insert failed'));
+
+        await expect(service.uploadEvidence([mockFile], uploadDto, userId, tenantId, mockUser, uploadEndpointKey)).rejects.toThrow(
+          'insert failed',
+        );
+
+        // The flip to committed is the CouchDB update; it comes after the row, so it never ran.
+        expect(couchdbService.updateDocument).not.toHaveBeenCalled();
+      });
     });
 
     describe('when writing the audit entries fails after the evidence is stored', () => {
@@ -353,9 +408,56 @@ describe('EvidenceService', () => {
         expect(couchdbService.deleteDocument).toHaveBeenCalled();
       });
 
-      it('still reports the original error when the cleanup itself fails', async () => {
+      it('retries the cleanup and succeeds after a transient failure, without recording an orphan', async () => {
         evidenceRepository.createEvidence.mockRejectedValueOnce(new Error('insert failed'));
-        couchdbService.deleteDocument.mockRejectedValueOnce(new Error('cleanup failed'));
+        couchdbService.deleteDocument.mockRejectedValueOnce(new Error('couch blip')).mockResolvedValueOnce({ ok: true });
+        eventLogService.logEventAction.mockClear();
+
+        await expect(service.uploadEvidence([mockFile], uploadDto, userId, tenantId, mockUser, uploadEndpointKey)).rejects.toThrow(
+          'insert failed',
+        );
+
+        expect(couchdbService.deleteDocument).toHaveBeenCalledTimes(2);
+        expect(eventLogService.logEventAction).not.toHaveBeenCalled();
+      });
+
+      it('treats a document that is already gone as cleaned up', async () => {
+        evidenceRepository.createEvidence.mockRejectedValueOnce(new Error('insert failed'));
+        couchdbService.getDocument.mockRejectedValueOnce(Object.assign(new Error('missing'), { statusCode: 404 }));
+        eventLogService.logEventAction.mockClear();
+
+        await expect(service.uploadEvidence([mockFile], uploadDto, userId, tenantId, mockUser, uploadEndpointKey)).rejects.toThrow(
+          'insert failed',
+        );
+
+        expect(couchdbService.deleteDocument).not.toHaveBeenCalled();
+        expect(eventLogService.logEventAction).not.toHaveBeenCalled();
+      });
+
+      it('still reports the original error and records a FAILURE event when the cleanup keeps failing', async () => {
+        evidenceRepository.createEvidence.mockRejectedValueOnce(new Error('insert failed'));
+        couchdbService.deleteDocument.mockRejectedValue(new Error('cleanup failed'));
+        eventLogService.logEventAction.mockClear();
+
+        await expect(service.uploadEvidence([mockFile], uploadDto, userId, tenantId, mockUser, uploadEndpointKey)).rejects.toThrow(
+          'insert failed',
+        );
+
+        expect(couchdbService.deleteDocument).toHaveBeenCalledTimes(3);
+        expect(eventLogService.logEventAction).toHaveBeenCalledWith(
+          expect.objectContaining({
+            tenantId,
+            operation: 'upload cleanup',
+            outcome: 'FAILURE',
+            actionPerformed: expect.stringContaining('cleanup failed'),
+          }),
+        );
+      });
+
+      it('does not let a failing event-log write hide the original error either', async () => {
+        evidenceRepository.createEvidence.mockRejectedValueOnce(new Error('insert failed'));
+        couchdbService.deleteDocument.mockRejectedValue(new Error('cleanup failed'));
+        eventLogService.logEventAction.mockRejectedValueOnce(new Error('event log down'));
 
         await expect(service.uploadEvidence([mockFile], uploadDto, userId, tenantId, mockUser, uploadEndpointKey)).rejects.toThrow(
           'insert failed',
@@ -433,6 +535,15 @@ describe('EvidenceService', () => {
       couchdbService.getDocument.mockResolvedValue(null);
 
       await expect(service.deleteEvidence('ev_1_123456', 'test.pdf', userId, tenantId, mockUser, deleteEndpointKey)).rejects.toThrow(NotFoundException);
+    });
+
+    it('should treat an unfinished (pending) upload as not found and delete nothing', async () => {
+      couchdbService.getDocument.mockResolvedValue({ ...mockEvidenceDoc, status: 'pending' });
+
+      await expect(service.deleteEvidence('ev_1_123456', 'test.pdf', userId, tenantId, mockUser, deleteEndpointKey)).rejects.toThrow(NotFoundException);
+
+      expect(couchdbService.deleteEvidence).not.toHaveBeenCalled();
+      expect(evidenceRepository.deleteEvidenceById).not.toHaveBeenCalled();
     });
 
     it('should propagate errors from couchdb delete operation', async () => {
