@@ -14,6 +14,13 @@ export const EVIDENCE_STATUS = { PENDING: 'pending', COMMITTED: 'committed' } as
 const PENDING_EVIDENCE_GRACE_MS = 30 * 60 * 1000;
 const PENDING_EVIDENCE_PURGE_BATCH = 200;
 
+/**
+ * Selector condition that leaves out documents of unfinished uploads. It has to be spelled this way: on CouchDB,
+ * `$nor`, `$not` and a bare `$ne` all also drop documents that have no `status` field at all, which would hide
+ * every evidence document uploaded before the field existed.
+ */
+const NOT_PENDING_EVIDENCE = { $or: [{ status: { $exists: false } }, { status: { $ne: EVIDENCE_STATUS.PENDING } }] };
+
 export interface QueryDocumentsParams {
   id?: string;
   evidenceId?: string;
@@ -199,6 +206,10 @@ export class CouchdbService implements OnModuleInit {
     if (archive !== undefined) selector.archive = archive;
     if (verified !== undefined) selector.verified = verified;
 
+    // Pending documents belong to an upload that has not finished (or died); no reader may see them. Excluding them in
+    // the selector, not after the query, keeps pages full and the count right. Kept apart from the search `$or` below.
+    selector.$and = [NOT_PENDING_EVIDENCE];
+
     if (search) {
       selector.$or = [{ fileName: { $regex: search } }, { description: { $regex: search } }, { comments: { $regex: search } }];
 
@@ -221,8 +232,7 @@ export class CouchdbService implements OnModuleInit {
       });
 
       return {
-        // Pending documents belong to an upload that has not finished (or died); no reader may see them.
-        data: result.docs.filter((doc) => doc.status !== EVIDENCE_STATUS.PENDING),
+        data: result.docs,
         page,
         limit,
         total: totalCountResult.docs.length,
