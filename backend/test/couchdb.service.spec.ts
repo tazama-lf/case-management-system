@@ -153,6 +153,26 @@ describe('CouchdbService', () => {
       expect(mockNanoInstance.use).toHaveBeenCalledWith('cms-evidence');
     });
 
+    it('creates the status + uploadedAt index the purge job relies on', async () => {
+      mockNanoInstance.db.list.mockResolvedValue(['cms-evidence']);
+      mockDb.createIndex.mockResolvedValue({ result: 'created' });
+
+      await service.onModuleInit();
+
+      expect(mockDb.createIndex).toHaveBeenCalledWith({
+        index: { fields: ['status', 'uploadedAt'] },
+        ddoc: 'pending-evidence-by-status-uploadedat',
+        name: 'pending-evidence-by-status-uploadedat',
+      });
+    });
+
+    it('still starts when the index cannot be created, since the purge works without it', async () => {
+      mockNanoInstance.db.list.mockResolvedValue(['cms-evidence']);
+      mockDb.createIndex.mockRejectedValue(new Error('index failed'));
+
+      await expect(service.onModuleInit()).resolves.toBeUndefined();
+    });
+
     it('should throw error if database initialization fails', async () => {
       mockNanoInstance.db.list.mockRejectedValue(new Error('Connection failed'));
 

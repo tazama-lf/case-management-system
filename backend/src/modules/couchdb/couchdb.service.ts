@@ -13,6 +13,7 @@ export const EVIDENCE_STATUS = { PENDING: 'pending', COMMITTED: 'committed' } as
 // A pending document older than this is an abandoned upload and is purged; far longer than any upload takes.
 const PENDING_EVIDENCE_GRACE_MS = 30 * 60 * 1000;
 const PENDING_EVIDENCE_PURGE_BATCH = 200;
+const PENDING_EVIDENCE_INDEX = 'pending-evidence-by-status-uploadedat';
 
 /**
  * Selector condition that leaves out documents of unfinished uploads. It has to be spelled this way: on CouchDB,
@@ -76,6 +77,7 @@ export class CouchdbService implements OnModuleInit {
       this.logger.log(`Connected to CouchDB database: ${this.dbName}`);
 
       await this.ensureEvidenceDesignDocument();
+      await this.ensurePendingEvidenceIndex();
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : undefined;
@@ -107,6 +109,27 @@ export class CouchdbService implements OnModuleInit {
       } as any,
       designId,
     );
+  }
+
+  /**
+   * Mango index behind purgeStalePendingEvidence, whose selector is `status` + `uploadedAt`. Without it CouchDB scans
+   * every document in the database on each run. Creating an index that already exists is a no-op. Best effort: the
+   * purge works without it, so a failure here must not stop the service from starting.
+   */
+  private async ensurePendingEvidenceIndex(): Promise<void> {
+    try {
+      await this.db.createIndex({
+        index: { fields: ['status', 'uploadedAt'] },
+        ddoc: PENDING_EVIDENCE_INDEX,
+        name: PENDING_EVIDENCE_INDEX,
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.warn(
+        `Could not create the pending-evidence index; the purge job will scan every document: ${errorMessage}`,
+        CouchdbService.name,
+      );
+    }
   }
 
   getDatabase(): nano.DocumentScope<any> {
