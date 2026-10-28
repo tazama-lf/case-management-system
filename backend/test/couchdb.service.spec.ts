@@ -726,64 +726,33 @@ describe('CouchdbService', () => {
       expect(selector.$and).toEqual(NOT_PENDING.$and);
     });
 
-    describe('purgeStalePendingEvidence', () => {
-      const now = new Date('2026-10-30T12:00:00.000Z').getTime();
+    describe('findPendingEvidenceOlderThan', () => {
+      it('queries pending documents uploaded before the cutoff, up to the limit, and returns them', async () => {
+        const docs = [
+          { _id: 'ev_1_1', _rev: '1-a' },
+          { _id: 'ev_1_2', _rev: '2-b' },
+        ];
+        mockDb.find.mockResolvedValue({ docs });
 
-      beforeEach(() => {
-        jest.spyOn(Date, 'now').mockReturnValue(now);
-      });
-
-      afterEach(() => {
-        jest.restoreAllMocks();
-      });
-
-      it('queries only pending documents older than 30 minutes and destroys each one at its revision', async () => {
-        mockDb.find.mockResolvedValue({
-          docs: [
-            { _id: 'ev_1_1', _rev: '1-a' },
-            { _id: 'ev_1_2', _rev: '2-b' },
-          ],
-        });
-        mockDb.destroy.mockResolvedValue({ ok: true });
-
-        await service.purgeStalePendingEvidence();
+        const result = await service.findPendingEvidenceOlderThan('2026-10-30T11:58:00.000Z', 200);
 
         expect(mockDb.find).toHaveBeenCalledWith({
-          selector: { status: 'pending', uploadedAt: { $lt: '2026-10-30T11:30:00.000Z' } },
+          selector: { status: 'pending', uploadedAt: { $lt: '2026-10-30T11:58:00.000Z' } },
           limit: 200,
         });
-        expect(mockDb.destroy).toHaveBeenCalledWith('ev_1_1', '1-a');
-        expect(mockDb.destroy).toHaveBeenCalledWith('ev_1_2', '2-b');
+        expect(result).toEqual(docs);
       });
 
-      it('does nothing when no abandoned upload exists', async () => {
+      it('returns an empty list when nothing is pending', async () => {
         mockDb.find.mockResolvedValue({ docs: [] });
 
-        await service.purgeStalePendingEvidence();
-
-        expect(mockDb.destroy).not.toHaveBeenCalled();
+        await expect(service.findPendingEvidenceOlderThan('2026-10-30T11:58:00.000Z', 200)).resolves.toEqual([]);
       });
 
-      it('keeps going when one document cannot be removed', async () => {
-        mockDb.find.mockResolvedValue({
-          docs: [
-            { _id: 'ev_1_1', _rev: '1-a' },
-            { _id: 'ev_1_2', _rev: '2-b' },
-          ],
-        });
-        mockDb.destroy.mockRejectedValueOnce(new Error('conflict')).mockResolvedValueOnce({ ok: true });
-
-        await expect(service.purgeStalePendingEvidence()).resolves.toBeUndefined();
-
-        expect(mockDb.destroy).toHaveBeenCalledTimes(2);
-      });
-
-      it('does not throw when the query itself fails', async () => {
+      it('lets a query failure reach the caller, which decides what to do', async () => {
         mockDb.find.mockRejectedValue(new Error('couch down'));
 
-        await expect(service.purgeStalePendingEvidence()).resolves.toBeUndefined();
-
-        expect(mockDb.destroy).not.toHaveBeenCalled();
+        await expect(service.findPendingEvidenceOlderThan('2026-10-30T11:58:00.000Z', 200)).rejects.toThrow('couch down');
       });
     });
   });

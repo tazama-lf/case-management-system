@@ -4,15 +4,13 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import nano from 'nano';
 
 /**
- * Lifecycle of an evidence document. An upload creates it `pending` and only marks it `committed` once its Postgres
- * rows are written, so a half-finished upload is never shown. Documents written before this field existed have no
+ * Lifecycle of an evidence document. An upload creates it `pending` and only marks it `committed` after its Postgres
+ * rows have committed, so a half-finished upload is never shown. If that last step is missed, the reconciliation job
+ * promotes it (its Postgres row exists) or removes it (none does). Documents written before this field existed have no
  * status and count as committed.
  */
 export const EVIDENCE_STATUS = { PENDING: 'pending', COMMITTED: 'committed' } as const;
 
-// A pending document older than this is an abandoned upload and is purged; far longer than any upload takes.
-const PENDING_EVIDENCE_GRACE_MS = 30 * 60 * 1000;
-const PENDING_EVIDENCE_PURGE_BATCH = 200;
 const PENDING_EVIDENCE_INDEX = 'pending-evidence-by-status-uploadedat';
 
 /**
@@ -112,8 +110,8 @@ export class CouchdbService implements OnModuleInit {
   }
 
   /**
-   * Mango index behind purgeStalePendingEvidence, whose selector is `status` + `uploadedAt`. Without it CouchDB scans
-   * every document in the database on each run. Creating an index that already exists is a no-op. Best effort: the
+   * Mango index behind findPendingEvidenceOlderThan, whose selector is `status` + `uploadedAt`. Without it CouchDB
+   * scans every document in the database on each reconciliation run. Creating an index that already exists is a no-op. Best effort: the
    * purge works without it, so a failure here must not stop the service from starting.
    */
   private async ensurePendingEvidenceIndex(): Promise<void> {
@@ -365,45 +363,14 @@ export class CouchdbService implements OnModuleInit {
   }
 
   /**
-   * Removes evidence documents left `pending` by an upload that never finished (the process died between the CouchDB
-   * and Postgres writes, or the cleanup after a failure also failed). Pending documents are invisible to every reader,
-   * so this only reclaims space. Only documents older than the grace period are touched, so an upload still in
-   * progress is never removed, and no Postgres lookup is needed.
+   * Evidence documents still `pending` that were uploaded before `cutoff` (an ISO timestamp), at most `limit` of them.
+   * Used by the reconciliation job; uses the status + uploadedAt index.
    */
-  @Cron('0 */15 * * * *')
-  async purgeStalePendingEvidence(): Promise<void> {
-    const cutoff = new Date(Date.now() - PENDING_EVIDENCE_GRACE_MS).toISOString();
-
-    try {
-      const result = await this.db.find({
-        selector: { status: EVIDENCE_STATUS.PENDING, uploadedAt: { $lt: cutoff } },
-        limit: PENDING_EVIDENCE_PURGE_BATCH,
-      });
-
-      const results = await Promise.allSettled(result.docs.map(async (doc) => await this.db.destroy(doc._id, doc._rev)));
-
-      let purged = 0;
-      results.forEach((outcome, index) => {
-        if (outcome.status === 'fulfilled') {
-          purged += 1;
-          this.logger.warn(`Removed abandoned pending evidence document ${result.docs[index]._id}`, CouchdbService.name);
-        } else {
-          const reason = outcome.reason instanceof Error ? outcome.reason.message : String(outcome.reason);
-          this.logger.error(
-            `Failed to remove pending evidence document ${result.docs[index]._id}: ${reason}`,
-            undefined,
-            CouchdbService.name,
-          );
-        }
-      });
-
-      if (purged > 0) {
-        this.logger.log(`Purged ${purged} abandoned pending evidence document(s)`, CouchdbService.name);
-      }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Failed to purge pending evidence: ${errorMessage}`, errorStack, CouchdbService.name);
-    }
+  async findPendingEvidenceOlderThan(cutoff: string, limit: number): Promise<any[]> {
+    const result = await this.db.find({
+      selector: { status: EVIDENCE_STATUS.PENDING, uploadedAt: { $lt: cutoff } },
+      limit,
+    });
+    return result.docs;
   }
 }

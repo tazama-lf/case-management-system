@@ -20,7 +20,7 @@ import { RbacService, EndpointKey } from 'src/utils/rbac/rbacHelper';
 import type { AuthenticatedUser } from 'src/utils/types/auth.types';
 import { CaseInvestigatorService } from '../case-investigator/case-investigator.service';
 
-// How many times removing a half-written CouchDB document is tried; retries back off 1s, 2s, ...
+// How many times removing a half-written CouchDB document, or marking a committed one, is tried; retries back off 1s, 2s, ...
 const CLEANUP_ATTEMPTS = 3;
 
 @Injectable()
@@ -265,38 +265,33 @@ export class EvidenceService {
         });
       }
 
-      // All rows go in one transaction and each CouchDB metadata update follows its row inside it, so if any step
-      // fails every row is rolled back with it.
-      await this.prisma.$transaction(
-        async (tx) => {
-          for (const metadata of documents) {
-            // Flipped with the Postgres row, in this transaction: both stores say committed, or neither does.
-            metadata.status = EVIDENCE_STATUS.COMMITTED;
-            const [file] = metadata.metadata;
-            const createEvidenceDto: CreateEvidenceDto = {
-              id: metadata.evidenceId,
-              taskId: dto.taskId,
-              fileName: file.fileName,
-              description: dto.description,
-              evidenceType: dto.evidenceType,
-              file_path: file.filePath,
-              hash: file.hash,
-              fileSize: file.fileSize,
-              mimeType: file.mimeType,
-              uploadedAt: metadata.uploadedAt,
-              uploadedBy: userId,
-              caseId: task.case_id,
-              tenant_id: tenantId,
-              metadata,
-            };
-            // eslint-disable-next-line no-await-in-loop -- rows are written sequentially inside one transaction
-            await this.evidenceRepository.createEvidence(userId, createEvidenceDto, tx);
-            // eslint-disable-next-line no-await-in-loop -- last step per document, so a failure rolls the row back
-            await this.couchdb.updateDocument(metadata.evidenceId, metadata);
-          }
-        },
-        { timeout: 30_000 },
-      );
+      // All rows go in one transaction (only Postgres work in it, so it never holds a connection across a CouchDB
+      // call). The CouchDB documents stay pending until it has committed.
+      await this.prisma.$transaction(async (tx) => {
+        for (const metadata of documents) {
+          // What the row records; the CouchDB document is only flipped once this transaction has committed.
+          metadata.status = EVIDENCE_STATUS.COMMITTED;
+          const [file] = metadata.metadata;
+          const createEvidenceDto: CreateEvidenceDto = {
+            id: metadata.evidenceId,
+            taskId: dto.taskId,
+            fileName: file.fileName,
+            description: dto.description,
+            evidenceType: dto.evidenceType,
+            file_path: file.filePath,
+            hash: file.hash,
+            fileSize: file.fileSize,
+            mimeType: file.mimeType,
+            uploadedAt: metadata.uploadedAt,
+            uploadedBy: userId,
+            caseId: task.case_id,
+            tenant_id: tenantId,
+            metadata,
+          };
+          // eslint-disable-next-line no-await-in-loop -- rows are written sequentially inside one transaction
+          await this.evidenceRepository.createEvidence(userId, createEvidenceDto, tx);
+        }
+      });
     } catch (error) {
       await Promise.all(
         documents.map(async (doc) => {
@@ -305,6 +300,13 @@ export class EvidenceService {
       );
       throw error;
     }
+
+    // The upload has committed in Postgres from here on, so nothing below may delete anything.
+    await Promise.all(
+      documents.map(async (doc) => {
+        await this.markCommitted(doc);
+      }),
+    );
 
     await this.recordUploadAudit(userId, tenantId, task.case_id, dto.taskId);
 
@@ -348,6 +350,33 @@ export class EvidenceService {
         );
       }
     });
+  }
+
+  /**
+   * Marks a document `committed` in CouchDB once its upload has committed in Postgres, retrying a few times. Best
+   * effort and never deletes anything: if it still fails, the document stays pending (hidden) and the reconciliation
+   * job promotes it, since its Postgres row exists.
+   */
+  private async markCommitted(doc: any): Promise<void> {
+    let lastError: unknown;
+
+    for (let attempt = 1; attempt <= CLEANUP_ATTEMPTS; attempt += 1) {
+      try {
+        // eslint-disable-next-line no-await-in-loop -- each attempt depends on the previous one failing
+        await this.couchdb.updateDocument(doc.evidenceId, doc);
+        return;
+      } catch (error) {
+        lastError = error;
+        if (attempt < CLEANUP_ATTEMPTS) {
+          // eslint-disable-next-line no-await-in-loop -- back off before the next attempt
+          await sleep(1000 * attempt);
+        }
+      }
+    }
+
+    this.logger.error(
+      `Evidence document ${doc.evidenceId} was saved but could not be marked committed after ${CLEANUP_ATTEMPTS} attempts; it stays hidden until the reconciliation job promotes it: ${lastError instanceof Error ? lastError.message : String(lastError)}`,
+    );
   }
 
   /**
