@@ -46,6 +46,12 @@ export class EvidenceResponseDto {
 
   @ApiProperty()
   couchdbRev?: string;
+
+  @ApiPropertyOptional({
+    description: 'Upload response only: every evidence document the request created (one per uploaded file).',
+    type: [Object],
+  })
+  documents?: any[];
 }
 
 export class EvidenceListResponseDto {

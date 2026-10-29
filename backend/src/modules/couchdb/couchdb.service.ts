@@ -3,6 +3,23 @@ import { ConfigService } from '@nestjs/config';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import nano from 'nano';
 
+/**
+ * Lifecycle of an evidence document. An upload creates it `pending` and only marks it `committed` after its Postgres
+ * rows have committed, so a half-finished upload is never shown. If that last step is missed, the reconciliation job
+ * promotes it (its Postgres row exists) or removes it (none does). Documents written before this field existed have no
+ * status and count as committed.
+ */
+export const EVIDENCE_STATUS = { PENDING: 'pending', COMMITTED: 'committed' } as const;
+
+const PENDING_EVIDENCE_INDEX = 'pending-evidence-by-status-uploadedat';
+
+/**
+ * Selector condition that leaves out documents of unfinished uploads. It has to be spelled this way: on CouchDB,
+ * `$nor`, `$not` and a bare `$ne` all also drop documents that have no `status` field at all, which would hide
+ * every evidence document uploaded before the field existed.
+ */
+const NOT_PENDING_EVIDENCE = { $or: [{ status: { $exists: false } }, { status: { $ne: EVIDENCE_STATUS.PENDING } }] };
+
 export interface QueryDocumentsParams {
   id?: string;
   evidenceId?: string;
@@ -58,6 +75,7 @@ export class CouchdbService implements OnModuleInit {
       this.logger.log(`Connected to CouchDB database: ${this.dbName}`);
 
       await this.ensureEvidenceDesignDocument();
+      await this.ensurePendingEvidenceIndex();
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : undefined;
@@ -89,6 +107,27 @@ export class CouchdbService implements OnModuleInit {
       } as any,
       designId,
     );
+  }
+
+  /**
+   * Mango index behind findPendingEvidenceOlderThan, whose selector is `status` + `uploadedAt`. Without it CouchDB
+   * scans every document in the database on each reconciliation run. Creating an index that already exists is a no-op. Best effort: the
+   * purge works without it, so a failure here must not stop the service from starting.
+   */
+  private async ensurePendingEvidenceIndex(): Promise<void> {
+    try {
+      await this.db.createIndex({
+        index: { fields: ['status', 'uploadedAt'] },
+        ddoc: PENDING_EVIDENCE_INDEX,
+        name: PENDING_EVIDENCE_INDEX,
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.warn(
+        `Could not create the pending-evidence index; the purge job will scan every document: ${errorMessage}`,
+        CouchdbService.name,
+      );
+    }
   }
 
   getDatabase(): nano.DocumentScope<any> {
@@ -187,6 +226,10 @@ export class CouchdbService implements OnModuleInit {
     if (evidenceType) selector.evidenceType = evidenceType;
     if (archive !== undefined) selector.archive = archive;
     if (verified !== undefined) selector.verified = verified;
+
+    // Pending documents belong to an upload that has not finished (or died); no reader may see them. Excluding them in
+    // the selector, not after the query, keeps pages full and the count right. Kept apart from the search `$or` below.
+    selector.$and = [NOT_PENDING_EVIDENCE];
 
     if (search) {
       selector.$or = [{ fileName: { $regex: search } }, { description: { $regex: search } }, { comments: { $regex: search } }];
@@ -317,5 +360,17 @@ export class CouchdbService implements OnModuleInit {
       const errorStack = error instanceof Error ? error.stack : undefined;
       this.logger.error(`Failed to auto-archive evidence: ${errorMessage}`, errorStack, CouchdbService.name);
     }
+  }
+
+  /**
+   * Evidence documents still `pending` that were uploaded before `cutoff` (an ISO timestamp), at most `limit` of them.
+   * Used by the reconciliation job; uses the status + uploadedAt index.
+   */
+  async findPendingEvidenceOlderThan(cutoff: string, limit: number): Promise<any[]> {
+    const result = await this.db.find({
+      selector: { status: EVIDENCE_STATUS.PENDING, uploadedAt: { $lt: cutoff } },
+      limit,
+    });
+    return result.docs;
   }
 }

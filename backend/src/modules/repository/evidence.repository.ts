@@ -32,6 +32,12 @@ export class EvidenceRepository extends BaseRepository {
     });
   }
 
+  /** Whether any Postgres row exists for this evidence document, i.e. its upload committed. */
+  async evidenceExists(evidenceId: string): Promise<boolean> {
+    const row = await this.prisma.evidence.findUnique({ where: { evidence_id: evidenceId }, select: { evidence_id: true } });
+    return row !== null;
+  }
+
   async deleteEvidenceById(evidenceId: string, tenantId: string): Promise<Evidence> {
     return await this.prisma.evidence.delete({
       where: {

@@ -8,9 +8,10 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import * as crypto from 'node:crypto';
+import { setTimeout as sleep } from 'node:timers/promises';
 import { UploadEvidenceDto, EvidenceResponseDto, EvidenceListResponseDto, VerifyEvidenceDto, EvidenceType, CreateEvidenceDto } from './dto';
 import { PrismaService } from 'prisma/prisma.service';
-import { CouchdbService, QueryDocumentsParams } from '../couchdb/couchdb.service';
+import { CouchdbService, EVIDENCE_STATUS, QueryDocumentsParams } from '../couchdb/couchdb.service';
 import { EvidenceRepository } from '../repository/evidence.repository';
 import { TaskRepository } from '../repository/task.repository';
 import { EventLogService } from 'src/modules/event_log/eventLog.service';
@@ -18,6 +19,9 @@ import { TaskHistoryService } from '../task_history/taskHistory.service';
 import { RbacService, EndpointKey } from 'src/utils/rbac/rbacHelper';
 import type { AuthenticatedUser } from 'src/utils/types/auth.types';
 import { CaseInvestigatorService } from '../case-investigator/case-investigator.service';
+
+// How many times removing a half-written CouchDB document, or marking a committed one, is tried; retries back off 1s, 2s, ...
+const CLEANUP_ATTEMPTS = 3;
 
 @Injectable()
 export class EvidenceService {
@@ -193,99 +197,238 @@ export class EvidenceService {
     if (!t2.allowed) throw new ForbiddenException(t2.reason);
     await this.caseInvestigatorService.assertReadAccess(task.case_id, userId, tenantId, rbacRole);
 
-    const evidenceId = `ev_${dto.taskId}_${Date.now()}`;
+    // Two files with the same name therefore never collide: each has its own document.
+    const documents: any[] = [];
 
-    const metadata: any = {
-      _id: evidenceId,
-      evidenceId,
-      tenantId,
-      taskId: dto.taskId,
-      caseId: task.case_id,
-      uploadedBy: userId,
-      uploadedAt: new Date(),
-      evidenceType: dto.evidenceType,
-      tags: dto.tags,
-      description: dto.description,
-      comments: dto.comments,
-      archive: false,
-      metadata: [],
-    };
+    // Everything from here on must land in both stores or in neither: a failure removes every CouchDB document
+    // created by this request and rolls the Postgres rows back, then the error reaches the client.
+    try {
+      for (const file of files) {
+        // ev_<task>_<ms>_<random>: the random part keeps ids unique when several files (or parallel requests for
+        // the same task) land in the same millisecond. Nothing reads the parts of an id back.
+        const evidenceId = `ev_${dto.taskId}_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
 
-    if (dto.evidenceType === EvidenceType.ADVERSE_MEDIA) {
-      metadata.aggregator = dto.aggregator;
-      metadata.dateSearched = dto.dateSearched;
-      metadata.keywords = dto.keywords;
-      metadata.findings = dto.findings;
-    }
+        const metadata: any = {
+          _id: evidenceId,
+          evidenceId,
+          tenantId,
+          taskId: dto.taskId,
+          caseId: task.case_id,
+          uploadedBy: userId,
+          uploadedAt: new Date(),
+          evidenceType: dto.evidenceType,
+          tags: dto.tags,
+          description: dto.description,
+          comments: dto.comments,
+          archive: false,
+          // Invisible to readers until the Postgres rows are written; see EVIDENCE_STATUS.
+          status: EVIDENCE_STATUS.PENDING,
+          metadata: [],
+        };
 
-    if (dto.evidenceType === EvidenceType.SANCTIONS) {
-      metadata.screeningDate = dto.screeningDate;
-      metadata.tool = dto.tool;
-      metadata.summaryDisposition = dto.summaryDisposition;
-    }
+        if (dto.evidenceType === EvidenceType.ADVERSE_MEDIA) {
+          metadata.aggregator = dto.aggregator;
+          metadata.dateSearched = dto.dateSearched;
+          metadata.keywords = dto.keywords;
+          metadata.findings = dto.findings;
+        }
 
-    const insertResult = await this.couchdb.insertDocument(evidenceId, metadata);
-    let currentRev = insertResult.rev;
+        if (dto.evidenceType === EvidenceType.SANCTIONS) {
+          metadata.screeningDate = dto.screeningDate;
+          metadata.tool = dto.tool;
+          metadata.summaryDisposition = dto.summaryDisposition;
+        }
 
-    for (const file of files) {
-      const { encrypted, key, iv, authTag } = this.encrypt(file.buffer);
-      const hash = this.sha256(encrypted);
+        const { encrypted, key, iv, authTag } = this.encrypt(file.buffer);
+        const hash = this.sha256(encrypted);
 
-      // eslint-disable-next-line no-await-in-loop -- CouchDB requires sequential attachment uploads with updated revision
-      const attachmentResult = await this.couchdb.insertAttachment(evidenceId, currentRev, file.originalname, encrypted, file.mimetype);
+        // eslint-disable-next-line no-await-in-loop -- documents are created one at a time so a failure can undo exactly what exists
+        const insertResult = await this.couchdb.insertDocument(evidenceId, metadata);
+        documents.push(metadata);
 
-      metadata.metadata.push({
-        fileName: file.originalname,
-        fileSize: file.size,
-        filePath: attachmentResult.filePath,
-        mimeType: file.mimetype,
-        hash,
-        encryption: { key, iv, authTag },
+        // eslint-disable-next-line no-await-in-loop -- the attachment needs the revision returned by the insert above
+        const attachmentResult = await this.couchdb.insertAttachment(
+          evidenceId,
+          insertResult.rev,
+          file.originalname,
+          encrypted,
+          file.mimetype,
+        );
+
+        metadata.metadata.push({
+          fileName: file.originalname,
+          fileSize: file.size,
+          filePath: attachmentResult.filePath,
+          mimeType: file.mimetype,
+          hash,
+          encryption: { key, iv, authTag },
+        });
+
+        // Persist the file entry (hash, decryption key) while the document is still pending, so it is complete before
+        // it can ever be marked committed. If this fails, the catch below removes the document.
+        // eslint-disable-next-line no-await-in-loop -- the document must be complete before the next one is created
+        await this.couchdb.updateDocument(evidenceId, { metadata: metadata.metadata });
+      }
+
+      // All rows go in one transaction (only Postgres work in it, so it never holds a connection across a CouchDB
+      // call). The CouchDB documents stay pending until it has committed.
+      await this.prisma.$transaction(async (tx) => {
+        for (const metadata of documents) {
+          // What the row records; the CouchDB document is only flipped once this transaction has committed.
+          metadata.status = EVIDENCE_STATUS.COMMITTED;
+          const [file] = metadata.metadata;
+          const createEvidenceDto: CreateEvidenceDto = {
+            id: metadata.evidenceId,
+            taskId: dto.taskId,
+            fileName: file.fileName,
+            description: dto.description,
+            evidenceType: dto.evidenceType,
+            file_path: file.filePath,
+            hash: file.hash,
+            fileSize: file.fileSize,
+            mimeType: file.mimeType,
+            uploadedAt: metadata.uploadedAt,
+            uploadedBy: userId,
+            caseId: task.case_id,
+            tenant_id: tenantId,
+            metadata,
+          };
+          // eslint-disable-next-line no-await-in-loop -- rows are written sequentially inside one transaction
+          await this.evidenceRepository.createEvidence(userId, createEvidenceDto, tx);
+        }
       });
-
-      currentRev = attachmentResult.rev;
-
-      const createEvidenceDto: CreateEvidenceDto = {
-        id: evidenceId,
-        taskId: dto.taskId,
-        fileName: file.originalname,
-        description: dto.description,
-        evidenceType: dto.evidenceType,
-        file_path: attachmentResult.filePath,
-        hash,
-        fileSize: file.size,
-        mimeType: file.mimetype,
-        uploadedAt: metadata.uploadedAt,
-        uploadedBy: userId,
-        caseId: task.case_id,
-        tenant_id: tenantId,
-        metadata,
-      };
-
-      this.evidenceRepository.createEvidence(userId, createEvidenceDto);
+    } catch (error) {
+      await Promise.all(
+        documents.map(async (doc) => {
+          await this.removeCouchDocument(doc);
+        }),
+      );
+      throw error;
     }
-    await this.couchdb.updateDocument(evidenceId, metadata);
 
-    await this.eventLogSerice.logEventAction({
-      userId,
-      tenantId,
-      operation: 'upload',
-      entityName: 'Evidence',
-      actionPerformed: `EVIDENCE_UPLOADED for Case ${task.case_id} and Task ${dto.taskId}`,
-      outcome: 'SUCCESS',
+    // The upload has committed in Postgres from here on, so nothing below may delete anything.
+    await Promise.all(
+      documents.map(async (doc) => {
+        await this.markCommitted(doc);
+      }),
+    );
+
+    await this.recordUploadAudit(userId, tenantId, task.case_id, dto.taskId);
+
+    // The first document keeps the response shape the UI relies on (it sends one file per request); `documents` lists
+    // every document this request created, for callers that send several files at once.
+    return { ...documents[0], documents };
+  }
+
+  /**
+   * Event-log and task-history entries for a finished upload. Best effort: the evidence is already stored in both
+   * databases, so a failure to write either entry is logged and must not turn the upload into an error.
+   */
+  private async recordUploadAudit(userId: string, tenantId: string, caseId: number, taskId: number): Promise<void> {
+    const actionPerformed = `EVIDENCE_UPLOADED for Case ${caseId} and Task ${taskId}`;
+
+    const results = await Promise.allSettled([
+      this.eventLogSerice.logEventAction({
+        userId,
+        tenantId,
+        operation: 'upload',
+        entityName: 'Evidence',
+        actionPerformed,
+        outcome: 'SUCCESS',
+      }),
+      this.taskHistoryService.logTaskHistoryAction({
+        userId,
+        operation: 'upload Evidence',
+        entityName: 'Evidence',
+        actionPerformed,
+        case_id: caseId,
+        task_id: taskId,
+        tenant_id: tenantId,
+      }),
+    ]);
+
+    const entries = ['event log', 'task history'];
+    results.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        this.logger.warn(
+          `Failed to write ${entries[index]} entry for evidence upload on task ${taskId}: ${result.reason instanceof Error ? result.reason.message : String(result.reason)}`,
+        );
+      }
     });
+  }
 
-    await this.taskHistoryService.logTaskHistoryAction({
-      userId,
-      operation: 'upload Evidence',
-      entityName: 'Evidence',
-      actionPerformed: `EVIDENCE_UPLOADED for Case ${task.case_id} and Task ${dto.taskId}`,
-      case_id: task.case_id,
-      task_id: dto.taskId,
-      tenant_id: tenantId,
-    });
+  /**
+   * Marks a document `committed` in CouchDB once its upload has committed in Postgres, retrying a few times. Best
+   * effort and never deletes anything: if it still fails, the document stays pending (hidden) and the reconciliation
+   * job promotes it, since its Postgres row exists.
+   */
+  private async markCommitted(doc: any): Promise<void> {
+    let lastError: unknown;
 
-    return metadata;
+    for (let attempt = 1; attempt <= CLEANUP_ATTEMPTS; attempt += 1) {
+      try {
+        // eslint-disable-next-line no-await-in-loop -- each attempt depends on the previous one failing
+        await this.couchdb.updateDocument(doc.evidenceId, { status: EVIDENCE_STATUS.COMMITTED });
+        return;
+      } catch (error) {
+        lastError = error;
+        if (attempt < CLEANUP_ATTEMPTS) {
+          // eslint-disable-next-line no-await-in-loop -- back off before the next attempt
+          await sleep(1000 * attempt);
+        }
+      }
+    }
+
+    this.logger.error(
+      `Evidence document ${doc.evidenceId} was saved but could not be marked committed after ${CLEANUP_ATTEMPTS} attempts; it stays hidden until the reconciliation job promotes it: ${lastError instanceof Error ? lastError.message : String(lastError)}`,
+    );
+  }
+
+  /**
+   * Removes a half-written CouchDB evidence document, retrying a few times; never masks the error being handled.
+   * If it still can't be removed, the document may be orphaned, so that is logged and also recorded as a FAILURE
+   * event-log entry, where someone can find it.
+   */
+  private async removeCouchDocument(doc: any): Promise<void> {
+    const evidenceId: string = doc.evidenceId;
+    let lastError: unknown;
+
+    for (let attempt = 1; attempt <= CLEANUP_ATTEMPTS; attempt += 1) {
+      try {
+        // eslint-disable-next-line no-await-in-loop -- each attempt depends on the previous one failing
+        const current = await this.couchdb.getDocument(evidenceId);
+        // eslint-disable-next-line no-await-in-loop -- needs the revision fetched above
+        await this.couchdb.deleteDocument(evidenceId, current._rev);
+        return;
+      } catch (error) {
+        // Already gone: nothing left to clean up.
+        if ((error as { statusCode?: number }).statusCode === 404) return;
+        lastError = error;
+        if (attempt < CLEANUP_ATTEMPTS) {
+          // eslint-disable-next-line no-await-in-loop -- back off before the next attempt
+          await sleep(1000 * attempt);
+        }
+      }
+    }
+
+    const reason = lastError instanceof Error ? lastError.message : String(lastError);
+    this.logger.error(
+      `Failed to clean up CouchDB document ${evidenceId} after ${CLEANUP_ATTEMPTS} attempts after a failed upload; it may be orphaned: ${reason}`,
+    );
+    try {
+      await this.eventLogSerice.logEventAction({
+        userId: doc.uploadedBy,
+        tenantId: doc.tenantId,
+        operation: 'upload cleanup',
+        entityName: 'Evidence',
+        actionPerformed: `Orphaned CouchDB evidence document ${evidenceId} (Case ${doc.caseId}, Task ${doc.taskId}) could not be removed after a failed upload: ${reason}`,
+        outcome: 'FAILURE',
+      });
+    } catch (auditError) {
+      this.logger.error(
+        `Could not record orphaned evidence document ${evidenceId} in the event log: ${auditError instanceof Error ? auditError.message : String(auditError)}`,
+      );
+    }
   }
 
   async deleteEvidence(
@@ -306,7 +449,7 @@ export class EvidenceService {
     const doc = await this.couchdb.getDocument(evidenceId);
     this.logger.log(`Fetched document for evidence ${evidenceId}: ${JSON.stringify(doc)}`);
 
-    if (!doc) {
+    if (!doc || doc.status === EVIDENCE_STATUS.PENDING) {
       this.logger.error(`Evidence ${evidenceId} not found`);
       throw new NotFoundException(`Evidence ${evidenceId} not found`);
     }

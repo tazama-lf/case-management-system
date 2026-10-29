@@ -6,6 +6,10 @@ import * as nano from 'nano';
 
 jest.mock('nano');
 
+// Unfinished (pending) uploads are excluded in the selector itself. On CouchDB, $nor / $not / a bare $ne would also
+// drop documents that have no status field (everything uploaded before it existed), hence the $exists:false branch.
+const NOT_PENDING = { $and: [{ $or: [{ status: { $exists: false } }, { status: { $ne: 'pending' } }] }] };
+
 describe('CouchdbService', () => {
   let service: CouchdbService;
   let configService: jest.Mocked<ConfigService>;
@@ -147,6 +151,26 @@ describe('CouchdbService', () => {
 
       expect(mockNanoInstance.db.create).toHaveBeenCalledWith('cms-evidence');
       expect(mockNanoInstance.use).toHaveBeenCalledWith('cms-evidence');
+    });
+
+    it('creates the status + uploadedAt index the purge job relies on', async () => {
+      mockNanoInstance.db.list.mockResolvedValue(['cms-evidence']);
+      mockDb.createIndex.mockResolvedValue({ result: 'created' });
+
+      await service.onModuleInit();
+
+      expect(mockDb.createIndex).toHaveBeenCalledWith({
+        index: { fields: ['status', 'uploadedAt'] },
+        ddoc: 'pending-evidence-by-status-uploadedat',
+        name: 'pending-evidence-by-status-uploadedat',
+      });
+    });
+
+    it('still starts when the index cannot be created, since the purge works without it', async () => {
+      mockNanoInstance.db.list.mockResolvedValue(['cms-evidence']);
+      mockDb.createIndex.mockRejectedValue(new Error('index failed'));
+
+      await expect(service.onModuleInit()).resolves.toBeUndefined();
     });
 
     it('should throw error if database initialization fails', async () => {
@@ -293,7 +317,7 @@ describe('CouchdbService', () => {
       const result = await service.queryDocuments({ tenantId: 'tenant-123', page: 1, limit: 10 });
 
       expect(mockDb.find).toHaveBeenCalledWith({
-        selector: { tenantId: 'tenant-123' },
+        selector: { tenantId: 'tenant-123', ...NOT_PENDING },
         limit: 10,
         skip: 0,
       });
@@ -333,7 +357,7 @@ describe('CouchdbService', () => {
 
       expect(mockDb.find).toHaveBeenCalledWith(
         expect.objectContaining({
-          selector: expectedSelector,
+          selector: { ...expectedSelector, ...NOT_PENDING },
         }),
       );
     });
@@ -373,6 +397,7 @@ describe('CouchdbService', () => {
             evidenceType: 'document',
             verified: true,
             archive: false,
+            ...NOT_PENDING,
           },
         }),
       );
@@ -390,6 +415,7 @@ describe('CouchdbService', () => {
               { description: { $regex: 'test query' } },
               { comments: { $regex: 'test query' } },
             ],
+            ...NOT_PENDING,
           },
         }),
       );
@@ -667,6 +693,67 @@ describe('CouchdbService', () => {
       if (viewResult?.rows.length === 0) {
         expect(mockDb.insert).not.toHaveBeenCalled();
       }
+    });
+  });
+
+  describe('pending evidence', () => {
+    beforeEach(async () => {
+      mockNanoInstance.db.list.mockResolvedValue(['cms-evidence']);
+      mockDb.get.mockResolvedValue({ _id: '_design/evidence', _rev: '1-abc', views: {} });
+      await service.onModuleInit();
+    });
+
+    it('excludes unfinished uploads in the query itself, for both the page and the count, and returns the page as is', async () => {
+      const committed = { _id: 'a', status: 'committed' };
+      const legacy = { _id: 'b' };
+      mockDb.find.mockResolvedValueOnce({ docs: [committed, legacy] }).mockResolvedValueOnce({ docs: [committed, legacy] });
+
+      const result = await service.queryDocuments({ tenantId: 'tenant-123', page: 1, limit: 2 });
+
+      const [pageQuery, countQuery] = (mockDb.find as jest.Mock).mock.calls.map((call) => call[0]);
+      expect(pageQuery.selector.$and).toEqual(NOT_PENDING.$and);
+      expect(countQuery.selector.$and).toEqual(NOT_PENDING.$and);
+      // Nothing is dropped after the query, so a page is never shorter than the limit because of pending documents.
+      expect(result.data).toEqual([committed, legacy]);
+    });
+
+    it('keeps the status condition apart from the search $or so both apply', async () => {
+      mockDb.find.mockResolvedValue({ docs: [] });
+      await service.queryDocuments({ tenantId: 'tenant-123', search: 'x', page: 1, limit: 10 });
+
+      const { selector } = (mockDb.find as jest.Mock).mock.calls[0][0];
+      expect(selector.$or).toHaveLength(3);
+      expect(selector.$and).toEqual(NOT_PENDING.$and);
+    });
+
+    describe('findPendingEvidenceOlderThan', () => {
+      it('queries pending documents uploaded before the cutoff, up to the limit, and returns them', async () => {
+        const docs = [
+          { _id: 'ev_1_1', _rev: '1-a' },
+          { _id: 'ev_1_2', _rev: '2-b' },
+        ];
+        mockDb.find.mockResolvedValue({ docs });
+
+        const result = await service.findPendingEvidenceOlderThan('2026-10-30T11:58:00.000Z', 200);
+
+        expect(mockDb.find).toHaveBeenCalledWith({
+          selector: { status: 'pending', uploadedAt: { $lt: '2026-10-30T11:58:00.000Z' } },
+          limit: 200,
+        });
+        expect(result).toEqual(docs);
+      });
+
+      it('returns an empty list when nothing is pending', async () => {
+        mockDb.find.mockResolvedValue({ docs: [] });
+
+        await expect(service.findPendingEvidenceOlderThan('2026-10-30T11:58:00.000Z', 200)).resolves.toEqual([]);
+      });
+
+      it('lets a query failure reach the caller, which decides what to do', async () => {
+        mockDb.find.mockRejectedValue(new Error('couch down'));
+
+        await expect(service.findPendingEvidenceOlderThan('2026-10-30T11:58:00.000Z', 200)).rejects.toThrow('couch down');
+      });
     });
   });
 });
