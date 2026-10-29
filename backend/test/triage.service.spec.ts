@@ -1281,38 +1281,24 @@ describe('TriageService', () => {
       expect(result.typologies).toHaveLength(1);
       expect(result).toHaveProperty('rules');
       expect(result.rules).toHaveLength(2);
-      expect(result).toHaveProperty('blockStatus');
-      expect(result.blockStatus).toEqual({
-        status: '',
-        reason: '',
-      });
+      expect(result).not.toHaveProperty('blockStatus');
+      expect(result).not.toHaveProperty('blockReason');
       expect(mockPrisma.alert.findUnique).toHaveBeenCalledWith({
         where: { alert_id: 1, tenant_id: 'tenant-123' },
       });
     });
 
-    it('should handle alert with empty blockStatus', async () => {
-      const alertWithoutBlock = {
-        ...mockPrismaAlert,
-        alert_data: {
-          tadpResult: { typologyResult: [] },
-        },
-      };
-
+    it('should expose the report status from alert_data.status', async () => {
       const mockPrisma = {
         alert: {
-          findUnique: jest.fn().mockResolvedValue(alertWithoutBlock),
+          findUnique: jest.fn().mockResolvedValue({ ...mockPrismaAlert, alert_data: { status: 'NALT', tadpResult: { typologyResult: [] } } }),
         },
       };
-
       (service as any).prisma = mockPrisma;
 
       const result = await service.getAlertNavigator(1, 'tenant-123', 'user-123');
 
-      expect(result.blockStatus).toEqual({
-        status: '',
-        reason: '',
-      });
+      expect(result.status).toBe('NALT');
     });
 
     it('should throw NotFoundException when alert not found', async () => {

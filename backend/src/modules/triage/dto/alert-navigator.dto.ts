@@ -8,10 +8,8 @@ export class AlertNavigatorDto {
   amount: AmountDto;
   status: string;
   reason: string;
-  blockReason: string;
   typologies: TypologyDto[];
   rules: RuleDto[];
-  blockStatus?: BlockStatusDto | null;
   relatedLinks: RelatedLinksDto;
   links: LinkDto[];
 }
@@ -37,11 +35,6 @@ export class RuleDetailDto {
 export class RuleDto {
   id: string;
   weight: number;
-}
-
-export class BlockStatusDto {
-  status: string;
-  reason: string;
 }
 
 export class RelatedLinksDto {

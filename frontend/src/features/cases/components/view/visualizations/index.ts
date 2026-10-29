@@ -5,7 +5,6 @@ export type {
   TypologyDto,
   RuleDto,
   RuleDetailDto,
-  BlockStatusDto,
   AmountDto,
   RelatedLinksDto,
   LinkDto,

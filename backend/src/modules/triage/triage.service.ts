@@ -28,7 +28,7 @@ import { CaseCreationService } from '../case/services/case-creation.service';
 import { LoggingOrchestrationService } from '../logging-orchestration/logging-orchestration.service';
 import { CommentRepository } from '../repository/comment.repository';
 import { PrismaService } from 'prisma/prisma.service';
-import { AlertNavigatorDto, TypologyDto, RuleDto, BlockStatusDto, RelatedLinksDto } from './dto/alert-navigator.dto';
+import { AlertNavigatorDto, TypologyDto, RuleDto, RelatedLinksDto } from './dto/alert-navigator.dto';
 import { LinkDto, TransactionDetailDto, ChargeDto, CreditorDto, DebtorDto } from './dto/transaction-detail.dto';
 import { setTimeout } from 'node:timers/promises';
 import { TaskRepository } from '../repository/task.repository';
@@ -110,14 +110,6 @@ export class TriageService {
 
     this.logger.log(`Extracted ${typologies.length} typologies and ${rules.length} rules`, TriageService.name);
 
-    const blockStatusValue = alertReport?.block_status ?? '';
-    const blockReasonValue = alertReport?.block_reason ?? '';
-
-    const blockStatus: BlockStatusDto = {
-      status: blockStatusValue ?? '',
-      reason: blockReasonValue ?? '',
-    };
-
     const transactionId = transactionData?.FIToFIPmtSts?.GrpHdr?.MsgId ?? '';
     const amount = {
       value: transactionData?.FIToFIPmtSts?.TxInfAndSts?.Amt?.Amt ?? 0,
@@ -150,12 +142,10 @@ export class TriageService {
       timestamp: transactionData?.FIToFIPmtSts?.GrpHdr?.CreDtTm ?? '',
       transactionType: alert.txtp,
       amount,
-      status: blockStatusValue ?? '',
+      status: alertReport?.status ?? '',
       reason: alert.message,
-      blockReason: blockReasonValue ?? '',
       typologies,
       rules,
-      blockStatus,
       relatedLinks,
       links,
     };
