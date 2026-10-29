@@ -263,6 +263,11 @@ export class EvidenceService {
           hash,
           encryption: { key, iv, authTag },
         });
+
+        // Persist the file entry (hash, decryption key) while the document is still pending, so it is complete before
+        // it can ever be marked committed. If this fails, the catch below removes the document.
+        // eslint-disable-next-line no-await-in-loop -- the document must be complete before the next one is created
+        await this.couchdb.updateDocument(evidenceId, { metadata: metadata.metadata });
       }
 
       // All rows go in one transaction (only Postgres work in it, so it never holds a connection across a CouchDB
@@ -363,7 +368,7 @@ export class EvidenceService {
     for (let attempt = 1; attempt <= CLEANUP_ATTEMPTS; attempt += 1) {
       try {
         // eslint-disable-next-line no-await-in-loop -- each attempt depends on the previous one failing
-        await this.couchdb.updateDocument(doc.evidenceId, doc);
+        await this.couchdb.updateDocument(doc.evidenceId, { status: EVIDENCE_STATUS.COMMITTED });
         return;
       } catch (error) {
         lastError = error;

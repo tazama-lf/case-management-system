@@ -306,7 +306,7 @@ describe('EvidenceService', () => {
         const updatedAs: any[] = [];
         couchdbService.updateDocument.mockImplementation(async (_id: string, doc: any) => {
           updatedAs.push({ ...doc });
-          order.push('couch mark committed');
+          order.push(doc.status === 'committed' ? 'couch mark committed' : 'couch save file metadata (pending)');
           return { rev: 'rev-3' };
         });
         const rowStatuses: string[] = [];
@@ -320,10 +320,17 @@ describe('EvidenceService', () => {
 
         expect(insertedAs[0].status).toBe('pending');
         expect(rowStatuses).toEqual(['committed']);
-        expect(updatedAs[0].status).toBe('committed');
+        // The document is made complete while it is still pending: the file entry with its hash and decryption key.
+        expect(updatedAs[0].status).toBeUndefined();
+        expect(updatedAs[0].metadata[0].encryption).toEqual(expect.objectContaining({ key: expect.anything() }));
+        expect(updatedAs[0].metadata[0].hash).toEqual(expect.any(String));
+        // Once the row has committed only the status is written, so nothing else in the document is overwritten.
+        expect(updatedAs[1]).toEqual({ status: 'committed' });
+        expect(updatedAs).toHaveLength(2);
         expect(result.status).toBe('committed');
         // The flip must come after the Postgres row, never before it: a document marked committed with no row would be
         // visible and never cleaned up.
+        expect(order.indexOf('couch save file metadata (pending)')).toBeLessThan(order.indexOf('postgres row'));
         expect(order.indexOf('postgres row')).toBeLessThan(order.indexOf('couch mark committed'));
       });
 
@@ -357,17 +364,31 @@ describe('EvidenceService', () => {
           'insert failed',
         );
 
-        expect(couchdbService.updateDocument).not.toHaveBeenCalled();
+        expect(couchdbService.updateDocument).not.toHaveBeenCalledWith(expect.anything(), { status: 'committed' });
+      });
+
+      it('removes the document when saving its file metadata while pending fails', async () => {
+        couchdbService.getDocument.mockResolvedValue({ _id: 'doc', _rev: 'rev-9' });
+        couchdbService.deleteDocument.mockResolvedValue({ ok: true });
+        couchdbService.updateDocument.mockRejectedValueOnce(new Error('couch down'));
+
+        await expect(service.uploadEvidence([mockFile], uploadDto, userId, tenantId, mockUser, uploadEndpointKey)).rejects.toThrow(
+          'couch down',
+        );
+
+        expect(evidenceRepository.createEvidence).not.toHaveBeenCalled();
+        expect(couchdbService.deleteDocument).toHaveBeenCalled();
       });
 
       it('keeps a saved upload when marking it committed fails: succeeds, deletes nothing, leaves it for reconciliation', async () => {
-        couchdbService.updateDocument.mockRejectedValue(new Error('couch blip'));
+        couchdbService.updateDocument.mockResolvedValueOnce({ rev: 'rev-3' }).mockRejectedValue(new Error('couch blip'));
         const error = jest.spyOn((service as any).logger, 'error').mockImplementation(() => undefined);
 
         const result: any = await service.uploadEvidence([mockFile], uploadDto, userId, tenantId, mockUser, uploadEndpointKey);
 
         expect(result).toBeDefined();
-        expect(couchdbService.updateDocument).toHaveBeenCalledTimes(3);
+        // One pending save of the file metadata, then three attempts at marking it committed.
+        expect(couchdbService.updateDocument).toHaveBeenCalledTimes(4);
         expect(couchdbService.deleteDocument).not.toHaveBeenCalled();
         expect(error).toHaveBeenCalledWith(expect.stringContaining('could not be marked committed'));
         // The upload still counts as done: audit entries are written.
@@ -375,11 +396,14 @@ describe('EvidenceService', () => {
       });
 
       it('retries marking committed after a transient failure', async () => {
-        couchdbService.updateDocument.mockRejectedValueOnce(new Error('conflict')).mockResolvedValueOnce({ rev: 'rev-3' });
+        couchdbService.updateDocument
+          .mockResolvedValueOnce({ rev: 'rev-3' })
+          .mockRejectedValueOnce(new Error('conflict'))
+          .mockResolvedValueOnce({ rev: 'rev-4' });
 
         await service.uploadEvidence([mockFile], uploadDto, userId, tenantId, mockUser, uploadEndpointKey);
 
-        expect(couchdbService.updateDocument).toHaveBeenCalledTimes(2);
+        expect(couchdbService.updateDocument).toHaveBeenCalledTimes(3);
       });
     });
 
@@ -433,7 +457,7 @@ describe('EvidenceService', () => {
 
         await expect(service.uploadEvidence([mockFile], uploadDto, userId, tenantId, mockUser, uploadEndpointKey)).rejects.toThrow();
 
-        expect(couchdbService.updateDocument).not.toHaveBeenCalled();
+        expect(couchdbService.updateDocument).not.toHaveBeenCalledWith(expect.anything(), { status: 'committed' });
       });
 
       it('removes the CouchDB document when an attachment upload fails', async () => {
