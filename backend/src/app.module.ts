@@ -38,6 +38,7 @@ import { JupyterModule } from './modules/jupyter/jupyter.module';
 import { VoilaProxyModule } from './modules/voila-proxy/voila-proxy.module';
 import { AlertPriorityModule } from './modules/alert-priority/alert-priority.module';
 import { CaseInvestigatorModule } from './modules/case-investigator/case-investigator.module';
+import { HealthModule } from './modules/health/health.module';
 
 @Module({
   controllers: [AppController],
@@ -80,6 +81,7 @@ import { CaseInvestigatorModule } from './modules/case-investigator/case-investi
     TaskHistoryModule,
     LoggingOrchestrationModule,
     AlertPriorityModule,
+    HealthModule,
   ],
   providers: [
     PrismaService,

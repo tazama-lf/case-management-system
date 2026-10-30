@@ -358,6 +358,26 @@ docker-compose logs -f frontend
 
 Please refer to the deployment guide here: https://github.com/tazama-lf/docs/blob/dev/Technical/Deployment-Guides/CMS-Deployment-Guide.md
 
+### Health Probes
+
+The backend exposes unauthenticated probe endpoints for load balancers, orchestrators and monitoring:
+
+| Endpoint            | Use       | Behaviour                                                                                           |
+| ------------------- | --------- | --------------------------------------------------------------------------------------------------- |
+| `GET /health/live`  | Liveness  | `200` while the process can respond. Checks no dependencies, so an outage never triggers a restart. |
+| `GET /health/ready` | Readiness | `200` when Postgres, CouchDB, OpenSearch and Redis are reachable, otherwise `503`.                  |
+
+Each dependency check times out after 3 seconds and results are cached for 2 seconds. Responses report only `up`/`down` per dependency; failure details are written to the backend log. An OpenSearch cluster with status `red` counts as down.
+
+The runtime image is distroless (no shell or `curl`), so use an orchestrator-level probe rather than a Dockerfile `HEALTHCHECK`, for example in Kubernetes:
+
+```yaml
+livenessProbe:
+  httpGet: { path: /health/live, port: 3090 }
+readinessProbe:
+  httpGet: { path: /health/ready, port: 3090 }
+```
+
 ---
 
 ## API Documentation
