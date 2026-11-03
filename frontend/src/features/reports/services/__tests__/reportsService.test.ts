@@ -417,7 +417,6 @@ describe('ReportsService', () => {
         hash: 'abc123',
         uploadedBy: 'user-1',
         uploadedAt: new Date(),
-        filePath: '/reports/report.pdf',
       };
 
       vi.mocked(apiClient.upload).mockResolvedValue(mockResponse);
@@ -450,7 +449,6 @@ describe('ReportsService', () => {
         hash: 'def456',
         uploadedBy: 'user-1',
         uploadedAt: new Date(),
-        filePath: '/reports/report.pdf',
       };
 
       vi.mocked(apiClient.upload).mockResolvedValue(mockResponse);

@@ -43,6 +43,9 @@ export class CouchdbService implements OnModuleInit {
   private readonly nanoInstance: nano.ServerScope;
   private db: nano.DocumentScope<any>;
   private readonly dbName: string;
+  // COUCHDB_URL without credentials. nano's own config.url carries the admin username and password, so it must never be
+  // used to build a string that is returned, stored or logged.
+  private readonly publicBaseUrl: string;
 
   constructor(private readonly configService: ConfigService) {
     const url = this.configService.getOrThrow<string>('COUCHDB_URL');
@@ -56,6 +59,14 @@ export class CouchdbService implements OnModuleInit {
     } catch (error) {
       throw new Error('COUCHDB_URL is not a valid URL', { cause: error });
     }
+    const publicUrl = new URL(parsedUrl);
+    publicUrl.username = '';
+    publicUrl.password = '';
+    // Path segments are appended to this, so a query string or fragment would end up in the middle of the URL
+    publicUrl.search = '';
+    publicUrl.hash = '';
+    this.publicBaseUrl = publicUrl.toString().replace(/\/+$/v, '');
+
     parsedUrl.username = encodeURIComponent(username);
     parsedUrl.password = encodeURIComponent(password);
 
@@ -161,7 +172,7 @@ export class CouchdbService implements OnModuleInit {
   ): Promise<{ ok: boolean; id: string; rev: string; filePath: string }> {
     const result = await this.db.attachment.insert(docId, name, new Uint8Array(data), mime, { rev });
 
-    const attachmentUrl = `${this.db.config.url}/${this.db.config.db}/${docId}/${encodeURIComponent(name)}`;
+    const attachmentUrl = `${this.publicBaseUrl}/${this.dbName}/${docId}/${encodeURIComponent(name)}`;
 
     return {
       ok: result.ok,

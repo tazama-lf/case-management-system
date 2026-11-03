@@ -51,7 +51,8 @@ describe('CouchdbService', () => {
         get: jest.fn(),
       },
       config: {
-        url: 'http://10.10.80.16:5984',
+        // nano keeps the credentialed URL here; nothing built from it may reach a caller
+        url: 'http://simon:1234@10.10.80.16:5984',
         db: 'cms-evidence',
       },
     };
@@ -255,6 +256,50 @@ describe('CouchdbService', () => {
         rev: '2-xyz',
         filePath: 'http://10.10.80.16:5984/cms-evidence/doc-123/file.pdf',
       });
+    });
+
+    it('should never put credentials in the returned filePath', async () => {
+      mockDb.attachment.insert.mockResolvedValue({ ok: true, id: 'doc-123', rev: '2-xyz' });
+
+      const { filePath } = await service.insertAttachment('doc-123', '1-abc', 'file.pdf', Buffer.from(''), 'application/pdf');
+
+      expect(filePath).toMatch(/^https?:\/\/[^@]+$/);
+      expect(filePath).not.toContain('simon');
+      expect(filePath).not.toContain('1234');
+    });
+
+    it('should strip credentials and trailing slashes that are already in COUCHDB_URL', async () => {
+      const withUserInfo = await Test.createTestingModule({
+        providers: [
+          CouchdbService,
+          { provide: ConfigService, useValue: createMockConfig({ COUCHDB_URL: 'http://admin:s%40crt@couchdb:5984/' }) },
+        ],
+      }).compile();
+      const svc = withUserInfo.get(CouchdbService);
+      mockNanoInstance.db.list.mockResolvedValue(['cms-evidence']);
+      await svc.onModuleInit();
+      mockDb.attachment.insert.mockResolvedValue({ ok: true, id: 'doc-123', rev: '2-xyz' });
+
+      const { filePath } = await svc.insertAttachment('doc-123', '1-abc', 'file.pdf', Buffer.from(''), 'application/pdf');
+
+      expect(filePath).toBe('http://couchdb:5984/cms-evidence/doc-123/file.pdf');
+    });
+
+    it('should drop a query string and fragment from COUCHDB_URL, keeping its path prefix', async () => {
+      const withExtras = await Test.createTestingModule({
+        providers: [
+          CouchdbService,
+          { provide: ConfigService, useValue: createMockConfig({ COUCHDB_URL: 'http://admin:pw@couchdb:5984/prefix/?token=abc#frag' }) },
+        ],
+      }).compile();
+      const svc = withExtras.get(CouchdbService);
+      mockNanoInstance.db.list.mockResolvedValue(['cms-evidence']);
+      await svc.onModuleInit();
+      mockDb.attachment.insert.mockResolvedValue({ ok: true, id: 'doc-123', rev: '2-xyz' });
+
+      const { filePath } = await svc.insertAttachment('doc-123', '1-abc', 'file.pdf', Buffer.from(''), 'application/pdf');
+
+      expect(filePath).toBe('http://couchdb:5984/prefix/cms-evidence/doc-123/file.pdf');
     });
 
     it('should encode special characters in attachment name', async () => {

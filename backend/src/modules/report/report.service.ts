@@ -13,6 +13,7 @@ import getDateRange from './helpers/getDateRange';
 import { SlaPolicyUtil, DEFAULT_TENANT_KEY } from '../shared/utils/sla-policy.util';
 import { computeCaseSlaState } from '../alert-priority/sla-state.util';
 import { CaseInvestigatorService } from '../case-investigator/case-investigator.service';
+import { stripInternalAttachmentFields } from 'src/utils/attachment-response.util';
 
 /** One independent count per `CaseStatus` — see `ReportsService.STATUS_DISTRIBUTION_MAP`. */
 export interface ReportStatusDistribution {
@@ -1604,7 +1605,7 @@ export class ReportsService {
       metadata: { reportId, caseId: report.caseId, outcome: dto.outcome },
     });
 
-    return report;
+    return stripInternalAttachmentFields(report);
   }
 
   async editFraudReport(reportId: string, updates: Partial<FraudReport>, userId?: string): Promise<FraudReport> {
@@ -1627,7 +1628,7 @@ export class ReportsService {
         },
       };
       await this.couchdbService.insertDocument(newReport.reportId, newReport);
-      return newReport;
+      return stripInternalAttachmentFields(newReport);
     } else {
       // Update unlocked report
       const updated: FraudReport = {
@@ -1640,7 +1641,7 @@ export class ReportsService {
         },
       };
       await this.couchdbService.updateDocument(reportId, updated);
-      return updated;
+      return stripInternalAttachmentFields(updated);
     }
   }
 
@@ -1666,7 +1667,7 @@ export class ReportsService {
       message: `Fraud report ${reportId} for case ${report.caseId} has been approved. Outcome: ${outcome}`,
       metadata: { reportId, caseId: report.caseId, outcome },
     });
-    return report;
+    return stripInternalAttachmentFields(report);
   }
 
   async getFraudReports(caseId: string, tenantId: string, userId: string, role: string): Promise<FraudReport[]> {
@@ -1677,6 +1678,6 @@ export class ReportsService {
     const result = await db.find({ selector: { caseId, category: 'report', tenantId } });
     // Sort reports by version descending (latest first)
     const reports = (result.docs as FraudReport[]).sort((a, b) => (b.version || 0) - (a.version || 0));
-    return reports;
+    return stripInternalAttachmentFields(reports);
   }
 }
