@@ -464,7 +464,8 @@ export class EvidenceService {
     this.logger.log(`Deleting evidence ${evidenceId}`);
 
     const doc = await this.couchdb.getDocument(evidenceId);
-    this.logger.log(`Fetched document for evidence ${evidenceId}: ${JSON.stringify(doc)}`);
+    // Log identifiers only: the document holds the file's decryption key.
+    this.logger.log(`Fetched document for evidence ${evidenceId} (case ${doc?.caseId}, status ${doc?.status ?? 'committed'})`);
 
     if (!doc || doc.status === EVIDENCE_STATUS.PENDING) {
       this.logger.error(`Evidence ${evidenceId} not found`);
@@ -492,7 +493,7 @@ export class EvidenceService {
       this.logger.error(`Failed to delete evidence: ${errorMessage}`, errorStack);
       throw error;
     }
-    return doc;
+    return stripInternalAttachmentFields(doc);
   }
 
   async getEvidenceById(evidenceId: string, userId: string, tenantId: string, userRole: string): Promise<EvidenceResponseDto> {

@@ -95,7 +95,8 @@ async function main() {
   console.log(`${apply ? 'APPLIED' : 'DRY RUN'}: scanned ${scanned} documents, ${affected} contain credentials.`);
   if (apply) {
     console.log(`Updated ${written}; ${conflicts} not updated${conflicts > 0 ? ' - run again' : ''}.`);
-    if (written > 0 && compact) {
+    // Compact even when nothing was written: an earlier run without --compact leaves old revisions behind.
+    if (compact) {
       await server.db.compact(dbName);
       console.log('Compaction started; old revisions are removed once it finishes.');
     } else if (written > 0) {

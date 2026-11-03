@@ -580,6 +580,16 @@ describe('EvidenceService', () => {
       expect(evidenceRepository.deleteEvidenceById).toHaveBeenCalledWith('ev_1_123456', tenantId);
     });
 
+    it('should not return the storage path or decryption key of the deleted evidence', async () => {
+      couchdbService.getDocument.mockResolvedValue(mockEvidenceDoc);
+      couchdbService.deleteEvidence.mockResolvedValue({ ok: true });
+
+      const result = await service.deleteEvidence('ev_1_123456', 'test.pdf', userId, tenantId, mockUser, deleteEndpointKey);
+
+      expect(JSON.stringify(result)).not.toMatch(/filePath|encryption/);
+      expect(result).toMatchObject({ evidenceId: 'ev_1_123456', metadata: [{ fileName: 'test.pdf' }] });
+    });
+
     it.each([
       ['', 'test.pdf'],
       ['ev_1_123456', ''],

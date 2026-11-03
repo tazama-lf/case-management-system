@@ -62,6 +62,9 @@ export class CouchdbService implements OnModuleInit {
     const publicUrl = new URL(parsedUrl);
     publicUrl.username = '';
     publicUrl.password = '';
+    // Path segments are appended to this, so a query string or fragment would end up in the middle of the URL
+    publicUrl.search = '';
+    publicUrl.hash = '';
     this.publicBaseUrl = publicUrl.toString().replace(/\/+$/v, '');
 
     parsedUrl.username = encodeURIComponent(username);

@@ -102,13 +102,10 @@ describe('evidence.types', () => {
     it('can be instantiated', () => {
       const response: UploadEvidenceResponse = {
         id: 'EVIDENCE-1',
-        taskId: 'TASK-1',
+        taskId: 1,
+        caseId: 100,
         fileName: 'test.pdf',
         evidenceType: 'SANCTIONS',
-        fileSize: 1024,
-        mimeType: 'application/pdf',
-        hash: 'abc123',
-        uploadedBy: 'user-1',
         uploadedAt: new Date(),
       };
 
