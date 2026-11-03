@@ -32,26 +32,35 @@ export class EvidenceResponseDto {
   @ApiProperty()
   uploadedAt: Date;
 
-  @ApiProperty()
-  archive: boolean;
-
   @ApiProperty({ required: false })
   tags?: string;
 
   @ApiProperty({ required: false })
   description?: string;
 
-  @ApiProperty({ required: false })
-  comments?: string;
-
   @ApiProperty()
   couchdbRev?: string;
+}
 
-  @ApiPropertyOptional({
-    description: 'Upload response only: every evidence document the request created (one per uploaded file).',
-    type: [Object],
-  })
-  documents?: any[];
+/** Response of POST /evidence/upload: the stored evidence document, summarised. */
+export class UploadEvidenceResponseDto {
+  @ApiProperty({ description: 'Evidence id' })
+  id: string;
+
+  @ApiProperty()
+  taskId: number;
+
+  @ApiProperty()
+  caseId: number;
+
+  @ApiProperty()
+  fileName: string;
+
+  @ApiProperty({ enum: EvidenceType })
+  evidenceType: EvidenceType;
+
+  @ApiProperty()
+  uploadedAt: Date;
 }
 
 export class EvidenceListResponseDto {

@@ -22,30 +22,12 @@ describe('evidence.types', () => {
       const attachment: EvidenceAttachment = {
         fileName: 'test.pdf',
         fileSize: 1024,
-        filePath: '/path/to/file',
         mimeType: 'application/pdf',
         hash: 'abc123',
       };
 
       expect(attachment.fileName).toBe('test.pdf');
       expect(attachment.fileSize).toBe(1024);
-    });
-
-    it('can include optional encryption fields', () => {
-      const attachment: EvidenceAttachment = {
-        fileName: 'test.pdf',
-        fileSize: 1024,
-        filePath: '/path/to/file',
-        mimeType: 'application/pdf',
-        hash: 'abc123',
-        encryption: {
-          key: 'key123',
-          iv: 'iv123',
-          authTag: 'tag123',
-        },
-      };
-
-      expect(attachment.encryption).toBeDefined();
     });
   });
 
@@ -58,7 +40,6 @@ describe('evidence.types', () => {
         fileSize: 1024,
         mimeType: 'application/pdf',
         hash: 'abc123',
-        filePath: '/path/to/file',
         uploadedBy: 'user-1',
         uploadedAt: new Date(),
         evidenceType: 'SANCTIONS',
@@ -72,22 +53,17 @@ describe('evidence.types', () => {
       const evidence: Evidence = {
         id: 'EVIDENCE-1',
         taskId: 'TASK-1',
-        caseId: 'CASE-123',
         fileName: 'test.pdf',
         fileSize: 1024,
         mimeType: 'application/pdf',
         hash: 'abc123',
-        filePath: '/path/to/file',
         uploadedBy: 'user-1',
         uploadedAt: new Date(),
         evidenceType: 'SANCTIONS',
         description: 'Test evidence',
-        verified: true,
-        tags: 'tag1,tag2',
       };
 
-      expect(evidence.caseId).toBe('CASE-123');
-      expect(evidence.verified).toBe(true);
+      expect(evidence.evidenceType).toBe('SANCTIONS');
     });
   });
 
@@ -134,7 +110,6 @@ describe('evidence.types', () => {
         hash: 'abc123',
         uploadedBy: 'user-1',
         uploadedAt: new Date(),
-        filePath: '/path/to/file',
       };
 
       expect(response.id).toBe('EVIDENCE-1');

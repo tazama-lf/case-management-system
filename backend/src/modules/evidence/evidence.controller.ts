@@ -19,7 +19,14 @@ import { FilesInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiConsumes, ApiBody, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { Response } from 'express';
 import { EvidenceService } from './evidence.service';
-import { UploadEvidenceDto, EvidenceResponseDto, EvidenceListResponseDto, VerifyEvidenceDto, EvidenceType } from './dto';
+import {
+  UploadEvidenceDto,
+  EvidenceResponseDto,
+  UploadEvidenceResponseDto,
+  EvidenceListResponseDto,
+  VerifyEvidenceDto,
+  EvidenceType,
+} from './dto';
 import { RequireInvestigatorOrSupervisorRoleOrComplianceRole, TazamaClaims } from 'src/decorators/auth.decorator';
 import { TazamaAuthGuard } from 'src/guards/tazama-auth.guard';
 import { AuthenticatedRequest } from 'src/utils/types/auth.types';
@@ -69,7 +76,7 @@ export class EvidenceController {
   @ApiResponse({
     status: 201,
     description: 'Evidence uploaded successfully',
-    type: EvidenceResponseDto,
+    type: UploadEvidenceResponseDto,
   })
   @UseInterceptors(FilesInterceptor('files', 10))
   async uploadEvidence(
@@ -82,7 +89,7 @@ export class EvidenceController {
     files: any[],
     @Body() dto: UploadEvidenceDto,
     @Req() req: AuthenticatedRequest,
-  ): Promise<EvidenceResponseDto> {
+  ): Promise<UploadEvidenceResponseDto> {
     const { clientId, tenantId } = req.user.token;
     return await this.evidenceService.uploadEvidence(files, dto, clientId, tenantId, req.user, 'POST /api/v1/evidence/upload');
   }
