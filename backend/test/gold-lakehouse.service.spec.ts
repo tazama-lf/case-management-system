@@ -100,6 +100,23 @@ describe('GoldLakehouseService', () => {
       expect(http).toHaveBeenCalledWith('http://localhost:5000/execute_sql', expect.objectContaining({ limit: 100 }), expect.any(Object));
     });
 
+    it('substitutes every placeholder correctly when there are ten or more parameters', async () => {
+      // "$1" is a prefix of "$10", "$11", ... so replacing $1 first would corrupt them
+      const parameters = Array.from({ length: 12 }, (_, i) => `v${i + 1}`);
+      const placeholders = parameters.map((_, i) => `$${i + 1}`).join(', ');
+
+      await service.runSqlQuery(`SELECT ${placeholders}`, 1, parameters);
+
+      const sent = (http.mock.calls[0][1] as { sql_query: string }).sql_query;
+      expect(sent).toBe(`SELECT ${parameters.map((value) => `'${value}'`).join(', ')}`);
+    });
+
+    it('still escapes quotes, numbers and nulls, and replaces a placeholder wherever it repeats', async () => {
+      await service.runSqlQuery('SELECT $1, $2, $3, $1', 1, ["O'Brien", 42, null]);
+
+      expect((http.mock.calls[0][1] as { sql_query: string }).sql_query).toBe("SELECT 'O''Brien', 42, NULL, 'O''Brien'");
+    });
+
     it('throws when status is not success', async () => {
       http.mockReturnValue(badHttp());
       await expect(service.runSqlQuery('BAD', 1)).rejects.toThrow(HttpException);
