@@ -8,7 +8,7 @@ import {
   FormattedConditionRecord,
 } from './types/gold-lakehouse-responses.types';
 import { ConditionsListByAccountResponse } from './types/IAccountConditions.types';
-import { toAccountHolderSource } from './utils/entity-id.util';
+import { stripEntityIdSuffix, toAccountHolderSource } from './utils/entity-id.util';
 
 @Injectable()
 export class ConditionLakehouseService extends GoldLakehouseService {
@@ -239,14 +239,16 @@ export class ConditionLakehouseService extends GoldLakehouseService {
     SELECT pk, condition_id, condition_reason, condition_type, perspective, condition_inception_ts, condition_expiry_ts, condition_created_ts,
     is_active, is_expired, account_id, entity_id, tenant_id, account_scheme, event_types_csv, created_by_user
     FROM conditions
-    WHERE entity_id = $1
+    WHERE entity_id IN ($1, $2)
       AND target_type = 'ENTITY'
-      AND tenant_id = $2
+      AND tenant_id = $3
     ORDER BY condition_inception_ts DESC
     LIMIT 500
     `;
 
-    const response = await this.runSqlQuery(sql, 500, [entityId, tenantId], userJwt);
+    // Entity-level conditions are stored under the bare entity id, but the id passed in is the suffixed one from
+    // transaction_detail. Match either form.
+    const response = await this.runSqlQuery(sql, 500, [stripEntityIdSuffix(entityId), toAccountHolderSource(entityId), tenantId], userJwt);
     const rows = response.data ?? [];
 
     return rows.map((row) => this.formatConditionRow(row, tenantId, asOfDate));
@@ -408,7 +410,7 @@ export class ConditionLakehouseService extends GoldLakehouseService {
         };
       }
 
-      const params: any[] = [tenantId, entityId];
+      const params: any[] = [tenantId, stripEntityIdSuffix(entityId), toAccountHolderSource(entityId)];
       let dateFilter = '';
       if (asOfDate && !showInactive) {
         dateFilter = `
@@ -437,7 +439,7 @@ export class ConditionLakehouseService extends GoldLakehouseService {
         created_by_user
       FROM conditions
       WHERE ((account_id IN (${accountPlaceholders}) AND target_type = 'ACCOUNT')
-             OR (entity_id = $2 AND target_type = 'ENTITY'))
+             OR (entity_id IN ($2, $3) AND target_type = 'ENTITY'))
         AND tenant_id = $1
         ${dateFilter}
       ORDER BY condition_inception_ts DESC
