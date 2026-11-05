@@ -12,6 +12,7 @@ import { AlertRepository } from '../repository/alert.repository';
 import { extractReferenceId } from '../repository/utils/extractReferenceId';
 import { JsonValue } from '../repository/utils/types/JsonValue';
 import { EntityMetadataResponse } from './interfaces/entity-metadata.interfaces';
+import { toAccountHolderSource } from './utils/entity-id.util';
 
 interface AccountStatsAccumulator {
   txCount: number;
@@ -228,7 +229,7 @@ export class AccountLakehouseService extends GoldLakehouseService {
     userJwt?: string,
   ): Promise<AccountNodeFullDataResponse> {
     try {
-      const enhancedEntityId = `${entityId}TAZAMA_EID`;
+      const enhancedEntityId = toAccountHolderSource(entityId);
 
       //Query account_holder table to fetch associated accounts
       const accountHolderSql = `
