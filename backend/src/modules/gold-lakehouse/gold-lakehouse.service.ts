@@ -95,9 +95,10 @@ export class GoldLakehouseService {
 
       // If parameters are provided, substitute them safely
       if (parameters && parameters.length > 0) {
-        parameters.forEach((param, index) => {
+        // Highest index first: "$1" is a prefix of "$10", "$11", ..., so replacing it first would corrupt them
+        [...parameters.keys()].reverse().forEach((index) => {
           const placeholder = `$${index + 1}`;
-          const escapedValue = this.escapeSqlValue(param);
+          const escapedValue = this.escapeSqlValue(parameters[index]);
           // Use replaceAll to handle multiple occurrences of the same parameter
           finalSql = finalSql.replaceAll(placeholder, escapedValue);
         });
