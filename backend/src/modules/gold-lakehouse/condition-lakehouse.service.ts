@@ -8,6 +8,7 @@ import {
   FormattedConditionRecord,
 } from './types/gold-lakehouse-responses.types';
 import { ConditionsListByAccountResponse } from './types/IAccountConditions.types';
+import { toAccountHolderSource } from './utils/entity-id.util';
 
 @Injectable()
 export class ConditionLakehouseService extends GoldLakehouseService {
@@ -278,7 +279,7 @@ export class ConditionLakehouseService extends GoldLakehouseService {
         WHERE source = $1
           AND tenant_id = $2
         `;
-        const enhancedEntityId = `${entityId}TAZAMA_EID`;
+        const enhancedEntityId = toAccountHolderSource(entityId);
         const accountsResponse = await this.runSqlQuery(accountsSql, 100, [enhancedEntityId, tenantId], userJwt);
 
         accountsResponse.data?.forEach((r) => {
