@@ -231,6 +231,38 @@ describe('ConditionLakehouseService', () => {
       expect(result.debtor.accounts.length).toBeGreaterThanOrEqual(1);
     });
 
+    it('looks entities up in account_holder by the id as stored when it already ends in TAZAMA_EID', async () => {
+      // transaction_detail ids carry the suffix themselves; adding it again would match no account_holder row
+      const accountHolderSources: string[] = [];
+      http.mockImplementation((_url: string, body: { sql_query: string }) => {
+        const sql = body.sql_query ?? '';
+        if (sql.includes('FROM transaction_detail')) {
+          return okHttp([
+            {
+              transaction_id: 1,
+              tx_event_ts: '2024-01-01T00:00:00.000Z',
+              end_to_end_id: 'e2e1',
+              tx_type: 'pacs.008.001.10',
+              debtor_id: 'entity1TAZAMA_EID',
+              debtor_account_id: 'acc1',
+              creditor_id: 'entity2TAZAMA_EID',
+              creditor_account_id: 'acc2',
+            },
+          ]);
+        }
+        if (sql.includes('FROM account_holder')) {
+          accountHolderSources.push(...(sql.match(/source = '([^']+)'/) ?? []).slice(1));
+          return okHttp([{ account_id: 'accFromHolder' }]);
+        }
+        return okHttp([{ total: 0, active: 0, expired: 0, future: 0 }]);
+      });
+
+      await service.getConditionsContextByTransaction('e2e1', 'DEFAULT');
+
+      expect(accountHolderSources).toEqual(expect.arrayContaining(['entity1TAZAMA_EID', 'entity2TAZAMA_EID']));
+      expect(accountHolderSources.some((source) => source.includes('TAZAMA_EIDTAZAMA_EID'))).toBe(false);
+    });
+
     it('seeds the primary account when account_holder does not cover it yet, without duplicating an account it already covers', async () => {
       // Content-routed mock (rather than mockReturnValueOnce sequencing) since
       // this test cares about the *set* of accounts produced, not the exact

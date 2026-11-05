@@ -90,6 +90,30 @@ describe('AccountLakehouseService', () => {
       expect(result.accountDetails.accountId).toBe('entity1');
     });
 
+    describe('entity id suffix', () => {
+      const accountHolderSql = (): string => (http.mock.calls[0][1] as { sql_query: string }).sql_query;
+
+      it('looks up an id that already ends in TAZAMA_EID as it is, without adding the suffix a second time', async () => {
+        setupAccountNode();
+
+        const result = await service.getAccountNodeFullData('entity1TAZAMA_EID', 'DEFAULT', 'month');
+
+        expect(accountHolderSql()).toContain("'entity1TAZAMA_EID'");
+        expect(accountHolderSql()).not.toContain('TAZAMA_EIDTAZAMA_EID');
+        // the accounts are found, so this is the real graph and not the placeholder with an "Unknown" holder
+        expect(result.accountDetails.accountHolder).not.toBe('Unknown');
+        expect(result.network.nodes.length).toBeGreaterThan(1);
+      });
+
+      it('still adds the suffix to a bare id', async () => {
+        setupAccountNode();
+
+        await service.getAccountNodeFullData('entity1', 'DEFAULT', 'month');
+
+        expect(accountHolderSql()).toContain("'entity1TAZAMA_EID'");
+      });
+    });
+
     it('uses HIGH velocity when txCount >= 50', async () => {
       // Mock account_holder query
       http.mockReturnValueOnce(
