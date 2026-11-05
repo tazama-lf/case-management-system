@@ -478,6 +478,10 @@ describe('ConditionLakehouseService', () => {
 
       const result = await service.getConditionsByEntity('entity1TAZAMA_EID', 'DEFAULT');
 
+      // the account_holder lookup binds source to the id exactly as passed in
+      const accountHolderSql = http.mock.calls[0][1].sql_query as string;
+      expect(accountHolderSql).toContain("source = 'entity1TAZAMA_EID'");
+
       const conditionsSql = http.mock.calls[1][1].sql_query as string;
       expect(conditionsSql).toMatch(/entity_id IN \('entity1', 'entity1TAZAMA_EID'\)/);
       expect(result.conditions).toHaveLength(1);
