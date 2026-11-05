@@ -9,3 +9,11 @@ export const ENTITY_ID_SUFFIX = 'TAZAMA_EID';
 export function toAccountHolderSource(entityId: string): string {
   return entityId.endsWith(ENTITY_ID_SUFFIX) ? entityId : `${entityId}${ENTITY_ID_SUFFIX}`;
 }
+
+/**
+ * The entity id without the scheme suffix. `conditions.entity_id` holds entity-level conditions under this bare form,
+ * while the ids in `transaction_detail` carry the suffix, so comparing the two directly never matched.
+ */
+export function stripEntityIdSuffix(entityId: string): string {
+  return entityId.endsWith(ENTITY_ID_SUFFIX) ? entityId.slice(0, -ENTITY_ID_SUFFIX.length) : entityId;
+}
