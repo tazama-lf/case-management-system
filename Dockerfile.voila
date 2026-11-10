@@ -14,6 +14,10 @@ COPY notebooks /app/notebooks
 # install python dependencies
 RUN pip install --no-cache-dir -r /app/notebooks/requirements.txt
 
+# shared plotly.js for the notebooks (see notebooks/_cms_plotly.py): served from /voila/files/ so browsers cache it
+# instead of every render embedding its own ~4.7 MB copy
+RUN cp "$(python -c 'import os, plotly; print(os.path.join(os.path.dirname(plotly.__file__), "package_data", "plotly.min.js"))')" /app/notebooks/plotly.min.js
+
 # expose voila port
 EXPOSE 8866
 
