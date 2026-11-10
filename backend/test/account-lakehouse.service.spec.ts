@@ -578,6 +578,20 @@ describe('AccountLakehouseService', () => {
       await expect(service.getEntityMetadataByAlertId(1, 'DEFAULT')).rejects.toThrow('DB error');
     });
 
+    it('looks the transaction up by pacs.008 first and falls back to the pacs.002 row when the payment message is missing', async () => {
+      alertRepo.getAlertById.mockResolvedValue(mockAlert);
+      alertRepo.getReferenceId.mockResolvedValue({ referenceIdName: 'EndToEndId' });
+      http.mockReturnValueOnce(okHttp([mockEntityRow]));
+
+      await service.getEntityMetadataByAlertId(1, 'DEFAULT');
+
+      const sent = (http.mock.calls[0][1] as { sql_query: string }).sql_query;
+      expect(sent).toContain("td.tx_type IN ('pacs.008.001.10', 'pacs.002.001.12')");
+      expect(sent).toContain(
+        "ORDER BY CASE WHEN td.debtor_id IS NULL OR td.creditor_id IS NULL THEN 1 ELSE 0 END, CASE WHEN td.tx_type = 'pacs.008.001.10' THEN 0 ELSE 1 END",
+      );
+    });
+
     it('calls getReferenceId with the correct txtp from the alert', async () => {
       alertRepo.getAlertById.mockResolvedValue(mockAlert);
       alertRepo.getReferenceId.mockResolvedValue({ referenceIdName: 'EndToEndId' });
