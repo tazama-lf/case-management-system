@@ -72,6 +72,22 @@ The notebooks are parameterized to accept data from the frontend. When running v
 
 ## Maintenance
 
+### Plotly charts and `plotly.min.js`
+
+Charts must not embed plotly.js: Plotly's default output adds the whole bundle (about 4.7 MB) to every render. Notebooks
+load it once per page from `/voila/files/plotly.min.js?v=<plotly version>`, which the browser caches, through
+`_cms_plotly.py`:
+
+```python
+from _cms_plotly import plotly_graph_html, display_plotly, CMS_WHEN_PLOTLY_OPEN, CMS_WHEN_PLOTLY_CLOSE
+```
+
+- Use `plotly_graph_html(fig, div_id, config)` instead of `pio.to_html(fig)`, and `display_plotly(fig)` instead of `fig.show()`.
+- A hand-written script that calls `Plotly.*` must be wrapped in `CMS_WHEN_PLOTLY_OPEN` / `CMS_WHEN_PLOTLY_CLOSE`, because it
+  can run before the library has loaded.
+- `Dockerfile.voila` copies `plotly.min.js` into the notebooks folder, and `voila.json` lists it in `file_allowlist` (the
+  only non-image file served by `/voila/files/`). When Voila is started by hand, `_cms_plotly.py` copies the file itself.
+
 ### Updating Dependencies
 
 If you add new libraries to a notebook (e.g., `seaborn`, `scikit-learn`), make sure to:

@@ -6,6 +6,10 @@
   "VoilaConfiguration": {
     "http_header_envs": [
       "X-Service-Token"
+    ],
+    "file_allowlist": [
+      ".*\\.(png|jpg|gif|svg)",
+      "plotly\\.min\\.js"
     ]
   },
   "KernelManager": {
