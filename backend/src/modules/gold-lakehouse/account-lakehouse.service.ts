@@ -47,9 +47,9 @@ export class AccountLakehouseService extends GoldLakehouseService {
         throw new Error('ReferenceId not found in transaction data');
       }
 
+      // The pacs.002 status report carries the same parties and accounts, so it is used when the pacs.008 payment message was never ingested or has no entity ids
       const entitySQL = `
         SELECT 
-        DISTINCT 
         td.debtor_Id, 
         td.debtor_account_id, 
         td.debtor_name, 
@@ -57,7 +57,8 @@ export class AccountLakehouseService extends GoldLakehouseService {
         td.creditor_account_id, 
         td.creditor_name 
         FROM transaction_detail td 
-        WHERE td.end_to_end_id = $1 AND td.tenant_id = $2 AND td.tx_type = 'pacs.008.001.10'
+        WHERE td.end_to_end_id = $1 AND td.tenant_id = $2 AND td.tx_type IN ('pacs.008.001.10', 'pacs.002.001.12')
+        ORDER BY CASE WHEN td.debtor_id IS NULL OR td.creditor_id IS NULL THEN 1 ELSE 0 END, CASE WHEN td.tx_type = 'pacs.008.001.10' THEN 0 ELSE 1 END
         `;
       const entityMetadataResp = await this.runSqlQuery(entitySQL, 1, [referenceId, tenantId], userJwt);
       const entityMetadataRow = entityMetadataResp.data?.[0];
