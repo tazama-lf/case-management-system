@@ -2,7 +2,7 @@
 # Frontend Development Dockerfile
 # =============================================================================
 
-FROM node:22-alpine
+FROM node:24-alpine
 
 # Install dumb-init for proper signal handling
 RUN apk add --no-cache dumb-init
