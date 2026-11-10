@@ -10,5 +10,9 @@
   },
   "KernelManager": {
     "kernel_info_timeout": 60
+  },
+  "MappingKernelManager": {
+    "cull_idle_timeout": 600,
+    "cull_interval": 60
   }
 }
