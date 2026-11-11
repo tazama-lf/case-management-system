@@ -15,7 +15,7 @@ interface VoilaFrameProps {
    * the literal string "undefined".
    */
   requiredParams?: string[];
-  /** How long to wait for the notebook's ready signal before treating the load as hung. Defaults to 30s. */
+  /** How long to wait for the notebook's ready signal before treating the load as hung. Defaults to 60s. */
   readyTimeoutMs?: number;
 }
 
@@ -45,7 +45,7 @@ function isVoilaNotebookMessage(data: unknown): data is VoilaNotebookMessage {
 const isMissingValue = (value: string | undefined | null): boolean =>
   value === undefined || value === null || value === 'undefined' || value === 'null';
 
-const DEFAULT_READY_TIMEOUT_MS = 30000;
+const DEFAULT_READY_TIMEOUT_MS = 60000;
 const INITIAL_RETRY_COUNT = 0;
 const NO_MISSING_PARAMS = 0;
 const RETRY_STEP = 1;

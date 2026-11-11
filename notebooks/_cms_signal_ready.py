@@ -29,7 +29,8 @@ def signal_ready(render_ok):
     status = 'ready' if render_ok else 'error'
     payload = _cms_json.dumps({'source': 'voila-notebook', 'status': status})
     # Charts are drawn once plotly.js has loaded (see _cms_plotly.py), which can be after this cell runs. Hold the
-    # message back until every deferred chart script has run, and report an error if one never does.
+    # message back until every deferred chart script has run, and report an error if one never does. The wait stays below
+    # the parent frame's own ready timeout (60 s in VoilaFrame.tsx) so a stuck chart is reported as an error from here first.
     display(
         Javascript(
             f"""
@@ -38,7 +39,7 @@ def signal_ready(render_ok):
               var waitedMs = 0;
               (function send() {{
                 var pending = window.__cmsPlotlyPending || 0;
-                if (pending > 0 && waitedMs < 20000) {{
+                if (pending > 0 && waitedMs < 50000) {{
                   waitedMs += 100;
                   setTimeout(send, 100);
                   return;
