@@ -16,7 +16,8 @@ Then:
     display_plotly(fig)                      -> shows a figure (replaces fig.show())
     CMS_WHEN_PLOTLY_OPEN / CMS_WHEN_PLOTLY_CLOSE -> wrap a hand-written script that calls Plotly.* so it also waits
 
-The notebook's final cell (_cms_signal_ready.py) holds back its 'ready' message until every deferred script has run.
+The notebook's final cell (_cms_signal_ready.py) holds back its 'ready' message until every deferred script has run and every
+chart has been drawn, and reports 'error' if a chart failed to draw or plotly.js could not be loaded.
 """
 
 import json as _cms_json
@@ -45,9 +46,31 @@ _CMS_PLOTLY_LOADER = """
   var queue = [];
   var loading = false;
   window.__cmsPlotlyPending = 0;
+  window.__cmsPlotlyFailed = 0;
+  window.__cmsPlotlyLoadFailed = false;
+  function fail(reason) {
+    console.error('[plotly] chart failed', reason);
+    window.__cmsPlotlyFailed += 1;
+  }
+  // Terminal state: plotly.js will never arrive, so the queued charts will never draw. The ready signal checks this flag
+  // and reports the failure at once instead of waiting out its timeout.
+  function loadFailed(reason) {
+    console.error('[plotly] could not load ' + url, reason);
+    window.__cmsPlotlyLoadFailed = true;
+    queue.length = 0;
+  }
   function run(fn) {
-    try { fn(); } catch (e) { console.error('[plotly] chart script failed', e); }
-    window.__cmsPlotlyPending -= 1;
+    // Plotly.newPlot is asynchronous: collect the promise of every call the chart script makes, so the chart only counts
+    // as drawn once Plotly says so and a rejection is recorded for the ready signal instead of being lost
+    var drawn = [];
+    var newPlot = window.Plotly.newPlot;
+    window.Plotly.newPlot = function () {
+      var promise = newPlot.apply(this, arguments);
+      drawn.push(promise);
+      return promise;
+    };
+    try { fn(); } catch (e) { fail(e); } finally { window.Plotly.newPlot = newPlot; }
+    Promise.all(drawn).then(null, fail).then(function () { window.__cmsPlotlyPending -= 1; });
   }
   window.__cmsWhenPlotly = function (fn) {
     window.__cmsPlotlyPending += 1;
@@ -57,8 +80,12 @@ _CMS_PLOTLY_LOADER = """
     loading = true;
     var script = document.createElement('script');
     script.src = url;
-    script.onload = function () { queue.splice(0).forEach(run); };
-    script.onerror = function () { console.error('[plotly] could not load ' + url); };
+    script.onload = function () {
+      // A 200 response that is not plotly.js (for example an error page) fires onload without defining Plotly
+      if (!window.Plotly) { loadFailed('the file loaded but did not define Plotly'); return; }
+      queue.splice(0).forEach(run);
+    };
+    script.onerror = function () { loadFailed('the request failed'); };
     document.head.appendChild(script);
   };
 })();
