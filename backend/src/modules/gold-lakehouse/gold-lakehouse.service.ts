@@ -95,12 +95,12 @@ export class GoldLakehouseService {
 
       // If parameters are provided, substitute them safely
       if (parameters && parameters.length > 0) {
-        // Highest index first: "$1" is a prefix of "$10", "$11", ..., so replacing it first would corrupt them
-        [...parameters.keys()].reverse().forEach((index) => {
-          const placeholder = `$${index + 1}`;
-          const escapedValue = this.escapeSqlValue(parameters[index]);
-          // Use replaceAll to handle multiple occurrences of the same parameter
-          finalSql = finalSql.replaceAll(placeholder, escapedValue);
+        const values = parameters;
+        // One pass over the original SQL, replacing each complete "$<n>" with parameter n. Replacing one placeholder at a time would
+        // match "$1" inside "$10" and rescan values already inserted, and a replacement string would treat "$&" or "$$" in a value as a pattern
+        finalSql = sql.replace(/\$(?<position>[1-9]\d*)/gv, (placeholder: string, position: string) => {
+          const index = Number(position) - 1;
+          return index < values.length ? this.escapeSqlValue(values[index]) : placeholder;
         });
       }
 
