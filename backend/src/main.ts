@@ -7,6 +7,7 @@ import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
+import { responseCompression } from './config/compression.config';
 import { securityHeaders } from './config/security-headers.config';
 import * as httpProxy from 'http-proxy';
 import * as jwt from 'jsonwebtoken';
@@ -25,6 +26,10 @@ async function bootstrap(): Promise<void> {
   app.useLogger(logger);
 
   app.use(cookieParser());
+
+  // A Voila render is one ~5 MB HTML page (the notebook output embeds plotly.js) plus its JS chunks, and Voila sends them uncompressed.
+  // Only these routes are compressed; /api/kernels carries the kernel websocket and must stay untouched.
+  app.use(['/voila-proxy', '/voila'], responseCompression());
 
   const allowedOrigins = parseAllowedOrigins(configService.getOrThrow<string>('CORS_ALLOWED_ORIGINS'));
   const isProduction = configService.getOrThrow<string>('NODE_ENV') === 'prod';

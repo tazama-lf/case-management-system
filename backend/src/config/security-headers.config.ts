@@ -17,4 +17,6 @@ export const securityHeaders = (frameAncestorOrigins: string[], isProduction: bo
         upgradeInsecureRequests: isProduction ? [] : null,
       },
     },
+    // Browsers ignore this header on a plain-HTTP, non-localhost origin and log a console warning for it, so it is only sent in production
+    crossOriginOpenerPolicy: isProduction ? { policy: 'same-origin' } : false,
   });
