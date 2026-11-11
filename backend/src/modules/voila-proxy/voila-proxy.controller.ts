@@ -71,7 +71,7 @@ export class VoilaProxyController {
       //
       // Trade-off: this only confirms "you're authenticated", not "Voila is
       // actually up" - a genuinely unreachable Voila server is no longer
-      // caught by this pre-flight and instead surfaces ~30s later via
+      // caught by this pre-flight and instead surfaces ~60s later via
       // VoilaFrame's ready-signal timeout instead of an immediate 502.
       if (req.method === 'HEAD' && req.url.includes('/voila/render/')) {
         this.logger.log('[VoilaProxy] HEAD pre-flight - authenticated, short-circuiting without proxying to Voila');

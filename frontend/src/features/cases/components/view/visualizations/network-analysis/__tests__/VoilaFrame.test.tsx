@@ -274,7 +274,7 @@ describe('VoilaFrame', () => {
     expect(screen.getByText('Loading visualization…')).toBeInTheDocument();
   });
 
-  it('shows the error state if the notebook never signals ready within the default 30s timeout', () => {
+  it('shows the error state if the notebook never signals ready within the default 60s timeout', () => {
     vi.useFakeTimers();
     vi.stubEnv('VITE_API_BASE_URL', 'http://localhost:3090');
 
@@ -286,7 +286,7 @@ describe('VoilaFrame', () => {
     );
 
     act(() => {
-      vi.advanceTimersByTime(30000);
+      vi.advanceTimersByTime(60000);
     });
 
     expect(screen.getByText('Visualization Unavailable')).toBeInTheDocument();
@@ -294,7 +294,7 @@ describe('VoilaFrame', () => {
     vi.useRealTimers();
   });
 
-  it('honors a custom readyTimeoutMs instead of the 30s default', () => {
+  it('honors a custom readyTimeoutMs instead of the 60s default', () => {
     vi.useFakeTimers();
     vi.stubEnv('VITE_API_BASE_URL', 'http://localhost:3090');
 
