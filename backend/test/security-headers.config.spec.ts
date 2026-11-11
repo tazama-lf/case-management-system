@@ -65,4 +65,16 @@ describe('securityHeaders', () => {
 
     expect(await getCsp(app)).toMatch(/upgrade-insecure-requests/u);
   });
+
+  it('sends Cross-Origin-Opener-Policy only in production', async () => {
+    app = await createApp(true);
+    const production = await request(app.getHttpServer()).get('/ping').expect(200);
+    await app.close();
+
+    app = await createApp(false);
+    const development = await request(app.getHttpServer()).get('/ping').expect(200);
+
+    expect(production.headers['cross-origin-opener-policy']).toBe('same-origin');
+    expect(development.headers['cross-origin-opener-policy']).toBeUndefined();
+  });
 });
