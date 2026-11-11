@@ -21,6 +21,7 @@ The notebook's final cell (_cms_signal_ready.py) holds back its 'ready' message 
 
 import json as _cms_json
 import os as _cms_os
+import re as _cms_re
 import shutil as _cms_shutil
 
 import plotly as _cms_plotly
@@ -29,6 +30,9 @@ from IPython.display import display as _cms_display, HTML as _cms_HTML
 
 _CMS_PLOTLY_FILE = 'plotly.min.js'
 _CMS_PLOTLY_URL = f'/voila/files/{_CMS_PLOTLY_FILE}?v={_cms_plotly.__version__}'
+
+# An opening <script> tag with or without attributes (older plotly versions write type="text/javascript")
+_CMS_SCRIPT_OPEN = _cms_re.compile(r'<script\b[^>]*>', _cms_re.IGNORECASE)
 
 # Wrap a script that uses Plotly so it runs once the library has loaded: "<script>" + OPEN + body + CLOSE + "</script>"
 CMS_WHEN_PLOTLY_OPEN = '__cmsWhenPlotly(function () {'
@@ -75,12 +79,17 @@ def _ensure_plotly_file():
 def plotly_graph_html(fig, div_id=None, config=None, **to_html_kwargs):
     """The figure's div plus its draw script, with the draw deferred until plotly.js has loaded."""
     html = _cms_pio.to_html(fig, full_html=False, include_plotlyjs=False, config=config, div_id=div_id, **to_html_kwargs)
-    open_tag, close_tag = '<script>', '</script>'
-    start = html.rindex(open_tag)
+    # The figure's draw script is the last script in the output
+    openings = list(_CMS_SCRIPT_OPEN.finditer(html))
+    if not openings:
+        raise ValueError('plotly produced no <script> to defer')
+    open_tag = openings[-1].group(0)
+    close_tag = '</script>'
+    start = openings[-1].start()
     end = html.rindex(close_tag)
     body = html[start + len(open_tag):end]
     deferred = html[:start] + open_tag + CMS_WHEN_PLOTLY_OPEN + body + CMS_WHEN_PLOTLY_CLOSE + close_tag + html[end + len(close_tag):]
-    return open_tag + _CMS_PLOTLY_LOADER + close_tag + deferred
+    return '<script>' + _CMS_PLOTLY_LOADER + close_tag + deferred
 
 
 def display_plotly(fig, config=None):
