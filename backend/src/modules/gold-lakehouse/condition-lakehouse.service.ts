@@ -176,11 +176,15 @@ export class ConditionLakehouseService extends GoldLakehouseService {
       // const displayId = `TXN-${pacs8.tx_event_date?.replace(/-/gv, '')}${transactionId}`;
       const dateSegment = pacs8.tx_event_date?.replace(/-/gv, '') ?? '';
       const displayId = `TXN-${dateSegment}${transactionId}`;
+      const [debtorEntityId, creditorEntityId] = await Promise.all([
+        this.resolveEntityId(pacs8.debtor_id, pacs8.debtor_account_id, tenantId, userJwt),
+        this.resolveEntityId(pacs8.creditor_id, pacs8.creditor_account_id, tenantId, userJwt),
+      ]);
       const [debtorAccounts, creditorAccounts, debtorEntityConditions, creditorEntityConditions] = await Promise.all([
-        this.getEntityAccountsWithConditionCounts(pacs8.debtor_id, pacs8.debtor_account_id, tenantId, filterDate, userJwt),
-        this.getEntityAccountsWithConditionCounts(pacs8.creditor_id, pacs8.creditor_account_id, tenantId, filterDate, userJwt),
-        this.getEntityLevelConditions(pacs8.debtor_id, tenantId, filterDate, userJwt),
-        this.getEntityLevelConditions(pacs8.creditor_id, tenantId, filterDate, userJwt),
+        this.getEntityAccountsWithConditionCounts(debtorEntityId, pacs8.debtor_account_id, tenantId, filterDate, userJwt),
+        this.getEntityAccountsWithConditionCounts(creditorEntityId, pacs8.creditor_account_id, tenantId, filterDate, userJwt),
+        this.getEntityLevelConditions(debtorEntityId, tenantId, filterDate, userJwt),
+        this.getEntityLevelConditions(creditorEntityId, tenantId, filterDate, userJwt),
       ]);
 
       return {
@@ -194,14 +198,14 @@ export class ConditionLakehouseService extends GoldLakehouseService {
           currency: pacs8.interbank_settlement_currency ?? 'no data found',
         },
         debtor: {
-          entityId: pacs8.debtor_id ?? 'no data found',
+          entityId: debtorEntityId || 'no data found',
           entityName: pacs8.debtor_name ?? 'no data found',
           primaryAccountId: pacs8.debtor_account_id ?? 'no data found',
           accounts: debtorAccounts,
           entityConditions: debtorEntityConditions,
         },
         creditor: {
-          entityId: pacs8.creditor_id ?? 'no data found',
+          entityId: creditorEntityId || 'no data found',
           entityName: pacs8.creditor_name ?? 'no data found',
           primaryAccountId: pacs8.creditor_account_id ?? 'no data found',
           accounts: creditorAccounts,
@@ -220,6 +224,36 @@ export class ConditionLakehouseService extends GoldLakehouseService {
       const errorStack = error instanceof Error ? error.stack : undefined;
       this.logger.error(`Error fetching conditions context by transaction: ${errorMessage}`, errorStack);
       throw new HttpException('Failed to fetch conditions context', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  // transaction_detail can carry a null debtor_id / creditor_id (the pipeline did not fill it in) while account_holder still
+  // knows which entity holds the account. Without the entity id its entity-level conditions cannot be looked up at all.
+  private async resolveEntityId(
+    entityId: string | null | undefined,
+    accountId: string | null | undefined,
+    tenantId: string,
+    userJwt?: string,
+  ): Promise<string> {
+    if (entityId) {
+      return entityId;
+    }
+    if (!accountId) {
+      return '';
+    }
+    try {
+      const response = await this.runSqlQuery(
+        'SELECT source FROM account_holder WHERE destination = $1 AND tenant_id = $2 LIMIT 1',
+        1,
+        [accountId, tenantId],
+        userJwt,
+      );
+      return response.data?.[0]?.source ?? '';
+    } catch (error) {
+      this.logger.warn(
+        `Could not resolve the entity holding account ${accountId}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return '';
     }
   }
 

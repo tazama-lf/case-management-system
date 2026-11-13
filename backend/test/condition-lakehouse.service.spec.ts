@@ -461,6 +461,89 @@ describe('ConditionLakehouseService', () => {
       expect(result.creditor.entityConditions[0].entityId).toBe('entity2');
     });
 
+    describe('when transaction_detail has no debtor_id / creditor_id', () => {
+      const txRow = {
+        transaction_id: 1,
+        tx_event_ts: '2024-01-01T00:00:00.000Z',
+        end_to_end_id: 'e2e1',
+        tx_type: 'pacs.008.001.10',
+        debtor_id: null,
+        debtor_account_id: 'acc1',
+        creditor_id: null,
+        creditor_account_id: 'acc2',
+      };
+      const isOwnerLookup = (sql: string): boolean => sql.includes('SELECT source FROM account_holder');
+
+      it('finds the entity through the account in account_holder, so its entity-level conditions are still returned', async () => {
+        const ownerLookups: string[] = [];
+        http.mockImplementation((_url: string, body: { sql_query: string }) => {
+          const sql = body.sql_query ?? '';
+          if (sql.includes('FROM transaction_detail')) return okHttp([txRow]);
+          if (isOwnerLookup(sql)) {
+            ownerLookups.push(sql);
+            return okHttp([{ source: sql.includes("'acc1'") ? 'entity1TAZAMA_EID' : 'entity2TAZAMA_EID' }]);
+          }
+          if (sql.includes("target_type = 'ENTITY'")) {
+            return okHttp(sql.includes("'entity1'") ? [{ condition_id: 'ec1', condition_type: 'non-overridable-block', entity_id: 'entity1' }] : []);
+          }
+          return okHttp([]);
+        });
+
+        const result = await service.getConditionsContextByTransaction('e2e1', 'DEFAULT');
+
+        expect(ownerLookups).toHaveLength(2);
+        expect(ownerLookups[0]).toContain("destination = 'acc1'");
+        expect(result.debtor.entityId).toBe('entity1TAZAMA_EID');
+        expect(result.creditor.entityId).toBe('entity2TAZAMA_EID');
+        expect(result.debtor.entityConditions).toHaveLength(1);
+        expect(result.debtor.entityConditions[0].entityId).toBe('entity1');
+        expect(result.creditor.entityConditions).toEqual([]);
+      });
+
+      it('leaves the party as "no data found" and runs no entity-level query when account_holder does not know the account', async () => {
+        const sqls: string[] = [];
+        http.mockImplementation((_url: string, body: { sql_query: string }) => {
+          const sql = body.sql_query ?? '';
+          sqls.push(sql);
+          return okHttp(sql.includes('FROM transaction_detail') ? [txRow] : []);
+        });
+
+        const result = await service.getConditionsContextByTransaction('e2e1', 'DEFAULT');
+
+        expect(result.debtor.entityId).toBe('no data found');
+        expect(result.creditor.entityId).toBe('no data found');
+        expect(sqls.some((sql) => sql.includes("target_type = 'ENTITY'"))).toBe(false);
+      });
+
+      it('still returns the conditions view when the account_holder lookup fails', async () => {
+        http.mockImplementation((_url: string, body: { sql_query: string }) => {
+          const sql = body.sql_query ?? '';
+          if (sql.includes('FROM transaction_detail')) return okHttp([txRow]);
+          if (isOwnerLookup(sql)) return errHttp('lookup failed');
+          return okHttp([]);
+        });
+
+        const result = await service.getConditionsContextByTransaction('e2e1', 'DEFAULT');
+
+        expect(result.debtor.entityId).toBe('no data found');
+        expect(result.debtor.entityConditions).toEqual([]);
+      });
+
+      it('does not look anything up when transaction_detail already has the party id', async () => {
+        const sqls: string[] = [];
+        http.mockImplementation((_url: string, body: { sql_query: string }) => {
+          const sql = body.sql_query ?? '';
+          sqls.push(sql);
+          return okHttp(sql.includes('FROM transaction_detail') ? [{ ...txRow, debtor_id: 'entity1TAZAMA_EID', creditor_id: 'entity2TAZAMA_EID' }] : []);
+        });
+
+        const result = await service.getConditionsContextByTransaction('e2e1', 'DEFAULT');
+
+        expect(sqls.some(isOwnerLookup)).toBe(false);
+        expect(result.debtor.entityId).toBe('entity1TAZAMA_EID');
+      });
+    });
+
     it('returns empty entityConditions for both parties when entity ids are missing', async () => {
       http.mockReturnValueOnce(okHttp([{ transaction_id: 1, tx_event_ts: '2024-01-01T00:00:00.000Z', tx_type: 'pacs.008.001.10' }]));
       const result = await service.getConditionsContextByTransaction('e2e1', 'DEFAULT');
