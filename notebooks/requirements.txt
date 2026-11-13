@@ -3,4 +3,4 @@ plotly
 pandas
 requests
 papermill
-ipykernel
+ipykernel>=6.31
