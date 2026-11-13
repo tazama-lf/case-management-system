@@ -1,8 +1,10 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { createBrowserRouter } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
 import LayoutWithProvider from '@/shared/components/layout/LayoutWithProvider';
 import ProtectedRoute from '@/features/auth/components/ProtectedRoute';
 import RoleBasedRedirect from '@/shared/components/navigation/RoleBasedRedirect';
+import NotFoundRedirect from '@/shared/components/navigation/NotFoundRedirect';
+import RequireNumericParam from '@/shared/components/navigation/RequireNumericParam';
 
 // Dynamic imports for route-level code splitting
 const Login = lazy(async () => await import('@/features/auth/pages/Login'));
@@ -120,22 +122,16 @@ export const router = createBrowserRouter([
               'CMS_COMPLIANCE_OFFICER',
             ]}
           >
-            <Suspense fallback={<PageLoadingFallback />}>
-              <CasesDashboard />
-            </Suspense>
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: 'alerts/:alertId',
-        element: (
-          <ProtectedRoute
-            requireBackendAccess
-            requiredRoles={['CMS_SUPERVISOR', 'CMS_INVESTIGATOR']}
-          >
-            <Suspense fallback={<PageLoadingFallback />}>
-              <AlertsDashboard />
-            </Suspense>
+            <RequireNumericParam
+              param="caseId"
+              redirectTo="/cases"
+              notFoundTitle="Case not found"
+              notFoundMessage="The case id in the address is not valid."
+            >
+              <Suspense fallback={<PageLoadingFallback />}>
+                <CasesDashboard />
+              </Suspense>
+            </RequireNumericParam>
           </ProtectedRoute>
         ),
       },
@@ -166,6 +162,12 @@ export const router = createBrowserRouter([
   },
   {
     path: '*',
-    element: <Navigate to="/dashboard" replace />,
+    element: (
+      <NotFoundRedirect
+        to="/dashboard"
+        title="Page not found"
+        message="The address you opened does not exist."
+      />
+    ),
   },
 ]);
