@@ -6,7 +6,6 @@ export const useDynamicRoute = (): {
   navigate: ReturnType<typeof useNavigate>;
   location: ReturnType<typeof useLocation>;
   goToCaseDetail: (caseId: number) => Promise<void>;
-  goToAlertDetail: (alertId: number) => Promise<void>;
   goToReport: (reportType: string) => Promise<void>;
   goBack: () => Promise<void>;
   getCurrentRoute: () => {
@@ -27,9 +26,6 @@ export const useDynamicRoute = (): {
 
     goToCaseDetail: async (caseId: number) => {
       await navigate(`/cases/${caseId}`);
-    },
-    goToAlertDetail: async (alertId: number) => {
-      await navigate(`/alerts/${alertId}`);
     },
     goToReport: async (reportType: string) => {
       await navigate(`/reports/${reportType}`);
@@ -111,7 +107,6 @@ export const ROUTES = {
   CASES: '/cases',
   CASE_DETAIL: '/cases/:caseId',
   ALERTS: '/alerts',
-  ALERT_DETAIL: '/alerts/:alertId',
   REPORTS: '/reports',
   REPORT_DETAIL: '/reports/:reportType',
   ADMIN: '/admin',
