@@ -61,7 +61,6 @@ describe('routeUtils', () => {
       expect(ROUTES.CASES).toBe('/cases');
       expect(ROUTES.CASE_DETAIL).toBe('/cases/:caseId');
       expect(ROUTES.ALERTS).toBe('/alerts');
-      expect(ROUTES.ALERT_DETAIL).toBe('/alerts/:alertId');
       expect(ROUTES.REPORTS).toBe('/reports');
       expect(ROUTES.REPORT_DETAIL).toBe('/reports/:reportType');
       expect(ROUTES.ADMIN).toBe('/admin');
@@ -137,8 +136,7 @@ describe('routeUtils', () => {
   describe('useDynamicRoute', () => {
     it('provides navigation helpers', () => {
       const TestComp: React.FC = () => {
-        const { goToCaseDetail, goToAlertDetail, getCurrentRoute } =
-          useDynamicRoute();
+        const { goToCaseDetail, getCurrentRoute } = useDynamicRoute();
         return (
           <div>
             <button
@@ -147,13 +145,6 @@ describe('routeUtils', () => {
               }}
             >
               Go to Case
-            </button>
-            <button
-              onClick={() => {
-                goToAlertDetail('ALERT-1');
-              }}
-            >
-              Go to Alert
             </button>
             <div data-testid="route">{getCurrentRoute().pathname}</div>
           </div>
