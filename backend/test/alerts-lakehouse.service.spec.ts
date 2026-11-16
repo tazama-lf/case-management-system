@@ -616,6 +616,14 @@ describe('AlertsLakehouseService', () => {
       expect(sql).toContain("(td.debtor_id = 'entity1' OR td.creditor_id = 'entity1')");
     });
 
+    it('counts SAR/STR filings by the task name, because task_type is never filled in', async () => {
+      await service.getAlertHistorySummary('DEFAULT', 'entity1', 'year');
+
+      const sql = (http.mock.calls[0][1] as { sql_query: string }).sql_query;
+      expect(sql).toContain("name = 'SAR/STR Filing'");
+      expect(sql).not.toContain('task_type');
+    });
+
     it('reads the single aggregate row as the summary', async () => {
       http.mockReturnValue(okHttp([{ total_alerts: '44', cases_opened: '44', investigations: '2', sar_filings: '0', total_value: '1234.5' }]));
 

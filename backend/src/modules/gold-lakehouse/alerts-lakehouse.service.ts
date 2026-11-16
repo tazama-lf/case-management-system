@@ -281,7 +281,7 @@ export class AlertsLakehouseService extends GoldLakehouseService {
       COALESCE(SUM(td.instructed_amount), 0) AS total_value 
       FROM alerts a LEFT JOIN transaction_detail td ON a.tx_original_e2e_id = td.end_to_end_id AND 
       td.tx_type = 'pacs.008.001.10' LEFT JOIN cases c ON a.case_id = c.case_id LEFT JOIN 
-      (SELECT case_id, COUNT(DISTINCT task_id) FILTER (WHERE task_type LIKE '%SAR_STR_FILING%') AS sar_filings FROM tasks 
+      (SELECT case_id, COUNT(DISTINCT task_id) FILTER (WHERE name = 'SAR/STR Filing') AS sar_filings FROM tasks 
       GROUP BY case_id) t ON c.case_id = t.case_id WHERE a.tenant_id = '${safeTenantId}' AND a.created_at_ts >= '${dateFilter}' AND 
       (td.debtor_id = '${safeEntityId}' OR td.creditor_id = '${safeEntityId}')`;
 
