@@ -171,7 +171,8 @@ export class ConditionLakehouseService extends GoldLakehouseService {
         throw new HttpException(`Transaction ${transactionId} not found`, HttpStatus.NOT_FOUND);
       }
 
-      const filterDate = asOfDate ?? pacs8.tx_event_ts;
+      // Conditions are shown as of now, not as of the transaction: what matters to the person reviewing is what is in force today.
+      const filterDate = asOfDate ?? new Date().toISOString();
 
       // const displayId = `TXN-${pacs8.tx_event_date?.replace(/-/gv, '')}${transactionId}`;
       const dateSegment = pacs8.tx_event_date?.replace(/-/gv, '') ?? '';
