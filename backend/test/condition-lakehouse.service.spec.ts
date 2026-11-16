@@ -544,6 +544,16 @@ describe('ConditionLakehouseService', () => {
       });
     });
 
+    it('classifies conditions as of now by default, not as of the transaction time', async () => {
+      http.mockReturnValueOnce(okHttp([{ transaction_id: 1, tx_event_ts: '2024-01-01T00:00:00.000Z', tx_type: 'pacs.008.001.10' }]));
+      const before = Date.now();
+      const result = await service.getConditionsContextByTransaction('e2e1', 'DEFAULT');
+
+      const asOf = new Date(result.metadata.asOfDate).getTime();
+      expect(asOf).toBeGreaterThanOrEqual(before);
+      expect(result.metadata.asOfDate).not.toBe('2024-01-01T00:00:00.000Z');
+    });
+
     it('returns empty entityConditions for both parties when entity ids are missing', async () => {
       http.mockReturnValueOnce(okHttp([{ transaction_id: 1, tx_event_ts: '2024-01-01T00:00:00.000Z', tx_type: 'pacs.008.001.10' }]));
       const result = await service.getConditionsContextByTransaction('e2e1', 'DEFAULT');
