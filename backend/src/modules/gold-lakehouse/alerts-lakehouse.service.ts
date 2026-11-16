@@ -273,10 +273,9 @@ export class AlertsLakehouseService extends GoldLakehouseService {
         dateFilter = startDate.toISOString();
       }
 
-      const sql = `SELECT CASE WHEN td.debtor_id = '${safeEntityId}' THEN td.debtor_id ELSE td.creditor_id END AS entity_id, 
-      CASE WHEN td.debtor_id = '${safeEntityId}' THEN td.debtor_name ELSE td.creditor_name END AS entity_name, 
-      CASE WHEN td.debtor_id = '${safeEntityId}' THEN 'DEBTOR' ELSE 'CREDITOR' END AS entity_role, 
-      COUNT(DISTINCT a.alert_id) AS total_alerts, COUNT(DISTINCT c.case_id) FILTER (WHERE c.case_id IS NOT NULL) AS cases_opened, 
+      // One row for the whole set of alerts the entity is part of, as debtor or creditor. Grouping by role (or name) would return one row
+      // per role and the first one read would drop the alerts where the entity played the other part, so the tiles would not match the list
+      const sql = `SELECT COUNT(DISTINCT a.alert_id) AS total_alerts, COUNT(DISTINCT c.case_id) FILTER (WHERE c.case_id IS NOT NULL) AS cases_opened, 
       COUNT(DISTINCT CASE WHEN c.status LIKE 'STATUS_%' AND c.status != 'STATUS_00_DRAFT' THEN c.case_id END) AS investigations, 
       COALESCE(SUM(t.sar_filings), 0) AS sar_filings, 
       COALESCE(SUM(td.instructed_amount), 0) AS total_value 
@@ -284,7 +283,7 @@ export class AlertsLakehouseService extends GoldLakehouseService {
       td.tx_type = 'pacs.008.001.10' LEFT JOIN cases c ON a.case_id = c.case_id LEFT JOIN 
       (SELECT case_id, COUNT(DISTINCT task_id) FILTER (WHERE task_type LIKE '%SAR_STR_FILING%') AS sar_filings FROM tasks 
       GROUP BY case_id) t ON c.case_id = t.case_id WHERE a.tenant_id = '${safeTenantId}' AND a.created_at_ts >= '${dateFilter}' AND 
-      (td.debtor_id = '${safeEntityId}' OR td.creditor_id = '${safeEntityId}') GROUP BY entity_id, entity_name, entity_role`;
+      (td.debtor_id = '${safeEntityId}' OR td.creditor_id = '${safeEntityId}')`;
 
       const response = await this.runSqlQuery(sql, 1, undefined, userJwt);
       const row = response.data?.[0] ?? {};

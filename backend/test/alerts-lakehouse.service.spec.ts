@@ -606,6 +606,24 @@ describe('AlertsLakehouseService', () => {
       expect(result.totalAlerts).toBe(0);
     });
 
+    it('counts every alert the entity is part of in one row, whether it was the debtor or the creditor', async () => {
+      await service.getAlertHistorySummary('DEFAULT', 'entity1', 'year');
+
+      const sql = (http.mock.calls[0][1] as { sql_query: string }).sql_query;
+      // an entity that is debtor in some alerts and creditor in others must not be split into one row per role
+      expect(sql).not.toMatch(/GROUP BY\s+entity/);
+      expect(sql).not.toContain('entity_role');
+      expect(sql).toContain("(td.debtor_id = 'entity1' OR td.creditor_id = 'entity1')");
+    });
+
+    it('reads the single aggregate row as the summary', async () => {
+      http.mockReturnValue(okHttp([{ total_alerts: '44', cases_opened: '44', investigations: '2', sar_filings: '0', total_value: '1234.5' }]));
+
+      const result = await service.getAlertHistorySummary('DEFAULT', 'entity1', 'year');
+
+      expect(result).toEqual({ totalAlerts: 44, casesOpened: 44, investigations: 2, sarFilings: 0, totalValue: 1234.5 });
+    });
+
     it('handles day granularity (matches the switch and zeroes the time-of-day)', async () => {
       await service.getAlertHistorySummary('DEFAULT', 'entity1', 'day');
       expect(http).toHaveBeenCalled();
