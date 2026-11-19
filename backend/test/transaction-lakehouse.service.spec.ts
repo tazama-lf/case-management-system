@@ -204,6 +204,10 @@ describe('TransactionLakehouseService', () => {
       // the name is chosen by which side matches the account, never by "the debtor's name if there is one"
       expect(centreSql).toContain("CASE WHEN debtor_account_id = 'creditor-acc' THEN debtor_name ELSE creditor_name END");
       expect(centreSql).not.toContain('COALESCE(debtor_name');
+      // rows without a name must not decide the label: the name is aggregated so a NULL never wins, and the result does not depend on row order
+      expect(centreSql).toContain('MAX(CASE WHEN debtor_account_id');
+      expect(centreSql).toContain('GROUP BY');
+      expect(centreSql).not.toContain('SELECT DISTINCT');
       expect(result.centerAccount.accountHolder).toBe('Mule 1');
     });
 
