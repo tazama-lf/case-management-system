@@ -9,7 +9,15 @@ import {
 } from '@nestjs/common';
 import * as crypto from 'node:crypto';
 import { setTimeout as sleep } from 'node:timers/promises';
-import { UploadEvidenceDto, EvidenceResponseDto, EvidenceListResponseDto, VerifyEvidenceDto, EvidenceType, CreateEvidenceDto } from './dto';
+import {
+  UploadEvidenceDto,
+  EvidenceResponseDto,
+  UploadEvidenceResponseDto,
+  EvidenceListResponseDto,
+  VerifyEvidenceDto,
+  EvidenceType,
+  CreateEvidenceDto,
+} from './dto';
 import { PrismaService } from 'prisma/prisma.service';
 import { CouchdbService, EVIDENCE_STATUS, QueryDocumentsParams } from '../couchdb/couchdb.service';
 import { EvidenceRepository } from '../repository/evidence.repository';
@@ -19,6 +27,7 @@ import { TaskHistoryService } from '../task_history/taskHistory.service';
 import { RbacService, EndpointKey } from 'src/utils/rbac/rbacHelper';
 import type { AuthenticatedUser } from 'src/utils/types/auth.types';
 import { CaseInvestigatorService } from '../case-investigator/case-investigator.service';
+import { stripInternalAttachmentFields } from 'src/utils/attachment-response.util';
 
 // How many times removing a half-written CouchDB document, or marking a committed one, is tried; retries back off 1s, 2s, ...
 const CLEANUP_ATTEMPTS = 3;
@@ -77,7 +86,7 @@ export class EvidenceService {
     tenantId: string,
     user: AuthenticatedUser,
     endpointKey: EndpointKey,
-  ): Promise<EvidenceResponseDto> {
+  ): Promise<UploadEvidenceResponseDto> {
     const allowedMimeTypes: Record<string, string[]> = {
       KYC: [
         'application/pdf',
@@ -315,9 +324,17 @@ export class EvidenceService {
 
     await this.recordUploadAudit(userId, tenantId, task.case_id, dto.taskId);
 
-    // The first document keeps the response shape the UI relies on (it sends one file per request); `documents` lists
-    // every document this request created, for callers that send several files at once.
-    return { ...documents[0], documents };
+    // The UI sends one file per request and ignores the response, so this only summarises the first document.
+    // `caseId` stays because the audit interceptor takes the audit resource id from it.
+    const [first] = documents;
+    return {
+      id: first.evidenceId,
+      taskId: first.taskId,
+      caseId: first.caseId,
+      fileName: first.metadata[0].fileName,
+      evidenceType: first.evidenceType,
+      uploadedAt: first.uploadedAt,
+    };
   }
 
   /**
@@ -447,7 +464,8 @@ export class EvidenceService {
     this.logger.log(`Deleting evidence ${evidenceId}`);
 
     const doc = await this.couchdb.getDocument(evidenceId);
-    this.logger.log(`Fetched document for evidence ${evidenceId}: ${JSON.stringify(doc)}`);
+    // Log identifiers only: the document holds the file's decryption key.
+    this.logger.log(`Fetched document for evidence ${evidenceId} (case ${doc?.caseId}, status ${doc?.status ?? 'committed'})`);
 
     if (!doc || doc.status === EVIDENCE_STATUS.PENDING) {
       this.logger.error(`Evidence ${evidenceId} not found`);
@@ -475,7 +493,7 @@ export class EvidenceService {
       this.logger.error(`Failed to delete evidence: ${errorMessage}`, errorStack);
       throw error;
     }
-    return doc;
+    return stripInternalAttachmentFields(doc);
   }
 
   async getEvidenceById(evidenceId: string, userId: string, tenantId: string, userRole: string): Promise<EvidenceResponseDto> {
@@ -511,9 +529,7 @@ export class EvidenceService {
       uploadedAt: evidenceDoc.uploadedAt,
       tags: evidenceDoc.tags,
       description: evidenceDoc.description,
-      comments: evidenceDoc.comments,
-      attachments: evidenceDoc.metadata,
-      archive: evidenceDoc.archive,
+      attachments: stripInternalAttachmentFields(evidenceDoc.metadata),
     };
   }
 
@@ -568,8 +584,6 @@ export class EvidenceService {
             mimeType: att.mimeType,
             fileSize: att.fileSize,
             hash: att.hash,
-            encryption: att.encryption,
-            filePath: att.filePath,
           },
         };
       });
@@ -586,13 +600,11 @@ export class EvidenceService {
           uploadedAt: evidenceDoc.uploadedAt,
           tags: evidenceDoc.tags,
           description: evidenceDoc.description,
-          comments: evidenceDoc.comments,
-          attachments: evidenceDoc.metadata,
+          attachments: stripInternalAttachmentFields(evidenceDoc.metadata),
           fileName: evidenceDoc.fileName,
           fileSize: evidenceDoc.metadata[0].fileSize,
           mimeType: evidenceDoc.metadata[0].mimeType,
           hash: evidenceDoc.metadata[0].hash,
-          archive: evidenceDoc.archive,
         },
       };
     } catch (error) {
@@ -702,9 +714,7 @@ export class EvidenceService {
       uploadedAt: item.uploadedAt,
       tags: item.tags,
       description: item.description,
-      comments: item.comments,
-      attachments: item.metadata,
-      archive: item.archive,
+      attachments: stripInternalAttachmentFields(item.metadata),
     }));
 
     return { evidence, total: evidence.length, taskId };
@@ -739,9 +749,7 @@ export class EvidenceService {
       uploadedAt: item.uploadedAt,
       tags: item.tags,
       description: item.description,
-      comments: item.comments,
-      attachments: item.metadata,
-      archive: item.archive,
+      attachments: stripInternalAttachmentFields(item.metadata),
     }));
 
     return { evidence, total: evidence.length };
@@ -780,9 +788,7 @@ export class EvidenceService {
       uploadedAt: item.uploadedAt,
       tags: item.tags,
       description: item.description,
-      comments: item.comments,
-      attachments: item.metadata,
-      archive: item.archive,
+      attachments: stripInternalAttachmentFields(item.metadata),
     }));
 
     return { evidence, total: evidence.length, evidenceType };

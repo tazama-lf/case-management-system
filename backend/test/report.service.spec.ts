@@ -986,14 +986,19 @@ describe('ReportsService', () => {
       expect(result.reportId).toContain('v2');
     });
 
-    it('should encrypt report file', async () => {
+    it('should encrypt report file and keep the key and storage path out of the response', async () => {
       const result = await service.generateFraudReport(mockFile, mockDto, 'user-123', 'tenant-123', 'CMS_SUPERVISOR');
 
       expect(couchdbService.insertAttachment).toHaveBeenCalled();
+      // what is stored keeps the key the download needs ...
+      const stored = couchdbService.updateDocument.mock.calls[0][1] as any;
+      expect(stored.metadata[0].encryption).toHaveProperty('key');
+      expect(stored.metadata[0].encryption).toHaveProperty('iv');
+      expect(stored.metadata[0].encryption).toHaveProperty('authTag');
+      // ... but the response gets neither it nor the path.
       expect(result.metadata[0]).toBeDefined();
-      expect((result.metadata[0] as any).encryption).toHaveProperty('key');
-      expect((result.metadata[0] as any).encryption).toHaveProperty('iv');
-      expect((result.metadata[0] as any).encryption).toHaveProperty('authTag');
+      expect(result.metadata[0]).not.toHaveProperty('encryption');
+      expect(result.metadata[0]).not.toHaveProperty('filePath');
     });
 
     it('should include evidence summary', async () => {
@@ -1021,6 +1026,24 @@ describe('ReportsService', () => {
       expect(result).toBeDefined();
       expect(result.keyFindings).toBe('Updated findings');
       expect(couchdbService.updateDocument).toHaveBeenCalled();
+    });
+
+    it('should not return the storage path or decryption key of the report file', async () => {
+      const result = await service.editFraudReport('1-InvestigationReport-v1', { keyFindings: 'Updated' }, 'user-123');
+
+      expect(JSON.stringify(result)).not.toMatch(/filePath|encryption/);
+      // what is stored is untouched
+      expect(JSON.stringify(couchdbService.updateDocument.mock.calls[0][1])).toContain('encryption');
+    });
+
+    it('should not return them from the history of a new version either', async () => {
+      couchdbService.getDocument.mockResolvedValue({ ...mockFraudReport, locked: true });
+
+      const result = await service.editFraudReport('1-InvestigationReport-v1', { keyFindings: 'Updated' }, 'user-123');
+
+      expect(result.history).toHaveLength(1);
+      expect(JSON.stringify(result)).not.toMatch(/filePath|encryption/);
+      expect(JSON.stringify(couchdbService.insertDocument.mock.calls[0][1])).toContain('encryption');
     });
 
     it('should create new version for locked report', async () => {
@@ -1100,7 +1123,9 @@ describe('ReportsService', () => {
         'supervisor-123',
       );
 
-      expect((result.metadata as any).approvedAt).toBeDefined();
+      const stored = couchdbService.updateDocument.mock.calls[0][1] as any;
+      expect(stored.metadata.approvedAt).toBeDefined();
+      expect(result.decisions).toBe(FraudReportOutcome.CONFIRMED_FRAUD);
     });
   });
 
@@ -1125,6 +1150,13 @@ describe('ReportsService', () => {
       expect(result).toBeDefined();
       expect(Array.isArray(result)).toBe(true);
       expect(result.length).toBe(2);
+    });
+
+    it('should not return the storage path or decryption key of the report file', async () => {
+      const result = await service.getFraudReports('1', 'tenant-123', 'user-123', 'CMS_SUPERVISOR');
+
+      expect(JSON.stringify(result)).not.toMatch(/filePath|encryption/);
+      expect(result[0].reportId).toBeDefined();
     });
 
     it('should sort reports by version descending', async () => {
