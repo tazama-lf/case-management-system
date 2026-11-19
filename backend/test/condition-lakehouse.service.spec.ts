@@ -231,6 +231,38 @@ describe('ConditionLakehouseService', () => {
       expect(result.debtor.accounts.length).toBeGreaterThanOrEqual(1);
     });
 
+    it('looks entities up in account_holder by the id as stored when it already ends in TAZAMA_EID', async () => {
+      // transaction_detail ids carry the suffix themselves; adding it again would match no account_holder row
+      const accountHolderSources: string[] = [];
+      http.mockImplementation((_url: string, body: { sql_query: string }) => {
+        const sql = body.sql_query ?? '';
+        if (sql.includes('FROM transaction_detail')) {
+          return okHttp([
+            {
+              transaction_id: 1,
+              tx_event_ts: '2024-01-01T00:00:00.000Z',
+              end_to_end_id: 'e2e1',
+              tx_type: 'pacs.008.001.10',
+              debtor_id: 'entity1TAZAMA_EID',
+              debtor_account_id: 'acc1',
+              creditor_id: 'entity2TAZAMA_EID',
+              creditor_account_id: 'acc2',
+            },
+          ]);
+        }
+        if (sql.includes('FROM account_holder')) {
+          accountHolderSources.push(...(sql.match(/source = '([^']+)'/) ?? []).slice(1));
+          return okHttp([{ account_id: 'accFromHolder' }]);
+        }
+        return okHttp([{ total: 0, active: 0, expired: 0, future: 0 }]);
+      });
+
+      await service.getConditionsContextByTransaction('e2e1', 'DEFAULT');
+
+      expect(accountHolderSources).toEqual(expect.arrayContaining(['entity1TAZAMA_EID', 'entity2TAZAMA_EID']));
+      expect(accountHolderSources.some((source) => source.includes('TAZAMA_EIDTAZAMA_EID'))).toBe(false);
+    });
+
     it('seeds the primary account when account_holder does not cover it yet, without duplicating an account it already covers', async () => {
       // Content-routed mock (rather than mockReturnValueOnce sequencing) since
       // this test cares about the *set* of accounts produced, not the exact
@@ -385,10 +417,48 @@ describe('ConditionLakehouseService', () => {
 
       const debtorEntitySql = http.mock.calls[3][1].sql_query as string;
       expect(debtorEntitySql).toContain("target_type = 'ENTITY'");
-      expect(debtorEntitySql).toContain('entity_id =');
+      expect(debtorEntitySql).toContain('entity_id IN');
       // entity_id must also be in the SELECT list (not just the WHERE clause),
       // since that's what lets formatConditionRow populate entityId.
       expect(debtorEntitySql).toMatch(/SELECT[\s\S]*\bentity_id\b[\s\S]*FROM conditions/);
+    });
+
+    it('finds entity-level conditions by the bare id when the transaction id carries the TAZAMA_EID suffix', async () => {
+      // conditions.entity_id holds the bare id; transaction_detail ids end in TAZAMA_EID
+      const entitySql: string[] = [];
+      http.mockImplementation((_url: string, body: { sql_query: string }) => {
+        const sql = body.sql_query ?? '';
+        if (sql.includes('FROM transaction_detail')) {
+          return okHttp([
+            {
+              transaction_id: 1,
+              tx_event_ts: '2024-01-01T00:00:00.000Z',
+              end_to_end_id: 'e2e1',
+              tx_type: 'pacs.008.001.10',
+              debtor_id: 'entity1TAZAMA_EID',
+              debtor_account_id: 'acc1',
+              creditor_id: 'entity2TAZAMA_EID',
+              creditor_account_id: 'acc2',
+            },
+          ]);
+        }
+        if (sql.includes("target_type = 'ENTITY'")) {
+          entitySql.push(sql);
+          return okHttp(sql.includes("'entity2'") ? [{ condition_id: 'ec2', condition_type: 'overridable-block', entity_id: 'entity2' }] : []);
+        }
+        return okHttp([]);
+      });
+
+      const result = await service.getConditionsContextByTransaction('e2e1', 'DEFAULT');
+
+      // each lookup offers the bare id and the suffixed id, so a condition stored either way is found
+      expect(entitySql).toHaveLength(2);
+      entitySql.forEach((sql) => {
+        expect(sql).toMatch(/entity_id IN \('entity[12]', 'entity[12]TAZAMA_EID'\)/);
+        expect(sql).not.toContain('TAZAMA_EIDTAZAMA_EID');
+      });
+      expect(result.creditor.entityConditions).toHaveLength(1);
+      expect(result.creditor.entityConditions[0].entityId).toBe('entity2');
     });
 
     it('returns empty entityConditions for both parties when entity ids are missing', async () => {
@@ -401,6 +471,22 @@ describe('ConditionLakehouseService', () => {
 
   // ===================== getConditionsByEntity =====================
   describe('getConditionsByEntity', () => {
+    it('matches entity-level conditions by the bare id when called with the suffixed id', async () => {
+      http
+        .mockReturnValueOnce(okHttp([{ account_id: 'acc1' }]))
+        .mockReturnValueOnce(okHttp([{ condition_id: 'ec1', condition_type: 'overridable-block', entity_id: 'entity1', is_active: 1 }]));
+
+      const result = await service.getConditionsByEntity('entity1TAZAMA_EID', 'DEFAULT');
+
+      // the account_holder lookup binds source to the id exactly as passed in
+      const accountHolderSql = http.mock.calls[0][1].sql_query as string;
+      expect(accountHolderSql).toContain("source = 'entity1TAZAMA_EID'");
+
+      const conditionsSql = http.mock.calls[1][1].sql_query as string;
+      expect(conditionsSql).toMatch(/entity_id IN \('entity1', 'entity1TAZAMA_EID'\)/);
+      expect(result.conditions).toHaveLength(1);
+    });
+
     it('returns conditions for entity with accounts', async () => {
       http
         .mockReturnValueOnce(okHttp([{ account_id: 'acc1' }]))

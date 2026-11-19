@@ -100,6 +100,57 @@ describe('GoldLakehouseService', () => {
       expect(http).toHaveBeenCalledWith('http://localhost:5000/execute_sql', expect.objectContaining({ limit: 100 }), expect.any(Object));
     });
 
+    it('substitutes every placeholder correctly when there are ten or more parameters', async () => {
+      // "$1" is a prefix of "$10", "$11", ... so replacing $1 first would corrupt them
+      const parameters = Array.from({ length: 12 }, (_, i) => `v${i + 1}`);
+      const placeholders = parameters.map((_, i) => `$${i + 1}`).join(', ');
+
+      await service.runSqlQuery(`SELECT ${placeholders}`, 1, parameters);
+
+      const sent = (http.mock.calls[0][1] as { sql_query: string }).sql_query;
+      expect(sent).toBe(`SELECT ${parameters.map((value) => `'${value}'`).join(', ')}`);
+    });
+
+    it('still escapes quotes, numbers and nulls, and replaces a placeholder wherever it repeats', async () => {
+      await service.runSqlQuery('SELECT $1, $2, $3, $1', 1, ["O'Brien", 42, null]);
+
+      expect((http.mock.calls[0][1] as { sql_query: string }).sql_query).toBe("SELECT 'O''Brien', 42, NULL, 'O''Brien'");
+    });
+
+    it('does not rescan a value it has already inserted, even if the value contains a placeholder such as $1', async () => {
+      await service.runSqlQuery('SELECT $1, $2', 1, ["x' OR '1'='1", 'cost $1']);
+
+      expect((http.mock.calls[0][1] as { sql_query: string }).sql_query).toBe("SELECT 'x'' OR ''1''=''1', 'cost $1'");
+    });
+
+    it('inserts values literally, including text that looks like a replacement pattern ($&, $$)', async () => {
+      await service.runSqlQuery('SELECT $1', 1, ['a$&b$$c']);
+
+      expect((http.mock.calls[0][1] as { sql_query: string }).sql_query).toBe("SELECT 'a$&b$$c'");
+    });
+
+    it('substitutes correctly with 150 parameters, including repeats of $1, $10 and $100', async () => {
+      const parameters = Array.from({ length: 150 }, (_, i) => `v${i + 1}`);
+      const placeholders = parameters.map((_, i) => `$${i + 1}`).join(', ');
+
+      await service.runSqlQuery(`SELECT ${placeholders}, $1, $10, $100, $150`, 1, parameters);
+
+      const expected = [...parameters, 'v1', 'v10', 'v100', 'v150'].map((value) => `'${value}'`).join(', ');
+      expect((http.mock.calls[0][1] as { sql_query: string }).sql_query).toBe(`SELECT ${expected}`);
+    });
+
+    it('only treats $1, $2, ... as placeholders, so $0 and $01 are left as they are', async () => {
+      await service.runSqlQuery('SELECT $0, $01, $1', 1, ['x']);
+
+      expect((http.mock.calls[0][1] as { sql_query: string }).sql_query).toBe("SELECT $0, $01, 'x'");
+    });
+
+    it('leaves a placeholder that has no matching parameter untouched', async () => {
+      await service.runSqlQuery('SELECT $1, $3', 1, ['v']);
+
+      expect((http.mock.calls[0][1] as { sql_query: string }).sql_query).toBe("SELECT 'v', $3");
+    });
+
     it('throws when status is not success', async () => {
       http.mockReturnValue(badHttp());
       await expect(service.runSqlQuery('BAD', 1)).rejects.toThrow(HttpException);
