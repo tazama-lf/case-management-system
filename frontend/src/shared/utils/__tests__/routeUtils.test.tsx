@@ -141,7 +141,7 @@ describe('routeUtils', () => {
           <div>
             <button
               onClick={() => {
-                goToCaseDetail('CASE-1');
+                goToCaseDetail(1);
               }}
             >
               Go to Case
