@@ -189,6 +189,28 @@ describe('TransactionLakehouseService', () => {
       expect(result.edges[0].timestamp).toBe('2024-01-31');
     });
 
+    it('names the centre account after its own side of the transaction, so a creditor account is not labelled with the debtor name', async () => {
+      http
+        .mockReturnValueOnce(okHttp([{ account_id: 'creditor-acc', account_name: 'Mule 1' }]))
+        .mockReturnValueOnce(okHttp([]))
+        .mockReturnValueOnce(okHttp([]))
+        .mockReturnValueOnce(okHttp([]))
+        .mockReturnValueOnce(okHttp([]))
+        .mockReturnValueOnce(okHttp([]));
+
+      const result = await service.getTransactionNetworkData('creditor-acc', 'DEFAULT', '30d');
+
+      const centreSql = (http.mock.calls[0][1] as { sql_query: string }).sql_query;
+      // the name is chosen by which side matches the account, never by "the debtor's name if there is one"
+      expect(centreSql).toContain("CASE WHEN debtor_account_id = 'creditor-acc' THEN debtor_name ELSE creditor_name END");
+      expect(centreSql).not.toContain('COALESCE(debtor_name');
+      // rows without a name must not decide the label: the name is aggregated so a NULL never wins, and the result does not depend on row order
+      expect(centreSql).toContain('MAX(CASE WHEN debtor_account_id');
+      expect(centreSql).toContain('GROUP BY');
+      expect(centreSql).not.toContain('SELECT DISTINCT');
+      expect(result.centerAccount.accountHolder).toBe('Mule 1');
+    });
+
     it('returns HIGH velocity when tx/day > 0.5', async () => {
       http
         .mockReturnValueOnce(okHttp([{ account_id: 'acc1' }]))
