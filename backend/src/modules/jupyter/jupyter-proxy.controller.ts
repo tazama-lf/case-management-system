@@ -11,6 +11,7 @@ import {
 import { AlertHistoryAlertsResponse } from '../gold-lakehouse/types/IAlertHistory.types';
 import { TransactionHistoryResponse } from '../gold-lakehouse/types/transaction-history-response.types';
 import { AuthenticatedRequest } from 'src/utils/types/auth.types';
+import { CONDITIONS_AS_OF_MODES, type ConditionsAsOfMode } from '../gold-lakehouse/condition-lakehouse.service';
 
 @Controller('api/v1/jupyter/proxy')
 @ApiTags('Jupyter Proxy')
@@ -308,17 +309,34 @@ export class JupyterProxyController {
   @ApiOperation({ summary: 'Proxy: Get transaction context with conditions for both parties' })
   @ApiQuery({ name: 'tenantId', required: true })
   @ApiQuery({ name: 'asOfDate', required: false })
+  @ApiQuery({
+    name: 'asOf',
+    required: false,
+    enum: CONDITIONS_AS_OF_MODES,
+    description: 'Which moment conditions are classified against when asOfDate is not given: now (default) or transaction',
+  })
   async getConditionsContextByTransaction(
     @Req() req: AuthenticatedRequest,
     @Param('transactionId') transactionId: string,
     @Query('tenantId') tenantId: string,
     @Query('asOfDate') asOfDate?: string,
+    @Query('asOf') asOf?: string,
   ): Promise<ConditionsContextByTransactionResponse> {
     if (!transactionId || transactionId.trim() === '') {
       throw new BadRequestException('transactionId is required');
     }
+    if (asOf !== undefined && !CONDITIONS_AS_OF_MODES.includes(asOf as ConditionsAsOfMode)) {
+      throw new BadRequestException(`Invalid asOf. Must be one of: ${CONDITIONS_AS_OF_MODES.join(', ')}`);
+    }
     const userId = this.getUserId(req);
-    return await this.proxyService.getConditionsContextByTransaction(userId, transactionId, tenantId, asOfDate, this.getRequestJwt(req));
+    return await this.proxyService.getConditionsContextByTransaction(
+      userId,
+      transactionId,
+      tenantId,
+      asOfDate,
+      this.getRequestJwt(req),
+      asOf as ConditionsAsOfMode | undefined,
+    );
   }
 
   @Get('conditions/details')

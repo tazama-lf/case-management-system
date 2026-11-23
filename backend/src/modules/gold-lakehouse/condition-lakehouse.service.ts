@@ -10,6 +10,10 @@ import {
 import { ConditionsListByAccountResponse } from './types/IAccountConditions.types';
 import { stripEntityIdSuffix, toAccountHolderSource } from './utils/entity-id.util';
 
+// Which moment the conditions are classified against when no explicit asOfDate is given: the current time, or the time of the transaction
+export type ConditionsAsOfMode = 'now' | 'transaction';
+export const CONDITIONS_AS_OF_MODES: readonly ConditionsAsOfMode[] = ['now', 'transaction'];
+
 @Injectable()
 export class ConditionLakehouseService extends GoldLakehouseService {
   // eslint-disable-next-line @typescript-eslint/no-useless-constructor -- Required for NestJS dependency injection in subclasses
@@ -152,6 +156,7 @@ export class ConditionLakehouseService extends GoldLakehouseService {
     tenantId: string,
     asOfDate?: string,
     userJwt?: string,
+    asOf: ConditionsAsOfMode = 'now',
   ): Promise<ConditionsContextByTransactionResponse> {
     try {
       const txSql = `
@@ -171,8 +176,7 @@ export class ConditionLakehouseService extends GoldLakehouseService {
         throw new HttpException(`Transaction ${transactionId} not found`, HttpStatus.NOT_FOUND);
       }
 
-      // Conditions are shown as of now, not as of the transaction: what matters to the person reviewing is what is in force today.
-      const filterDate = asOfDate ?? new Date().toISOString();
+      const filterDate = this.resolveAsOfDate(asOfDate, asOf, pacs8.tx_event_ts);
 
       // const displayId = `TXN-${pacs8.tx_event_date?.replace(/-/gv, '')}${transactionId}`;
       const dateSegment = pacs8.tx_event_date?.replace(/-/gv, '') ?? '';
@@ -226,6 +230,12 @@ export class ConditionLakehouseService extends GoldLakehouseService {
       this.logger.error(`Error fetching conditions context by transaction: ${errorMessage}`, errorStack);
       throw new HttpException('Failed to fetch conditions context', HttpStatus.INTERNAL_SERVER_ERROR);
     }
+  }
+
+  // An explicit asOfDate wins. Otherwise conditions are shown as of now by default, because what matters to the person reviewing is what
+  // is in force today; the reviewer can ask for the state at the time of the transaction instead (asOf = 'transaction').
+  private resolveAsOfDate(asOfDate: string | undefined, asOf: ConditionsAsOfMode, transactionTimestamp: string | null | undefined): string {
+    return asOfDate ?? (asOf === 'transaction' && transactionTimestamp ? transactionTimestamp : new Date().toISOString());
   }
 
   // transaction_detail can carry a null debtor_id / creditor_id (the pipeline did not fill it in) while account_holder still
