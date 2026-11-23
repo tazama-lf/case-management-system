@@ -254,7 +254,8 @@ export class ConditionLakehouseService extends GoldLakehouseService {
     }
     try {
       const response = await this.runSqlQuery(
-        'SELECT source FROM account_holder WHERE destination = $1 AND tenant_id = $2 LIMIT 1',
+        // ORDER BY so that, should an account ever have more than one holder row, it always resolves to the same entity
+        'SELECT source FROM account_holder WHERE destination = $1 AND tenant_id = $2 ORDER BY source LIMIT 1',
         1,
         [accountId, tenantId],
         userJwt,

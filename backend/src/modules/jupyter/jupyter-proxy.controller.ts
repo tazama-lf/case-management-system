@@ -17,8 +17,6 @@ import { CONDITIONS_AS_OF_MODES, type ConditionsAsOfMode } from '../gold-lakehou
 @ApiTags('Jupyter Proxy')
 @UseGuards(TazamaAuthGuard)
 @ApiBearerAuth('jwt')
-@UseGuards(TazamaAuthGuard)
-@ApiBearerAuth('jwt')
 export class JupyterProxyController {
   constructor(private readonly proxyService: JupyterProxyService) {}
 

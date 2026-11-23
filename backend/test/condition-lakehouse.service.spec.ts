@@ -493,6 +493,8 @@ describe('ConditionLakehouseService', () => {
 
         expect(ownerLookups).toHaveLength(2);
         expect(ownerLookups[0]).toContain("destination = 'acc1'");
+        // ordered, so an account with more than one holder row always resolves to the same entity
+        expect(ownerLookups[0]).toContain('ORDER BY source LIMIT 1');
         expect(result.debtor.entityId).toBe('entity1TAZAMA_EID');
         expect(result.creditor.entityId).toBe('entity2TAZAMA_EID');
         expect(result.debtor.entityConditions).toHaveLength(1);
