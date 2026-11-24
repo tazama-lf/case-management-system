@@ -468,9 +468,10 @@ describe('ConditionLakehouseService', () => {
         end_to_end_id: 'e2e1',
         tx_type: 'pacs.008.001.10',
         debtor_id: null,
-        debtor_account_id: 'acc1',
+        // composite account ids, as in the lakehouse: <accountId><scheme><agent>
+        debtor_account_id: 'acc1MSISDNfsp001',
         creditor_id: null,
-        creditor_account_id: 'acc2',
+        creditor_account_id: 'acc2MSISDNfsp002',
       };
       const isOwnerLookup = (sql: string): boolean => sql.includes('SELECT source FROM account_holder');
 
@@ -481,7 +482,7 @@ describe('ConditionLakehouseService', () => {
           if (sql.includes('FROM transaction_detail')) return okHttp([txRow]);
           if (isOwnerLookup(sql)) {
             ownerLookups.push(sql);
-            return okHttp([{ source: sql.includes("'acc1'") ? 'entity1TAZAMA_EID' : 'entity2TAZAMA_EID' }]);
+            return okHttp([{ source: sql.includes("'acc1MSISDNfsp001'") ? 'entity1TAZAMA_EID' : 'entity2TAZAMA_EID' }]);
           }
           if (sql.includes("target_type = 'ENTITY'")) {
             return okHttp(sql.includes("'entity1'") ? [{ condition_id: 'ec1', condition_type: 'non-overridable-block', entity_id: 'entity1' }] : []);
@@ -492,7 +493,9 @@ describe('ConditionLakehouseService', () => {
         const result = await service.getConditionsContextByTransaction('e2e1', 'DEFAULT');
 
         expect(ownerLookups).toHaveLength(2);
-        expect(ownerLookups[0]).toContain("destination = 'acc1'");
+        // the full composite id is matched exactly, with nothing stripped or pattern-matched
+        expect(ownerLookups[0]).toContain("destination = 'acc1MSISDNfsp001'");
+        expect(ownerLookups[1]).toContain("destination = 'acc2MSISDNfsp002'");
         // ordered, so an account with more than one holder row always resolves to the same entity
         expect(ownerLookups[0]).toContain('ORDER BY source LIMIT 1');
         expect(result.debtor.entityId).toBe('entity1TAZAMA_EID');
