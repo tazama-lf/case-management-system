@@ -114,6 +114,71 @@ describe('AccountLakehouseService', () => {
       });
     });
 
+    // tx_network_accounts_edges keys accounts by the composite id (<accountId><scheme><agent>), like account_holder does
+    describe('edge rows keyed by the composite account id', () => {
+      const holderRows = [{ source: 'entity1TAZAMA_EID', destination: 'acc1MSISDNfsp001', tenant_id: 'DEFAULT' }];
+      const edgeSql = (): string => (http.mock.calls[1][1] as { sql_query: string }).sql_query;
+
+      it('counts the transactions of an account whose edges carry the composite id', async () => {
+        http.mockReturnValueOnce(okHttp(holderRows)).mockReturnValueOnce(
+          okHttp([
+            { from_account_id: 'acc1MSISDNfsp001', to_account_id: 'acc2MSISDNfsp002', tx_count: 4, total_amount: 400, is_alerted_edge: 0, is_investigated_edge: 0 },
+            { from_account_id: 'acc3MSISDNfsp001', to_account_id: 'acc1MSISDNfsp001', tx_count: 3, total_amount: 300, is_alerted_edge: 1, is_investigated_edge: 0 },
+          ]),
+        );
+
+        const result = await service.getAccountNodeFullData('entity1', 'DEFAULT', 'month');
+
+        expect(result.accountDetails.transactions).toBe(7);
+        expect(result.accountDetails.totalValue).toBe(700);
+        // the account keeps the id it is shown under, with its own stats
+        const accountEdge = result.network.edges.find((e) => e.target === 'acc1');
+        expect(accountEdge?.txCount).toBe(7);
+        expect(accountEdge?.flags.alerted).toBe(true);
+      });
+
+      it('looks the account up by its composite id as well as the plain one', async () => {
+        http.mockReturnValueOnce(okHttp(holderRows)).mockReturnValueOnce(okHttp([]));
+
+        await service.getAccountNodeFullData('entity1', 'DEFAULT', 'month');
+
+        expect(edgeSql()).toContain("'acc1MSISDNfsp001'");
+        expect(edgeSql()).toContain("'acc1'");
+        expect(edgeSql()).toContain('from_account_id IN');
+      });
+
+      it('still counts edge rows that carry the plain id', async () => {
+        http.mockReturnValueOnce(okHttp(holderRows)).mockReturnValueOnce(
+          okHttp([{ from_account_id: 'acc1', to_account_id: 'acc2', tx_count: 2, total_amount: 200, is_alerted_edge: 0, is_investigated_edge: 0 }]),
+        );
+
+        const result = await service.getAccountNodeFullData('entity1', 'DEFAULT', 'month');
+
+        expect(result.accountDetails.transactions).toBe(2);
+      });
+
+      it('gives each held account its own stats when the entity holds two accounts', async () => {
+        http.mockReturnValueOnce(
+          okHttp([
+            { source: 'entity1TAZAMA_EID', destination: 'acc1MSISDNfsp001', tenant_id: 'DEFAULT' },
+            { source: 'entity1TAZAMA_EID', destination: 'acc2MSISDNfsp002', tenant_id: 'DEFAULT' },
+          ]),
+        ).mockReturnValueOnce(
+          okHttp([
+            { from_account_id: 'acc1MSISDNfsp001', to_account_id: 'acc2MSISDNfsp002', tx_count: 5, total_amount: 500, is_alerted_edge: 0, is_investigated_edge: 0 },
+            { from_account_id: 'acc9MSISDNfsp001', to_account_id: 'acc2MSISDNfsp002', tx_count: 1, total_amount: 100, is_alerted_edge: 0, is_investigated_edge: 0 },
+          ]),
+        );
+
+        const result = await service.getAccountNodeFullData('entity1', 'DEFAULT', 'month');
+
+        expect(result.network.edges.find((e) => e.target === 'acc1')?.txCount).toBe(5);
+        expect(result.network.edges.find((e) => e.target === 'acc2')?.txCount).toBe(6);
+        // the transaction between the entity's own two accounts is counted once in the entity's total
+        expect(result.accountDetails.transactions).toBe(6);
+      });
+    });
+
     it('uses HIGH velocity when txCount >= 50', async () => {
       // Mock account_holder query
       http.mockReturnValueOnce(

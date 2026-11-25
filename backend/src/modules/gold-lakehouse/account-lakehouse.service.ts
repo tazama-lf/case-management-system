@@ -249,6 +249,16 @@ export class AccountLakehouseService extends GoldLakehouseService {
         .filter((accountId): accountId is string => Boolean(accountId));
       const cleanedAccountIds: string[] = Array.from(new Set(rawAccountIds.map((accountId) => this.cleanAccountId(accountId))));
 
+      // The edge table keys accounts by the composite id (<accountId><scheme><agent>, as account_holder does), but older rows
+      // can carry the plain one - look an account up by either form, and map each row's id back to the account it belongs to.
+      const heldAccountByLookupId = new Map<string, string>();
+      for (const rawAccountId of rawAccountIds) {
+        const cleanedAccountId = this.cleanAccountId(rawAccountId);
+        heldAccountByLookupId.set(rawAccountId, cleanedAccountId);
+        heldAccountByLookupId.set(cleanedAccountId, cleanedAccountId);
+      }
+      const lookupAccountIds = Array.from(heldAccountByLookupId.keys());
+
       if (cleanedAccountIds.length === 0) {
         this.logger.warn(`No accounts found for entity ${entityId} (enhanced: ${enhancedEntityId})`);
         return this.buildEmptyEntityGraph(entityId, tenantId, granularity);
@@ -256,16 +266,15 @@ export class AccountLakehouseService extends GoldLakehouseService {
 
       // Pull every transaction each linked account was party to, so per-account stats reflect
       // that account's activity across the whole network - not just among the counterparty's own accounts.
-      const accountPlaceholders = cleanedAccountIds.map((_, i) => `$${i + 3}`).join(', ');
+      const accountPlaceholders = lookupAccountIds.map((_, i) => `$${i + 3}`).join(', ');
 
       const networkSql = `SELECT from_account_id, to_account_id, tx_count, total_amount, currency_hint, first_event_ts, last_event_ts, is_alerted_edge, is_investigated_edge FROM tx_network_accounts_edges WHERE tenant_id = $1 AND bucket_granularity = $2 AND ( from_account_id IN (${accountPlaceholders}) OR to_account_id IN (${accountPlaceholders}) )`;
 
-      const networkResp = await this.runSqlQuery(networkSql, 1000, [tenantId, granularity, ...cleanedAccountIds], userJwt);
+      const networkResp = await this.runSqlQuery(networkSql, 1000, [tenantId, granularity, ...lookupAccountIds], userJwt);
       const networkRows = (networkResp.data ?? []).map((r) => this.stripHudiMetadata(r));
 
       // Aggregate each held account's own transaction numbers/values/flags across every
       // transaction it appears in (whether the other side is a sibling account or an external one).
-      const heldAccountIds = new Set(cleanedAccountIds);
       const accountStats = new Map<string, AccountStatsAccumulator>();
 
       const getStats = (accountId: string): AccountStatsAccumulator => {
@@ -281,8 +290,9 @@ export class AccountLakehouseService extends GoldLakehouseService {
         const alerted = r.is_alerted_edge === 1;
         const investigated = r.is_investigated_edge === 1;
 
-        for (const accountId of [r.from_account_id, r.to_account_id]) {
-          if (!heldAccountIds.has(accountId)) continue;
+        for (const edgeAccountId of [r.from_account_id, r.to_account_id]) {
+          const accountId = heldAccountByLookupId.get(edgeAccountId);
+          if (!accountId) continue;
           const stats = getStats(accountId);
           stats.txCount += txCount;
           stats.totalAmount += totalAmount;
