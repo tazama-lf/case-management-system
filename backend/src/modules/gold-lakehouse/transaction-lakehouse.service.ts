@@ -380,13 +380,18 @@ export class TransactionLakehouseService extends GoldLakehouseService {
         periodParams.push(startDate, endDate);
       }
 
+      // The row holds both parties, so the name has to come from the side this account is on. COALESCE(debtor_name, creditor_name)
+      // always returned the debtor's name, which put the debtor's name on a creditor account.
+      // Some rows for the account (for example pacs.002 status rows) can carry no name, and LIMIT 1 without an order would pick
+      // one of them at random, so the name is aggregated with MAX, which ignores NULLs and gives the same answer on every run.
       const centerAccountSql = `
-        SELECT DISTINCT 
-          COALESCE(debtor_account_id, creditor_account_id) as account_id,
-          COALESCE(debtor_name, creditor_name) as account_name
+        SELECT
+          CASE WHEN debtor_account_id = $1 THEN debtor_account_id ELSE creditor_account_id END as account_id,
+          MAX(CASE WHEN debtor_account_id = $1 THEN debtor_name ELSE creditor_name END) as account_name
         FROM transaction_detail
         WHERE (debtor_account_id = $1 OR creditor_account_id = $1)
           AND tenant_id = $2
+        GROUP BY CASE WHEN debtor_account_id = $1 THEN debtor_account_id ELSE creditor_account_id END
         LIMIT 1
       `;
 

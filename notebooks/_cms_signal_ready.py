@@ -28,9 +28,11 @@ def signal_ready(render_ok):
     """
     status = 'ready' if render_ok else 'error'
     payload = _cms_json.dumps({'source': 'voila-notebook', 'status': status})
-    # Charts are drawn once plotly.js has loaded (see _cms_plotly.py), which can be after this cell runs. Hold the
-    # message back until every deferred chart script has run, and report an error if one never does. The wait stays below
-    # the parent frame's own ready timeout (60 s in VoilaFrame.tsx) so a stuck chart is reported as an error from here first.
+    # Charts are drawn once plotly.js has loaded (see _cms_plotly.py), which can be after this cell runs. Hold the message
+    # back until every deferred chart script has run and its chart is drawn, and report an error if one never does or a
+    # chart failed to draw. A plotly.js load that has already failed is reported at once; one that is still in flight keeps
+    # waiting. The wait stays below the parent frame's own ready timeout (60 s in VoilaFrame.tsx) so a stuck chart is
+    # reported as an error from here first.
     display(
         Javascript(
             f"""
@@ -39,12 +41,13 @@ def signal_ready(render_ok):
               var waitedMs = 0;
               (function send() {{
                 var pending = window.__cmsPlotlyPending || 0;
-                if (pending > 0 && waitedMs < 50000) {{
+                var loadFailed = window.__cmsPlotlyLoadFailed === true;
+                if (pending > 0 && !loadFailed && waitedMs < 50000) {{
                   waitedMs += 100;
                   setTimeout(send, 100);
                   return;
                 }}
-                if (pending > 0) {{ payload.status = 'error'; }}
+                if (loadFailed || pending > 0 || (window.__cmsPlotlyFailed || 0) > 0) {{ payload.status = 'error'; }}
                 window.parent.postMessage(payload, '*');
               }})();
             }})();

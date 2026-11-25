@@ -10,6 +10,10 @@ import {
 import { ConditionsListByAccountResponse } from './types/IAccountConditions.types';
 import { stripEntityIdSuffix, toAccountHolderSource } from './utils/entity-id.util';
 
+// Which moment the conditions are classified against when no explicit asOfDate is given: the current time, or the time of the transaction
+export type ConditionsAsOfMode = 'now' | 'transaction';
+export const CONDITIONS_AS_OF_MODES: readonly ConditionsAsOfMode[] = ['now', 'transaction'];
+
 @Injectable()
 export class ConditionLakehouseService extends GoldLakehouseService {
   // eslint-disable-next-line @typescript-eslint/no-useless-constructor -- Required for NestJS dependency injection in subclasses
@@ -152,6 +156,7 @@ export class ConditionLakehouseService extends GoldLakehouseService {
     tenantId: string,
     asOfDate?: string,
     userJwt?: string,
+    asOf: ConditionsAsOfMode = 'now',
   ): Promise<ConditionsContextByTransactionResponse> {
     try {
       const txSql = `
@@ -171,16 +176,20 @@ export class ConditionLakehouseService extends GoldLakehouseService {
         throw new HttpException(`Transaction ${transactionId} not found`, HttpStatus.NOT_FOUND);
       }
 
-      const filterDate = asOfDate ?? pacs8.tx_event_ts;
+      const filterDate = this.resolveAsOfDate(asOfDate, asOf, pacs8.tx_event_ts);
 
       // const displayId = `TXN-${pacs8.tx_event_date?.replace(/-/gv, '')}${transactionId}`;
       const dateSegment = pacs8.tx_event_date?.replace(/-/gv, '') ?? '';
       const displayId = `TXN-${dateSegment}${transactionId}`;
+      const [debtorEntityId, creditorEntityId] = await Promise.all([
+        this.resolveEntityId(pacs8.debtor_id, pacs8.debtor_account_id, tenantId, userJwt),
+        this.resolveEntityId(pacs8.creditor_id, pacs8.creditor_account_id, tenantId, userJwt),
+      ]);
       const [debtorAccounts, creditorAccounts, debtorEntityConditions, creditorEntityConditions] = await Promise.all([
-        this.getEntityAccountsWithConditionCounts(pacs8.debtor_id, pacs8.debtor_account_id, tenantId, filterDate, userJwt),
-        this.getEntityAccountsWithConditionCounts(pacs8.creditor_id, pacs8.creditor_account_id, tenantId, filterDate, userJwt),
-        this.getEntityLevelConditions(pacs8.debtor_id, tenantId, filterDate, userJwt),
-        this.getEntityLevelConditions(pacs8.creditor_id, tenantId, filterDate, userJwt),
+        this.getEntityAccountsWithConditionCounts(debtorEntityId, pacs8.debtor_account_id, tenantId, filterDate, userJwt),
+        this.getEntityAccountsWithConditionCounts(creditorEntityId, pacs8.creditor_account_id, tenantId, filterDate, userJwt),
+        this.getEntityLevelConditions(debtorEntityId, tenantId, filterDate, userJwt),
+        this.getEntityLevelConditions(creditorEntityId, tenantId, filterDate, userJwt),
       ]);
 
       return {
@@ -194,14 +203,14 @@ export class ConditionLakehouseService extends GoldLakehouseService {
           currency: pacs8.interbank_settlement_currency ?? 'no data found',
         },
         debtor: {
-          entityId: pacs8.debtor_id ?? 'no data found',
+          entityId: debtorEntityId || 'no data found',
           entityName: pacs8.debtor_name ?? 'no data found',
           primaryAccountId: pacs8.debtor_account_id ?? 'no data found',
           accounts: debtorAccounts,
           entityConditions: debtorEntityConditions,
         },
         creditor: {
-          entityId: pacs8.creditor_id ?? 'no data found',
+          entityId: creditorEntityId || 'no data found',
           entityName: pacs8.creditor_name ?? 'no data found',
           primaryAccountId: pacs8.creditor_account_id ?? 'no data found',
           accounts: creditorAccounts,
@@ -220,6 +229,43 @@ export class ConditionLakehouseService extends GoldLakehouseService {
       const errorStack = error instanceof Error ? error.stack : undefined;
       this.logger.error(`Error fetching conditions context by transaction: ${errorMessage}`, errorStack);
       throw new HttpException('Failed to fetch conditions context', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  // An explicit asOfDate wins. Otherwise conditions are shown as of now by default, because what matters to the person reviewing is what
+  // is in force today; the reviewer can ask for the state at the time of the transaction instead (asOf = 'transaction').
+  private resolveAsOfDate(asOfDate: string | undefined, asOf: ConditionsAsOfMode, transactionTimestamp: string | null | undefined): string {
+    return asOfDate ?? (asOf === 'transaction' && transactionTimestamp ? transactionTimestamp : new Date().toISOString());
+  }
+
+  // transaction_detail can carry a null debtor_id / creditor_id (the pipeline did not fill it in) while account_holder still
+  // knows which entity holds the account. Without the entity id its entity-level conditions cannot be looked up at all.
+  private async resolveEntityId(
+    entityId: string | null | undefined,
+    accountId: string | null | undefined,
+    tenantId: string,
+    userJwt?: string,
+  ): Promise<string> {
+    if (entityId) {
+      return entityId;
+    }
+    if (!accountId) {
+      return '';
+    }
+    try {
+      const response = await this.runSqlQuery(
+        // ORDER BY so that, should an account ever have more than one holder row, it always resolves to the same entity
+        'SELECT source FROM account_holder WHERE destination = $1 AND tenant_id = $2 ORDER BY source LIMIT 1',
+        1,
+        [accountId, tenantId],
+        userJwt,
+      );
+      return response.data?.[0]?.source ?? '';
+    } catch (error) {
+      this.logger.warn(
+        `Could not resolve the entity holding account ${accountId}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return '';
     }
   }
 

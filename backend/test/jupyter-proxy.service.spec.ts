@@ -289,6 +289,18 @@ describe('JupyterProxyService', () => {
         'TENANT_A',
         '2024-01-01',
         MOCK_JWT,
+        undefined,
+      );
+    });
+
+    it('passes the asOf mode through, so the transaction time can be requested', async () => {
+      await service.getConditionsContextByTransaction(MOCK_USER_ID, 'TMICFBPK2801321903297120', 'DEFAULT', undefined, undefined, 'transaction');
+      expect(conditionSvc.getConditionsContextByTransaction).toHaveBeenCalledWith(
+        'TMICFBPK2801321903297120',
+        'DEFAULT',
+        undefined,
+        MOCK_JWT,
+        'transaction',
       );
     });
 
@@ -299,6 +311,7 @@ describe('JupyterProxyService', () => {
         'DEFAULT',
         undefined,
         MOCK_JWT,
+        undefined,
       );
     });
   });

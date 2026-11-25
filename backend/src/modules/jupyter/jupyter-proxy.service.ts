@@ -3,7 +3,7 @@ import { TransactionLakehouseService } from '../gold-lakehouse/transaction-lakeh
 import { AccountLakehouseService } from '../gold-lakehouse/account-lakehouse.service';
 import { AlertsLakehouseService } from '../gold-lakehouse/alerts-lakehouse.service';
 import { BenfordsLawLakehouseService } from '../gold-lakehouse/benfordsLaw-lakehouse.service';
-import { ConditionLakehouseService } from '../gold-lakehouse/condition-lakehouse.service';
+import { ConditionLakehouseService, type ConditionsAsOfMode } from '../gold-lakehouse/condition-lakehouse.service';
 import { CounterpartyNetworkResponseDto, TransactionNetworkResponseDto } from '../gold-lakehouse/dto/network-analysis.dto';
 import {
   AccountNodeFullDataResponse,
@@ -217,9 +217,10 @@ export class JupyterProxyService {
     tenantId: string,
     asOfDate?: string,
     fallbackJwt?: string,
+    asOf?: ConditionsAsOfMode,
   ): Promise<ConditionsContextByTransactionResponse> {
     const userJwt = await this.getUserJwt(userId, fallbackJwt);
-    return await this.conditionLakehouseService.getConditionsContextByTransaction(transactionId, tenantId, asOfDate, userJwt);
+    return await this.conditionLakehouseService.getConditionsContextByTransaction(transactionId, tenantId, asOfDate, userJwt, asOf);
   }
 
   async getConditionsDetails(
