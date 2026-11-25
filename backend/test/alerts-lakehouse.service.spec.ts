@@ -152,6 +152,61 @@ describe('AlertsLakehouseService', () => {
       expect(result.meta.tenantId).toBe('DEFAULT');
     });
 
+    it('lists a rule result only once when the gold view returns it more than once (issue #165)', async () => {
+      const rule016 = { rule_id: '016@1.0.0', rule_cfg: '1.0.0', rule_weight: 200, rule_sub_ref: '.02', rule_independent_variable: 5 };
+      const rule021 = { rule_id: '021@1.0.0', rule_cfg: '1.0.0', rule_weight: 300, rule_sub_ref: '.01', rule_independent_variable: 2 };
+      const rule018 = { rule_id: '018@1.0.0', rule_cfg: '1.0.0', rule_weight: 200, rule_sub_ref: '.03', rule_independent_variable: 9 };
+      http.mockReturnValue(
+        okHttp([
+          {
+            alert_id: 9,
+            tenant_id: 'DEFAULT',
+            typologies: [
+              {
+                typology_id: '098',
+                typology_cfg: '098@1.0.0',
+                typology_score: 700,
+                rule_count_in_typology: 3,
+                rules: [rule016, rule021, rule016, rule018, rule021],
+              },
+            ],
+          },
+        ]),
+      );
+
+      const result = await service.getAlertNavigatorData(9, 'DEFAULT');
+
+      const parsedRules = JSON.parse(result.typologies[0].rules);
+      expect(parsedRules.map((r: { ruleId: string }) => r.ruleId)).toEqual(['016@1.0.0', '021@1.0.0', '018@1.0.0']);
+      expect(parsedRules.reduce((sum: number, r: { ruleWeight: number }) => sum + r.ruleWeight, 0)).toBe(result.typologies[0].typologyScore);
+      expect(result.statistics.totalRules).toBe(3);
+    });
+
+    it('keeps two results for the same rule when they differ, so nothing distinct is hidden', async () => {
+      http.mockReturnValue(
+        okHttp([
+          {
+            alert_id: 10,
+            tenant_id: 'DEFAULT',
+            typologies: [
+              {
+                typology_id: '098',
+                typology_cfg: '098@1.0.0',
+                rules: [
+                  { rule_id: '016@1.0.0', rule_cfg: '1.0.0', rule_weight: 200, rule_sub_ref: '.02' },
+                  { rule_id: '016@1.0.0', rule_cfg: '1.0.0', rule_weight: 100, rule_sub_ref: '.01' },
+                ],
+              },
+            ],
+          },
+        ]),
+      );
+
+      const result = await service.getAlertNavigatorData(10, 'DEFAULT');
+
+      expect(JSON.parse(result.typologies[0].rules)).toHaveLength(2);
+    });
+
     it('surfaces flowProcessorData for a bumped EFRuP rule version (EFRuP@2.0.0)', async () => {
       http.mockReturnValue(
         okHttp([

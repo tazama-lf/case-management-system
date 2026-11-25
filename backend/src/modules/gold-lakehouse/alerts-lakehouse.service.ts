@@ -172,8 +172,8 @@ export class AlertsLakehouseService extends GoldLakehouseService {
         .map((t) => {
           const rulesData = this.safeParseArray<RawRuleRow>(t.rules);
           const flowProcessorRule = rulesData.find((r) => r.rule_id?.startsWith(AlertsLakehouseService.EFRUP_RULE_ID_PREFIX));
-          const triggeredRulesData = rulesData.filter(
-            (r) => (r.rule_weight ?? 0) > 0 && !r.rule_id?.startsWith(AlertsLakehouseService.EFRUP_RULE_ID_PREFIX),
+          const triggeredRulesData = this.distinctRuleResults(
+            rulesData.filter((r) => (r.rule_weight ?? 0) > 0 && !r.rule_id?.startsWith(AlertsLakehouseService.EFRUP_RULE_ID_PREFIX)),
           );
           // rule_desc and matched_band_reason intentionally keep snake_case: they mirror the underlying SQL column names
           const mappedRules = triggeredRulesData.map((r) => ({
@@ -481,5 +481,17 @@ export class AlertsLakehouseService extends GoldLakehouseService {
       }
     }
     return [];
+  }
+
+  // The gold view can return the same rule result more than once for a typology; listing it twice
+  // makes the shown rule weights add up to more than the typology score.
+  private distinctRuleResults(rules: RawRuleRow[]): RawRuleRow[] {
+    const seen = new Set<string>();
+    return rules.filter((r) => {
+      const key = JSON.stringify([r.rule_id, r.rule_cfg, r.rule_sub_ref, r.rule_weight]);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
   }
 }
