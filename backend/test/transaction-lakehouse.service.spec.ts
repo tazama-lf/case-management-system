@@ -362,6 +362,21 @@ describe('TransactionLakehouseService', () => {
       await expect(service.getTransactionNetworkData('acc1', 'DEFAULT', 'day')).rejects.toThrow(HttpException);
     });
 
+    it('counts payments (pacs.008) only, not their pacs.002 status rows, in the outbound, inbound and per-transaction queries', async () => {
+      http.mockReturnValueOnce(okHttp([{ account_id: 'acc1', account_name: 'Center' }])).mockReturnValue(okHttp([]));
+
+      await service.getTransactionNetworkData('acc1', 'DEFAULT', 'day');
+
+      const sqls = http.mock.calls.map((call) => (call[1] as { sql_query: string }).sql_query);
+      const outbound = sqls.find((sql) => sql.includes("'OUTBOUND' as flow_direction"));
+      const inbound = sqls.find((sql) => sql.includes("'INBOUND' as flow_direction"));
+      const perTransaction = sqls.find((sql) => sql.includes('ORDER BY td.tx_event_ts ASC'));
+
+      expect(outbound).toContain("tx_type = 'pacs.008.001.10'");
+      expect(inbound).toContain("tx_type = 'pacs.008.001.10'");
+      expect(perTransaction).toContain("td.tx_type = 'pacs.008.001.10'");
+    });
+
     it('returns transaction-level edges when raw transactions are available', async () => {
       http
         .mockReturnValueOnce(okHttp([{ account_id: 'acc1', account_name: 'Center' }]))

@@ -404,6 +404,7 @@ export class TransactionLakehouseService extends GoldLakehouseService {
 
       const centerAccountInfo = this.stripHudiMetadata(centerAccountRow);
 
+      // A payment is stored as a pacs.008 row plus pacs.002 status rows - count the pacs.008 row only, or every payment shows up twice.
       const outboundSql = `
         SELECT 
           creditor_account_id as connected_account_id,
@@ -417,6 +418,7 @@ export class TransactionLakehouseService extends GoldLakehouseService {
         FROM transaction_detail
         WHERE debtor_account_id = $1
           AND tenant_id = $2
+          AND tx_type = 'pacs.008.001.10'
           ${periodClause}
         GROUP BY creditor_account_id, creditor_name
       `;
@@ -434,6 +436,7 @@ export class TransactionLakehouseService extends GoldLakehouseService {
         FROM transaction_detail
         WHERE creditor_account_id = $1
           AND tenant_id = $2
+          AND tx_type = 'pacs.008.001.10'
           ${periodClause}
         GROUP BY debtor_account_id, debtor_name
       `;
@@ -457,6 +460,7 @@ export class TransactionLakehouseService extends GoldLakehouseService {
           AND th.row_type = 'EVENT'
         WHERE (td.debtor_account_id = $1 OR td.creditor_account_id = $1)
           AND td.tenant_id = $2
+          AND td.tx_type = 'pacs.008.001.10'
           ${periodClause.replaceAll('tx_event_ts', 'td.tx_event_ts')}
         GROUP BY
           td.transaction_id,
