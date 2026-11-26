@@ -18,5 +18,4 @@ export interface UploadReportResponse {
   hash: string;
   uploadedBy: string;
   uploadedAt: Date;
-  filePath: string;
 }

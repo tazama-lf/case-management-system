@@ -177,13 +177,12 @@ describe('EvidenceService', () => {
       couchdbService.updateDocument.mockResolvedValue({ rev: 'rev-3' });
     });
 
-    it('keeps the single-document response for one file and adds a documents list holding that document', async () => {
+    it('returns only a summary of the stored document', async () => {
       const result: any = await service.uploadEvidence([mockFile], uploadDto, userId, tenantId, mockUser, uploadEndpointKey);
 
-      expect(result.evidenceId).toMatch(/^ev_1_/);
-      expect(result.metadata).toHaveLength(1);
-      expect(result.documents).toHaveLength(1);
-      expect(result.documents[0].evidenceId).toBe(result.evidenceId);
+      expect(Object.keys(result).sort()).toEqual(['caseId', 'evidenceType', 'fileName', 'id', 'taskId', 'uploadedAt']);
+      expect(result).toMatchObject({ id: expect.stringMatching(/^ev_1_/), taskId: 1, caseId: mockTask.case_id, fileName: 'test.pdf' });
+      expect(result.uploadedAt).toBeInstanceOf(Date);
     });
 
     it('should successfully upload KYC evidence', async () => {
@@ -244,13 +243,8 @@ describe('EvidenceService', () => {
       expect(second).toEqual(expect.objectContaining({ id: expect.stringMatching(/^ev_1_/), fileName: 'test2.pdf', file_path: '/path/to/file2' }));
       expect(first.id).not.toBe(second.id);
       expect(evidenceRepository.createEvidence).toHaveBeenCalledWith(userId, expect.anything(), expect.anything());
-      // Each CouchDB document lists only its own file; the first document is returned.
-      expect((result as any).metadata).toHaveLength(1);
-      expect((result as any).evidenceId).toBe(first.id);
-      // `documents` lists every document the request created, first one included.
-      expect((result as any).documents).toHaveLength(2);
-      expect((result as any).documents.map((doc: any) => doc.evidenceId)).toEqual([first.id, second.id]);
-      expect((result as any).documents[1].metadata[0].fileName).toBe('test2.pdf');
+      // The response summarises the first document only.
+      expect(result).toMatchObject({ id: first.id, fileName: 'test.pdf' });
     });
 
     it('gives files from one request distinct ids even when the clock does not advance', async () => {
@@ -327,7 +321,6 @@ describe('EvidenceService', () => {
         // Once the row has committed only the status is written, so nothing else in the document is overwritten.
         expect(updatedAs[1]).toEqual({ status: 'committed' });
         expect(updatedAs).toHaveLength(2);
-        expect(result.status).toBe('committed');
         // The flip must come after the Postgres row, never before it: a document marked committed with no row would be
         // visible and never cleaned up.
         expect(order.indexOf('couch save file metadata (pending)')).toBeLessThan(order.indexOf('postgres row'));
@@ -585,6 +578,16 @@ describe('EvidenceService', () => {
       expect(result).toBeDefined();
       expect(couchdbService.deleteEvidence).toHaveBeenCalled();
       expect(evidenceRepository.deleteEvidenceById).toHaveBeenCalledWith('ev_1_123456', tenantId);
+    });
+
+    it('should not return the storage path or decryption key of the deleted evidence', async () => {
+      couchdbService.getDocument.mockResolvedValue(mockEvidenceDoc);
+      couchdbService.deleteEvidence.mockResolvedValue({ ok: true });
+
+      const result = await service.deleteEvidence('ev_1_123456', 'test.pdf', userId, tenantId, mockUser, deleteEndpointKey);
+
+      expect(JSON.stringify(result)).not.toMatch(/filePath|encryption/);
+      expect(result).toMatchObject({ evidenceId: 'ev_1_123456', metadata: [{ fileName: 'test.pdf' }] });
     });
 
     it.each([
@@ -1049,6 +1052,76 @@ describe('EvidenceService', () => {
 
     it('should throw UnauthorizedException for invalid role', async () => {
       await expect(service.getEvidenceByType(evidenceType as any, userId, tenantId, 'INVALID_ROLE')).rejects.toThrow(UnauthorizedException);
+    });
+  });
+  describe('responses never expose the storage path or the decryption key', () => {
+    const userId = 'user-123';
+    const tenantId = 'tenant-123';
+    const expectClean = (value: unknown): void => {
+      const json = JSON.stringify(value);
+      expect(json).not.toContain('filePath');
+      expect(json).not.toContain('encryption');
+      expect(json).not.toContain(mockEvidenceDoc.metadata[0].encryption.key);
+    };
+
+    beforeEach(() => {
+      couchdbService.queryDocuments.mockResolvedValue({ data: [mockEvidenceDoc] });
+      couchdbService.getAttachment.mockResolvedValue(Buffer.from('encrypted content'));
+      jest.spyOn(service as any, 'decrypt').mockReturnValue(Buffer.from('decrypted content'));
+      prismaService.task.findUnique.mockResolvedValue(mockTask);
+    });
+
+    it('getEvidenceById', async () => {
+      const result = await service.getEvidenceById('ev_1_123456', userId, tenantId, 'CMS_INVESTIGATOR');
+
+      expectClean(result);
+      expect(result.attachments[0]).toMatchObject({ fileName: 'test.pdf', hash: mockEvidenceDoc.metadata[0].hash });
+    });
+
+    it('lists and single lookups leave out comments and archive, which no client reads', async () => {
+      const byId = await service.getEvidenceById('ev_1_123456', userId, tenantId, 'CMS_INVESTIGATOR');
+      const byTask = await service.getEvidenceByTaskId(1, userId, tenantId, 'CMS_INVESTIGATOR');
+
+      for (const item of [byId, ...byTask.evidence]) {
+        expect(item).not.toHaveProperty('comments');
+        expect(item).not.toHaveProperty('archive');
+      }
+    });
+
+    it('getEvidenceByTaskId, getEvidenceByCaseId and getEvidenceByType', async () => {
+      expectClean(await service.getEvidenceByTaskId(1, userId, tenantId, 'CMS_INVESTIGATOR'));
+      expectClean(await service.getEvidenceByCaseId(100, userId, tenantId, 'CMS_INVESTIGATOR'));
+      expectClean(await service.getEvidenceByType(EvidenceType.KYC, userId, tenantId, 'CMS_INVESTIGATOR'));
+    });
+
+    it('downloadEvidence still decrypts with the stored key, but returns neither to the caller', async () => {
+      const result = await service.downloadEvidence('ev_1_123456', userId, tenantId, 'CMS_INVESTIGATOR');
+
+      expect((service as any).decrypt).toHaveBeenCalledWith(
+        expect.any(Buffer),
+        mockEvidenceDoc.metadata[0].encryption.key,
+        mockEvidenceDoc.metadata[0].encryption.iv,
+        mockEvidenceDoc.metadata[0].encryption.authTag,
+      );
+      expectClean({ metadata: result.metadata, attachmentMeta: result.files.map((f) => f.attachmentMeta) });
+    });
+
+    it('uploadEvidence returns clean documents but still stores the key and path', async () => {
+      taskRepository.findTaskWithCase.mockResolvedValue(mockTask);
+      prismaService.case.findUnique.mockResolvedValue(mockTask.case);
+      couchdbService.insertDocument.mockResolvedValue({ rev: 'rev-1' });
+      couchdbService.insertAttachment.mockResolvedValue({ rev: 'rev-2', filePath: 'http://couchdb:5984/db/doc/file' });
+      couchdbService.updateDocument.mockResolvedValue({ rev: 'rev-3' });
+      const dto = { taskId: 1, evidenceType: EvidenceType.KYC } as any;
+      const file = { originalname: 'test.pdf', buffer: Buffer.from('x'), size: 1, mimetype: 'application/pdf' };
+
+      const result = await service.uploadEvidence([file], dto, userId, tenantId, mockUser, 'POST /api/v1/evidence/upload');
+
+      expect(JSON.stringify(result)).not.toMatch(/filePath|encryption/);
+      const storedFile = (couchdbService.updateDocument.mock.calls[0][1] as any).metadata[0];
+      expect(storedFile.filePath).toBe('http://couchdb:5984/db/doc/file');
+      expect(storedFile.encryption).toHaveProperty('key');
+      expect((evidenceRepository.createEvidence.mock.calls[0][1] as any).file_path).toBe('http://couchdb:5984/db/doc/file');
     });
   });
 });
